@@ -86,5 +86,18 @@ typedef struct state_t {
 #define s_HI	s_reg[29]
 #define s_LO	s_reg[30]
 
+typedef struct pcb_t {
+	/* process queue fields */
+	struct pcb_t	*p_next,	// pointer to next entry
+					*p_prev,	// pointer to previous entry
+
+	/* process tree fields */
+					*p_prnt,	// pointer to parent
+					*p_child,	// pointer to 1st child
+					*p_sib;		// pointer to sibling
+
+	state_t 		p_s;		// processor state
+	int 			*p_semAdd;	// pointer to semaphore on which process blocked
+} pcb_t, *pcb_PTR;
 
 #endif
