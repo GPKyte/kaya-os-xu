@@ -1,8 +1,11 @@
+#include "../h/types.h"
+#include "../h/const.h"
+
 /*
  * Insert the element onto the pcbFree list
  */
 void freePcb (pcb_PTR p) {
-
+	return;
 } 
 
 /* 
@@ -40,15 +43,15 @@ int emptyProcQ (pcb_PTR tp) {
 void insertProcQ (pcb_PTR *tp, pcb_PTR p) {
 	if(emptyProcQ(*tp)) {
 		(*tp) = p;
-		p->next = p;
-		p->prev = p;
+		p->p_next = p;
+		p->p_prev = p;
 	} else {
 		/* link p to tail and head */
-		p->next = (*tp)->next;
-		p->prev = (*tp);
+		p->p_next = (*tp)->p_next;
+		p->p_prev = (*tp);
 		/* add p behind current tail, and before head */
-		(*tp)->next = p;
-		p->next->prev = p;
+		(*tp)->p_next = p;
+		p->p_next->p_prev = p;
 		/* update tp */
 		(*tp) = p;
 	}
@@ -62,11 +65,11 @@ pcb_PTR removeProcQ (pcb_PTR *tp) {
 		return NULL;
 	} else {
 		/* Grab head */
-		pcb_PTR head = (*tp)->next; 
+		pcb_PTR head = (*tp)->p_next; 
 		/* Link tail to next head */
-		(*tp)->next = head->next;
+		(*tp)->p_next = head->p_next;
 		/* Link the next head to tail */
-		(*tp)->next->prev = (*tp);
+		(*tp)->p_next->p_prev = (*tp);
 		return head;
 	}
 }
@@ -77,28 +80,28 @@ pcb_PTR removeProcQ (pcb_PTR *tp) {
  * TODO: Simplify logic here
  */
 pcb_PTR outProcQ (pcb_PTR *tp, pcb_PTR p) {
-	// check if p exists in the list
+	/* check if p exists in the list */
 	if(emptyProcQ(*tp)) {
 		return NULL;
 	} else if((*tp) == p) {
-		// remove and return p, and update tp
-		(*tp)->next->prev = (*tp)->prev;
-		(*tp)->prev->next = (*tp)->next;
+		/* remove and return p, and update tp */
+		(*tp)->p_next->p_prev = (*tp)->p_prev;
+		(*tp)->p_prev->p_next = (*tp)->p_next;
 		return (*tp);
 	} else {
-		// traverse the list
-		pcb_PTR nomad = (*tp)->next; //temp var to find p
+		/* traverse the list */
+		pcb_PTR nomad = (*tp)->p_next; /* temp var to find p */
 		while(nomad != NULL) {
 			if(nomad == p) {
 				/* nomad can finally rest */
-				nomad->next->prev = nomad->prev;
-				nomad->prev->next = nomad->next;
+				nomad->p_next->p_prev = nomad->p_prev;
+				nomad->p_prev->p_next = nomad->p_next;
 				return nomad;
 			} else if(nomad == (*tp)) {
 				/* p not found in list */
 				return NULL;
 			} else {
-				nomad = nomad->next;
+				nomad = nomad->p_next;
 			}
 		}
 		/* Fell off the list. This should not happen */
@@ -113,12 +116,13 @@ pcb_PTR headProcQ (pcb_PTR tp) {
 	if(emptyProcQ(tp)) {
 		return (NULL);
 	} else {
-		return (tp->next);
+		return (tp->p_next);
 	}
 }
 
 /* Tree management methods */
-int emptyChild (pcb_PTR p);
-void insertChild (pcb_PTR prnt, pcb_PTR p);
-pcb_PTR removeChild (pcb_PTR p);
-pcb_PTR outChild (pcb_PTR p);
+/* TODO: implement */
+int emptyChild (pcb_PTR p) {return 1;}
+void insertChild (pcb_PTR prnt, pcb_PTR p) {}
+pcb_PTR removeChild (pcb_PTR p) {return NULL;}
+pcb_PTR outChild (pcb_PTR p) {return NULL;}

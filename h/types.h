@@ -41,7 +41,7 @@ typedef struct {
 	unsigned int timescale;
 	unsigned int inst_dev[DEVINTNUM];
 	unsigned int interrupt_dev[DEVINTNUM];
-	device_t   devreg[DEVINTNUM * DEVPERINT];
+	device_t devreg[DEVINTNUM * DEVPERINT];
 } devregarea_t;
 
 #define STATEREGNUM	31
@@ -49,10 +49,21 @@ typedef struct state_t {
 	unsigned int	s_asid;
 	unsigned int	s_cause;
 	unsigned int	s_status;
-	unsigned int 	s_pc;
-	int	 			s_reg[STATEREGNUM];
-
+	unsigned int	s_pc;
+	int		s_reg[STATEREGNUM];
 } state_t, *state_PTR;
+
+typedef struct pcb_t {
+	struct pcb_t	*p_next;
+	struct pcb_t	*p_prev;
+
+	struct pcb_t	*p_prnt;
+	struct pcb_t	*p_child;
+	struct pcb_t	*p_sib;
+
+	state_t 	p_s;
+	int		*p_semAdd;
+} pcb_t, *pcb_PTR;
 
 #define	s_at	s_reg[0]
 #define	s_v0	s_reg[1]
@@ -85,19 +96,5 @@ typedef struct state_t {
 #define s_ra	s_reg[28]
 #define s_HI	s_reg[29]
 #define s_LO	s_reg[30]
-
-typedef struct pcb_t {
-	/* process queue fields */
-	struct pcb_t	*p_next,	// pointer to next entry
-					*p_prev,	// pointer to previous entry
-
-	/* process tree fields */
-					*p_prnt,	// pointer to parent
-					*p_child,	// pointer to 1st child
-					*p_sib;		// pointer to sibling
-
-	state_t 		p_s;		// processor state
-	int 			*p_semAdd;	// pointer to semaphore on which process blocked
-} pcb_t, *pcb_PTR;
 
 #endif
