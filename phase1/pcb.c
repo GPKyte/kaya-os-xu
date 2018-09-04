@@ -1,21 +1,26 @@
 #include "../h/types.h"
 #include "../h/const.h"
 
-/*
- * Insert the element onto the pcbFree list
- */
-void freePcb (pcb_PTR p) {
+pcb_PTR pcbFree_h;
 
-} 
+/* Insert the element onto the pcbFree list */
+void freePcb (pcb_PTR p) {
+	insertProcQ(pcbFree_h, p);
+}
 
 /* 
- * Return NULL if pcbFree list it empty. Otherwise, remove an element from the pcbFree list,
+ * Return NULL if pcbFree list is empty. Otherwise, remove an element from the pcbFree list,
  * provide initial values for ALL of the pcbs' fields (i.e. NULL and/or 0) and then return
  * a pointer to the removed element. Pcbs get reused, so it is important that no previous
  * value persist in a pcb when it gets reallocated.
  */
 pcb_PTR allocPcb () {
-
+	pcb_PTR gift = removeProcQ(pcbFree_h);
+	/* Clean and rewrap present */
+	(*gift) = EmptyPcb;
+	
+	pcbFree_h = gift->p_next;
+	return gift;
 }
 
 /*
@@ -23,7 +28,13 @@ pcb_PTR allocPcb () {
  * This methods will be called only once during data structure initialization.
  */
 void initPcbs () {
-	
+	static pcb_t procTable[MAXPROC];
+
+	pcbFree_h = mkEmptyProcQ(); /* Init pcbFree list */
+
+	for(int i=0; i<MAXPROC; i++) {
+		freePcb(&(procTable[i]));
+	}
 }
 
 /*
