@@ -53,18 +53,6 @@ typedef struct state_t {
 	int		s_reg[STATEREGNUM];
 } state_t, *state_PTR;
 
-typedef struct pcb_t {
-	struct pcb_t	*p_next;
-	struct pcb_t	*p_prev;
-
-	struct pcb_t	*p_prnt;
-	struct pcb_t	*p_child;
-	struct pcb_t	*p_sib;
-
-	state_t 	p_s;
-	int		*p_semAdd;
-} pcb_t, *pcb_PTR;
-
 #define	s_at	s_reg[0]
 #define	s_v0	s_reg[1]
 #define s_v1	s_reg[2]
@@ -96,5 +84,28 @@ typedef struct pcb_t {
 #define s_ra	s_reg[28]
 #define s_HI	s_reg[29]
 #define s_LO	s_reg[30]
+
+typedef struct pcb_t {
+	/* process queue fields */
+	struct pcb_t	*p_next,	/* pointer to next entry */
+					*p_prev,	/* pointer to previous entry */
+
+	/* process tree fields */
+					*p_prnt,	/* pointer to parent */
+					*p_child,	/* pointer to 1st child */
+					*p_sib;		/* pointer to sibling */
+
+	state_t 		p_s;		/* processor state */
+	int 			*p_semAdd;	/* pointer to semaphore on which process blocked */
+} pcb_t, *pcb_PTR;
+
+#define MAXPROC	20
+
+/* semaphore descriptor type */
+typedef struct semd_t {
+	struct semd_t	*s_next;		/* next element on the ASL */
+	int				*s_semAdd;		/* pointer to the semaphore */
+	pcb_t			*s_procQ;		/* tail pointer to a process queue */
+} semd_t, *semd_PTR;
 
 #endif

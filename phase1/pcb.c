@@ -5,21 +5,25 @@
  * Insert the element onto the pcbFree list
  */
 void freePcb (pcb_PTR p) {
-	return;
+
 } 
 
 /* 
- * 
+ * Return NULL if pcbFree list it empty. Otherwise, remove an element from the pcbFree list,
+ * provide initial values for ALL of the pcbs' fields (i.e. NULL and/or 0) and then return
+ * a pointer to the removed element. Pcbs get reused, so it is important that no previous
+ * value persist in a pcb when it gets reallocated.
  */
 pcb_PTR allocPcb () {
 
 }
 
 /*
- * 
+ * Initialize the pcbFree list to contain all the elements of the static array of MAXPROC pcbs.
+ * This methods will be called only once during data structure initialization.
  */
 void initPcbs () {
-
+	
 }
 
 /*
@@ -91,6 +95,7 @@ pcb_PTR outProcQ (pcb_PTR *tp, pcb_PTR p) {
 	} else {
 		/* traverse the list */
 		pcb_PTR nomad = (*tp)->p_next; /* temp var to find p */
+
 		while(nomad != NULL) {
 			if(nomad == p) {
 				/* nomad can finally rest */

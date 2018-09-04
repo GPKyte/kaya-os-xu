@@ -12,7 +12,6 @@
 #define WORDLEN			4		/* word size in bytes */
 #define PTEMAGICNO		0x2A
 
-
 #define ROMPAGESTART	0x20000000	 /* ROM Reserved Page */
 
 

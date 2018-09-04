@@ -27,6 +27,12 @@ extern void insertChild (pcb_PTR prnt, pcb_PTR p);
 extern pcb_PTR removeChild (pcb_PTR p);
 extern pcb_PTR outChild (pcb_PTR p);
 
+extern int insertBlocked(int *semAdd, pcb_t *p);
+extern pcb_PTR removeBlocked(int *semAdd);
+extern cb_PTR outBlocked(pcb_PTR p);
+extern pcb_PTR headBlocked(int *semAdd);
+extern void initASL();
+
 /***************************************************************/
 
 #endif
