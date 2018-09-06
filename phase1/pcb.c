@@ -1,3 +1,8 @@
+/*
+ * 
+ * 
+ */
+
 #include "../h/types.h"
 #include "../h/const.h"
 
@@ -18,7 +23,7 @@ pcb_PTR allocPcb () {
 	pcb_PTR gift = removeProcQ(pcbFree_h);
 	/* Clean and rewrap present */
 	(*gift) = EmptyPcb;
-	
+
 	pcbFree_h = gift->p_next;
 	return gift;
 }
@@ -138,7 +143,18 @@ pcb_PTR headProcQ (pcb_PTR tp) {
 
 /* Tree management methods */
 /* TODO: implement */
-int emptyChild (pcb_PTR p) {return 1;}
-void insertChild (pcb_PTR prnt, pcb_PTR p) {}
-pcb_PTR removeChild (pcb_PTR p) {return NULL;}
-pcb_PTR outChild (pcb_PTR p) {return NULL;}
+int emptyChild (pcb_PTR p) {
+	return 1;
+}
+
+void insertChild (pcb_PTR prnt, pcb_PTR p) {
+
+}
+
+pcb_PTR removeChild (pcb_PTR prnt) {
+	return NULL;
+}
+
+pcb_PTR outChild (pcb_PTR p) {
+	return NULL;
+}
