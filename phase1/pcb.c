@@ -1,6 +1,8 @@
 /*
- * 
- * 
+ * pcb.c supports 3 different areas of functionality
+ *		1) Free list management
+ *		2) Queue management
+ *		3) Process tree management (or Parent-child management)
  */
 
 #include "../h/types.h"
@@ -13,7 +15,7 @@ void freePcb (pcb_PTR p) {
 	insertProcQ(pcbFree_h, p);
 }
 
-/* 
+/*
  * Return NULL if pcbFree list is empty. Otherwise, remove an element from the pcbFree list,
  * provide initial values for ALL of the pcbs' fields (i.e. NULL and/or 0) and then return
  * a pointer to the removed element. Pcbs get reused, so it is important that no previous
@@ -44,7 +46,7 @@ void initPcbs () {
 
 /*
  * Initialize a variable to be the tail pointer to a process queue.
- * Return a pointer to the tail of an empty process queue; i.e. NULL. 
+ * Return a pointer to the tail of an empty process queue; i.e. NULL.
  */
 pcb_PTR mkEmptyProcQ () {
 	return NULL;
@@ -85,7 +87,7 @@ pcb_PTR removeProcQ (pcb_PTR *tp) {
 		return NULL;
 	} else {
 		/* Grab head */
-		pcb_PTR head = (*tp)->p_next; 
+		pcb_PTR head = (*tp)->p_next;
 		/* Link tail to next head */
 		(*tp)->p_next = head->p_next;
 		/* Link the next head to tail */
@@ -142,7 +144,7 @@ pcb_PTR headProcQ (pcb_PTR tp) {
 }
 
 /* Tree management methods */
-/* TODO: implement */
+/* TO-DO: implement */
 int emptyChild (pcb_PTR p) {
 	return 1;
 }

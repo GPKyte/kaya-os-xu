@@ -105,7 +105,6 @@ static const struct EmptyPcb {
 	struct pcb_t EmptyPcb = {NULL,NULL,NULL,NULL,NULL,NULL,NULL};
 } EmptyPcb;
 
-
 /* semaphore descriptor type */
 typedef struct semd_t {
 	struct semd_t	*s_next;		/* next element on the ASL */
