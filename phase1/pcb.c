@@ -19,7 +19,7 @@ void freePcb (pcb_PTR p) {
  * a pointer to the removed element. Pcbs get reused, so it is important that no previous
  * value persist in a pcb when it gets reallocated.
  */
-pcb_PTR allocPcb () {
+pcb_PTR allocPcb (void) {
 	pcb_PTR gift = removeProcQ(pcbFree_h);
 	/* Clean and rewrap present */
 	(*gift) = EmptyPcb;
@@ -32,7 +32,7 @@ pcb_PTR allocPcb () {
  * Initialize the pcbFree list to contain all the elements of the static array of MAXPROC pcbs.
  * This methods will be called only once during data structure initialization.
  */
-void initPcbs () {
+void initPcbs (void) {
 	static pcb_t procTable[MAXPROC];
 
 	pcbFree_h = mkEmptyProcQ(); /* Init pcbFree list */
@@ -46,7 +46,7 @@ void initPcbs () {
  * Initialize a variable to be the tail pointer to a process queue.
  * Return a pointer to the tail of an empty process queue; i.e. NULL.
  */
-pcb_PTR mkEmptyProcQ () {
+pcb_PTR mkEmptyProcQ (void) {
 	return NULL;
 }
 
