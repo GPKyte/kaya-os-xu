@@ -8,9 +8,25 @@
 
 pcb_PTR pcbFree_h;
 
+void freePcb (pcb_PTR p);
+pcb_PTR allocPcb ();
+void initPcbs ();
+
+pcb_PTR mkEmptyProcQ ();
+int emptyProcQ (pcb_PTR tp);
+void insertProcQ (pcb_PTR *tp, pcb_PTR p);
+pcb_PTR removeProcQ (pcb_PTR *tp);
+pcb_PTR outProcQ (pcb_PTR *tp, pcb_PTR p);
+pcb_PTR headProcQ (pcb_PTR tp);
+
+int emptyChild (pcb_PTR p);
+void insertChild (pcb_PTR prnt, pcb_PTR p);
+pcb_PTR removeChild (pcb_PTR p);
+pcb_PTR outChild (pcb_PTR p);
+
 /* Insert the element onto the pcbFree list */
 void freePcb (pcb_PTR p) {
-	insertProcQ(pcbFree_h, p);
+	insertProcQ( &pcbFree_h, p);
 }
 
 /*
@@ -20,7 +36,7 @@ void freePcb (pcb_PTR p) {
  * value persist in a pcb when it gets reallocated.
  */
 pcb_PTR allocPcb (void) {
-	pcb_PTR gift = removeProcQ(pcbFree_h);
+	pcb_PTR gift = removeProcQ( &pcbFree_h);
 	/* Clean and rewrap present */
 	(*gift) = EmptyPcb;
 
@@ -34,11 +50,13 @@ pcb_PTR allocPcb (void) {
  */
 void initPcbs (void) {
 	static pcb_t procTable[MAXPROC];
+	int i = 0;
 
 	pcbFree_h = mkEmptyProcQ(); /* Init pcbFree list */
 
-	for(int i=0; i<MAXPROC; i++) {
+	while(i<MAXPROC) {
 		freePcb(&(procTable[i]));
+		i++;
 	}
 }
 
