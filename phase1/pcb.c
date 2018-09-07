@@ -168,12 +168,12 @@ int emptyChild (pcb_PTR p) {
 
 /* Make the ProcBlk pointed to by p a child of the ProcBlk pointed to by prnt. */
 void insertChild (pcb_PTR prnt, pcb_PTR p) {
-	p->p_parent = prnt;
+	p->p_prnt = prnt;
 	if(emptyChild(prnt)) {
 		prnt->p_child = p;
-		p->p_sibling = NULL; /* Force clean NULL border, but don't worry about children? */
+		p->p_sib = NULL; /* Force clean NULL border, but don't worry about children? */
 	} else {
-		p->p_sibling = prnt->p_child;
+		p->p_sib = prnt->p_child;
 		prnt->p_child = p;
 	}
 }
@@ -184,7 +184,7 @@ void insertChild (pcb_PTR prnt, pcb_PTR p) {
  * Otherwise, return a pointer to this removed first child ProcBlk.
  */
 pcb_PTR removeChild (pcb_PTR prnt) {
-	if(emptyChild(p)) {
+	if(emptyChild(prnt)) {
 		return (NULL);
 	} else {
 		return (outChild(prnt->p_child));
@@ -198,30 +198,30 @@ pcb_PTR removeChild (pcb_PTR prnt) {
  */
 pcb_PTR outChild (pcb_PTR p) {
 	pcb_PTR orphan;
-	if(p == NULL || p->p_parent == NULL || p->p_parent->p_child == NULL) {
+	if(p == NULL || p->p_prnt == NULL || p->p_prnt->p_child == NULL) {
 		/* Trolling */
 		return (NULL);
-	} else if(p->p_parent->p_child == p) {
+	} else if(p->p_prnt->p_child == p) {
 		/* First Child */
-		p->p_parent->p_child = p->sibling;
+		p->p_prnt->p_child = p->p_sib;
 		orphan = p;
 	} else {
 		/* Middle or last child */
-		pcb_PTR nomad = p->parent->p_child;
-		while(nomad->p_sibling != NULL && nomad->p_sibling != p) {
-			nomad = nomad->p_sibling;
+		pcb_PTR nomad = p->p_prnt->p_child;
+		while(nomad->p_sib != NULL && nomad->p_sib != p) {
+			nomad = nomad->p_sib;
 		}
 
-		orphan = nomad->p_sibling; /* Could be p or NULL, doesn't matter */
+		orphan = nomad->p_sib; /* Could be p or NULL, doesn't matter */
 		if(orphan) {
-			nomad->p_sibling = orphan->p_sibling;
+			nomad->p_sib = orphan->p_sib;
 		} else {
 			/* Sibling already set to NULL and p has no real parent, bad state */
 			return (NULL);
 		}
 	}
 
-	orphan->p_parent = NULL;
-	orphan->p_sibling = NULL;
+	orphan->p_prnt = NULL;
+	orphan->p_sib = NULL;
 	return (orphan);
 }
