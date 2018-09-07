@@ -163,7 +163,7 @@ void insertChild (pcb_PTR prnt, pcb_PTR p) {
 	} else {
 		p->p_old = prnt->p_child;
 		p->p_yng = NULL; /* Border control */
-		p->p_sib->p_yng = p;
+		p->p_old->p_yng = p;
 		prnt->p_child = p;
 	}
 }
@@ -196,8 +196,8 @@ pcb_PTR outChild (pcb_PTR p) {
 		p->p_sib->p_yng = NULL;
 	} else {
 		/* Middle or last child */
-		if(p->p_sib) { p->p_sib->p_yng = p->p_sib2; } /* In case sibling is NULL */
-		p->p_sib2->p_old = p->p_sib;
+		if(p->p_old) { p->p_sib->p_yng = p->p_yng; } /* In case sibling is NULL */
+		p->p_yng->p_old = p->p_sib;
 	}
 
 	p->p_prnt = NULL;
