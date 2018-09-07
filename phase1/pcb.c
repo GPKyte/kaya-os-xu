@@ -1,6 +1,8 @@
 /*
- *
- *
+ * pcb.c supports 3 different areas of functionality
+ *		1) Free list management
+ *		2) Queue management
+ *		3) Process tree management (or Parent-child management)
  */
 
 #include "../h/types.h"

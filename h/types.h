@@ -104,7 +104,6 @@ typedef struct pcb_t {
 /* define default fields for pcb_t */
 static const pcb_t EmptyPcb = { 0 };
 
-
 /* semaphore descriptor type */
 typedef struct semd_t {
 	struct semd_t	*s_next;		/* next element on the ASL */
