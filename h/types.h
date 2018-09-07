@@ -85,6 +85,7 @@ typedef struct state_t {
 #define s_HI	s_reg[29]
 #define s_LO	s_reg[30]
 
+#define MAXPROC	20
 typedef struct pcb_t {
 	/* process queue fields */
 	struct pcb_t	*p_next,	/* pointer to next entry */
@@ -99,7 +100,11 @@ typedef struct pcb_t {
 	int 			*p_semAdd;	/* pointer to semaphore on which process blocked */
 } pcb_t, *pcb_PTR;
 
-#define MAXPROC	20
+/* define default fields for pcb_t */
+static const struct EmptyPcb {
+	struct pcb_t EmptyPcb = {NULL,NULL,NULL,NULL,NULL,NULL,NULL};
+} EmptyPcb;
+
 
 /* semaphore descriptor type */
 typedef struct semd_t {
