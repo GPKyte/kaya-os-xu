@@ -101,9 +101,7 @@ typedef struct pcb_t {
 } pcb_t, *pcb_PTR;
 
 /* define default fields for pcb_t */
-static const struct EmptyPcb {
-	struct pcb_t EmptyPcb = {NULL,NULL,NULL,NULL,NULL,NULL,NULL};
-} EmptyPcb;
+static const pcb_t EmptyPcb = { 0 };
 
 
 /* semaphore descriptor type */
