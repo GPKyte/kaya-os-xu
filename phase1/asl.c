@@ -9,6 +9,24 @@
 semd_PTR semdFree_h;
 
 /*
+ *
+ */
+static void freeSemd (pcb_PTR p) {
+	insertBlocked(semdFree_h, p);
+}
+
+/*
+ *
+ */
+static pcb_PTR allocSemd ();
+
+/*
+ * find the given sema4 desciptor and returns its the predecessor if it exists
+ * in the list. If not, return NULL
+ */
+static pcb_PTR searchSemd (int *semAdd);
+
+/*
  * A mutator to insert the ProcBlk, p, at the tail of the process queue
  * associated with the sema4 whose physical address is semAdd and set
  * the sema4 address of p to semAdd. If the sema4 is currently not active
@@ -54,6 +72,6 @@ void initASL (){
 	semdFree_h = mkEmptyProcQ(); /* Init semdFree list */
 
 	for(int i=0; i<MAXPROC; i++) {
-		insertBlocked(&(semdTable[i]));
+		freeSemd(&(semdTable[i]));
 	}
 }
