@@ -126,8 +126,46 @@ pcb_PTR headProcQ (pcb_PTR tp) {
 }
 
 /* Tree management methods */
-/* TODO: implement */
-int emptyChild (pcb_PTR p) {return 1;}
-void insertChild (pcb_PTR prnt, pcb_PTR p) {}
-pcb_PTR removeChild (pcb_PTR p) {return NULL;}
-pcb_PTR outChild (pcb_PTR p) {return NULL;}
+
+/* Return TRUE if the ProcBlk pointed to by p has no children. Return FALSE otherwise. */
+int emptyChild (pcb_PTR p) {
+	return (p == NULL || p->p_child == NULL);
+}
+
+/* Make the ProcBlk pointed to by p a child of the ProcBlk pointed to by prnt. */
+void insertChild (pcb_PTR prnt, pcb_PTR p) {
+	p->p_parent = prnt;
+	p->p_young = NULL;
+	if(emptyChild(prnt)) {
+		prnt->p_child = p;
+		/* Force clean NULL border, but don't worry about possible children */
+		p->p_old = NULL;
+		p->p_young = NULL;
+	} else {
+		p->p_old = prnt->p_child;
+		p->p_old->p_young = p;
+		prnt->p_child = p;
+	}
+}
+
+/*
+ * Make the first child of the ProcBlk pointed to by prnt no longer a child of prnt.
+ * Return NULL if initially there were no children of prnt.
+ * Otherwise, return a pointer to this removed first child ProcBlk.
+ */
+pcb_PTR removeChild (pcb_PTR prnt) {
+	if(emptyChild(p)) {
+		return (NULL);
+	} else {
+		return (outChild(prnt->p_child));
+	}
+}
+
+/*
+ * Make the ProcBlk pointed to by p no longer the child of its parent.
+ * If the ProcBlk pointed to by p has no parent, return NULL; otherwise, return p.
+ * Note that the element pointed to by p need not be the first child of its parent.
+ */
+pcb_PTR outChild (pcb_PTR p) {
+	return p;
+}
