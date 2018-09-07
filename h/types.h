@@ -94,7 +94,8 @@ typedef struct pcb_t {
 	/* process tree fields */
 					*p_prnt,	/* pointer to parent */
 					*p_child,	/* pointer to 1st child */
-					*p_sib;		/* pointer to sibling */
+					*p_old;		/* pointer to next older sibling */
+                    *p_yng;     /* pointer to next younger sibling */
 
 	state_t 		p_s;		/* processor state */
 	int 			*p_semAdd;	/* pointer to semaphore on which process blocked */

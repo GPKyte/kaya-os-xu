@@ -157,9 +157,13 @@ void insertChild (pcb_PTR prnt, pcb_PTR p) {
 	p->p_prnt = prnt;
 	if(emptyChild(prnt)) {
 		prnt->p_child = p;
-		p->p_sib = NULL; /* Force clean NULL border, but don't worry about children? */
+		/* Force clean NULL border, but don't worry about children */
+		p->p_old = NULL;
+		p->p_yng = NULL;
 	} else {
-		p->p_sib = prnt->p_child;
+		p->p_old = prnt->p_child;
+		p->p_yng = NULL; /* Border control */
+		p->p_sib->p_yng = p;
 		prnt->p_child = p;
 	}
 }
@@ -183,31 +187,21 @@ pcb_PTR removeChild (pcb_PTR prnt) {
  * Note that the element pointed to by p need not be the first child of its parent.
  */
 pcb_PTR outChild (pcb_PTR p) {
-	pcb_PTR orphan;
 	if(p == NULL || p->p_prnt == NULL || p->p_prnt->p_child == NULL) {
-		/* Trolling */
+		/* Trolling; invalid input/state */
 		return (NULL);
 	} else if(p->p_prnt->p_child == p) {
 		/* First Child */
 		p->p_prnt->p_child = p->p_sib;
-		orphan = p;
+		p->p_sib->p_yng = NULL;
 	} else {
 		/* Middle or last child */
-		pcb_PTR nomad = p->p_prnt->p_child;
-		while(nomad->p_sib != NULL && nomad->p_sib != p) {
-			nomad = nomad->p_sib;
-		}
-
-		orphan = nomad->p_sib; /* Could be p or NULL, doesn't matter */
-		if(orphan) {
-			nomad->p_sib = orphan->p_sib;
-		} else {
-			/* Sibling already set to NULL and p has no real parent, bad state */
-			return (NULL);
-		}
+		if(p->p_sib) { p->p_sib->p_yng = p->p_sib2; } /* In case sibling is NULL */
+		p->p_sib2->p_old = p->p_sib;
 	}
 
-	orphan->p_prnt = NULL;
-	orphan->p_sib = NULL;
-	return (orphan);
+	p->p_prnt = NULL;
+	p->p_old = NULL;
+	p->p_yng = NULL;
+	return (p);
 }
