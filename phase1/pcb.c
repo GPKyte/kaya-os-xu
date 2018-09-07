@@ -6,9 +6,9 @@
  */
 void freePcb (pcb_PTR p) {
 
-} 
+}
 
-/* 
+/*
  * Return NULL if pcbFree list it empty. Otherwise, remove an element from the pcbFree list,
  * provide initial values for ALL of the pcbs' fields (i.e. NULL and/or 0) and then return
  * a pointer to the removed element. Pcbs get reused, so it is important that no previous
@@ -23,12 +23,12 @@ pcb_PTR allocPcb () {
  * This methods will be called only once during data structure initialization.
  */
 void initPcbs () {
-	
+
 }
 
 /*
  * Initialize a variable to be the tail pointer to a process queue.
- * Return a pointer to the tail of an empty process queue; i.e. NULL. 
+ * Return a pointer to the tail of an empty process queue; i.e. NULL.
  */
 pcb_PTR mkEmptyProcQ () {
 	return NULL;
@@ -69,7 +69,7 @@ pcb_PTR removeProcQ (pcb_PTR *tp) {
 		return NULL;
 	} else {
 		/* Grab head */
-		pcb_PTR head = (*tp)->p_next; 
+		pcb_PTR head = (*tp)->p_next;
 		/* Link tail to next head */
 		(*tp)->p_next = head->p_next;
 		/* Link the next head to tail */
@@ -135,15 +135,11 @@ int emptyChild (pcb_PTR p) {
 /* Make the ProcBlk pointed to by p a child of the ProcBlk pointed to by prnt. */
 void insertChild (pcb_PTR prnt, pcb_PTR p) {
 	p->p_parent = prnt;
-	p->p_young = NULL;
 	if(emptyChild(prnt)) {
 		prnt->p_child = p;
-		/* Force clean NULL border, but don't worry about possible children */
-		p->p_old = NULL;
-		p->p_young = NULL;
+		p->p_sibling = NULL; /* Force clean NULL border, but don't worry about children? */
 	} else {
-		p->p_old = prnt->p_child;
-		p->p_old->p_young = p;
+		p->p_sibling = prnt->p_child;
 		prnt->p_child = p;
 	}
 }
@@ -167,5 +163,31 @@ pcb_PTR removeChild (pcb_PTR prnt) {
  * Note that the element pointed to by p need not be the first child of its parent.
  */
 pcb_PTR outChild (pcb_PTR p) {
-	return p;
+	pcb_PTR orphan;
+	if(p == NULL || p->p_parent == NULL || p->p_parent->p_child == NULL) {
+		/* Trolling */
+		return (NULL);
+	} else if(p->p_parent->p_child == p) {
+		/* First Child */
+		p->p_parent->p_child = p->sibling;
+		orphan = p;
+	} else {
+		/* Middle or last child */
+		pcb_PTR nomad = p->parent->p_child;
+		while(nomad->p_sibling != NULL && nomad->p_sibling != p) {
+			nomad = nomad->p_sibling;
+		}
+
+		orphan = nomad->p_sibling; /* Could be p or NULL, doesn't matter */
+		if(orphan) {
+			nomad->p_sibling = orphan->p_sibling;
+		} else {
+			/* Sibling already set to NULL and p has no real parent, bad state */
+			return (NULL);
+		}
+	}
+
+	orphan->p_parent = NULL;
+	orphan->p_sibling = NULL;
+	return (orphan);
 }
