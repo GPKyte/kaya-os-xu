@@ -4,7 +4,7 @@
 
 #include "../h/const.h"
 #include "../h/types.h"
-#include "pcb.e"
+#include "../e/pcb.e"
 
 semd_PTR semdFree_h;
 
