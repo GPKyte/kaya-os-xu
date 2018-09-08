@@ -4,27 +4,32 @@
 
 #include "../h/const.h"
 #include "../h/types.h"
-#include "pcb.c"
+#include "pcb.e"
 
 semd_PTR semdFree_h;
 
 /*
  *
  */
-static void freeSemd (pcb_PTR p) {
+HIDDEN void freeSemd (pcb_PTR p) {
 	insertBlocked(semdFree_h, p);
 }
 
 /*
  *
  */
-static pcb_PTR allocSemd ();
+HIDDEN pcb_PTR allocSemd () {
+
+}
 
 /*
  * find the given sema4 desciptor and returns its the predecessor if it exists
  * in the list. If not, return NULL
  */
-static pcb_PTR searchSemd (int *semAdd);
+HIDDEN pcb_PTR searchSemd (int *semAdd) {
+
+
+}
 
 /*
  * A mutator to insert the ProcBlk, p, at the tail of the process queue
