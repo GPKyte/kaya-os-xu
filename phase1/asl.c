@@ -4,21 +4,24 @@
 
 #include "../h/const.h"
 #include "../h/types.h"
+
 #include "../e/pcb.e"
 
-semd_PTR semdFree_h;
+semd_PTR semdFree_h; /* pointer to the head of semdFree list */
+semd_PTR semd_h; /* pointer to the active head list */
 
 /*
- *
+ * Insert a semaphore onto the semdFree list
  */
 HIDDEN void freeSemd (pcb_PTR p) {
 	insertBlocked(semdFree_h, p);
 }
 
 /*
- *
+ * return NULL if semdFree list is empty. Otherwise, remove an element from the semdFree list,
+ * and then return a pointer to the removed element.
  */
-HIDDEN pcb_PTR allocSemd () {
+HIDDEN pcb_PTR allocSemd (void) {
 
 }
 
@@ -42,7 +45,7 @@ HIDDEN pcb_PTR searchSemd (int *semAdd) {
  * allocated and the semdFree list is empty, return TRUE, otherwise return FALSE.
  */
 int insertBlocked (int *semAdd, pcb_PTR p) {
-
+  insertProcQ(semdFree_h, p);
 }
 
 /*

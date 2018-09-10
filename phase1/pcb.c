@@ -12,6 +12,17 @@
 
 pcb_PTR pcbFree_h;
 
+HIDDEN void cleanPcb(pcb_PTR p) {
+	p->p_next = NULL;
+	p->p_prev = NULL;
+	p->p_prnt = NULL;
+	p->p_child = NULL;
+	p->p_old = NULL;
+	p->p_yng = NULL;
+	p->p_s = NULL;
+	p->p_semAdd = NULL;
+}
+
 /* Insert the element onto the pcbFree list */
 void freePcb (pcb_PTR p) {
 	insertProcQ( &pcbFree_h, p);
@@ -24,11 +35,8 @@ void freePcb (pcb_PTR p) {
  * value persist in a pcb when it gets reallocated.
  */
 pcb_PTR allocPcb (void) {
-	pcb_PTR gift = removeProcQ( &pcbFree_h);
-	/* Clean and rewrap present */
-	(*gift) = EmptyPcb;
-
-	pcbFree_h = gift->p_next;
+	pcb_PTR gift = removeProcQ( &pcbFree_h); /* Update of tail pointer handled by method */
+	cleanPcb(gift);
 	return gift;
 }
 
@@ -60,7 +68,7 @@ pcb_PTR mkEmptyProcQ (void) {
  * An accessor method returns TRUE if the queue is empty, FALSE otherwise
  */
 int emptyProcQ (pcb_PTR tp) {
-	return (tp==NULL);
+	return (tp == NULL);
 }
 
 /*
@@ -202,6 +210,7 @@ pcb_PTR outChild (pcb_PTR p) {
 		p->p_yng->p_old = p->p_sib;
 	}
 
+	/* Clean up orphan */
 	p->p_prnt = NULL;
 	p->p_old = NULL;
 	p->p_yng = NULL;
