@@ -11,14 +11,14 @@ semd_PTR semdFree_h;
 /*
  *
  */
-static void freeSemd (pcb_PTR p) {
+HIDDEN void freeSemd (pcb_PTR p) {
 	insertBlocked(semdFree_h, p);
 }
 
 /*
  *
  */
-static pcb_PTR allocSemd ();
+HIDDEN pcb_PTR allocSemd ();
 
 /*
  * find the given sema4 desciptor and returns its the predecessor if it exists
@@ -58,7 +58,7 @@ pcb_PTR outBlocked (pcb_PTR p) {
  *
  */
 pcb_PTR headBlocked (int *semAdd) {
-
+  headProcQ(semAdd);
 }
 
 /*

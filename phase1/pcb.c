@@ -10,6 +10,11 @@
 
 pcb_PTR pcbFree_h;
 
+void debugA (int a, int b) {
+	int i;
+	i <0;
+}
+
 /* Insert the element onto the pcbFree list */
 void freePcb (pcb_PTR p) {
 	insertProcQ(pcbFree_h, p);

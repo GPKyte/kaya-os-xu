@@ -32,7 +32,7 @@
 #define	EOS			'\0'
 
 #define NULL ((void *)0xFFFFFFFF)
-
+#define MAXINT ((void *)0x7FFFFFFF)
 
 /* vectors number and type */
 #define VECTSNUM	4
