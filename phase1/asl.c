@@ -26,7 +26,7 @@ HIDDEN pcb_PTR allocSemd (void) {
 }
 
 /*
- * find the given sema4 desciptor and returns its the predecessor if it exists
+ * find the given sema4 desciptor and returns its predecessor if it exists
  * in the list. If not, return NULL
  */
 HIDDEN pcb_PTR searchSemd (int *semAdd) {
@@ -45,7 +45,16 @@ HIDDEN pcb_PTR searchSemd (int *semAdd) {
  * allocated and the semdFree list is empty, return TRUE, otherwise return FALSE.
  */
 int insertBlocked (int *semAdd, pcb_PTR p) {
-  insertProcQ(semdFree_h, p);
+	p->p_semAdd = semAdd;
+	pcb_PTR predecessor = searchSemd(semAdd);
+	if(predecessor) {
+		insertProcQ(predecessor->p_next, p);
+		return FALSE;
+	} else {
+		pcb_PTR fromFreeList = allocSemd();
+		insertProcQ(fromFreeList, p);
+		return (fromFreeList == NULL);
+	}
 }
 
 /*
@@ -75,7 +84,7 @@ pcb_PTR headBlocked (int *semAdd) {
  * initialization.
  */
 void initASL (){
-	static semd_t semdTable[MAXPROC];
+	static semd_t semdTable[MAXPROC + 1]; /* +1 for dummy node at head */
 
 	semdFree_h = mkEmptyProcQ(); /* Init semdFree list */
 
