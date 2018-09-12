@@ -66,21 +66,22 @@ int insertBlocked (int *semAdd, pcb_PTR p) {
 	if(predecessor->s_next->s_semAdd == semAdd) {
 		target = predecessor->s_next;
 	} else {
-		semd_PTR target = allocSemd();
+		target = allocSemd();
+
+		if(target == NULL) {
+			/* Allocation failed or invalid state */
+			return (TRUE);
+		} else {
+			/* Insert new semd into ASL */
+			target->s_procQ = mkEmptyProcQ();
+			target->s_semAdd = semAdd;
+			target->s_next = predecessor->s_next;
+			predecessor->s_next = target;
+		}
 	}
 
-	if(target == NULL) {
-		/* Allocation failed or invalid state */
-		return (TRUE);
-	} else {
-		target->s_procQ = mkEmptyProcQ();
-		target->s_semAdd = semAdd;
-		target->s_next = predecessor->s_next;
-		predecessor->s_next = target;
-
-		insertProcQ(target, p);
-		return (FALSE);
-	}
+	insertProcQ(target, p);
+	return (FALSE);
 }
 
 /*
