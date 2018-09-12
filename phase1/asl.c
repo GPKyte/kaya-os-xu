@@ -69,16 +69,28 @@ int insertBlocked (int *semAdd, pcb_PTR p) {
 	semd_PTR predecessor = searchSemd(semAdd);
 	if(predecessor) {
 		insertProcQ(predecessor->s_next->s_procQ, p);
-		return FALSE;
+		return (FALSE);
 	} else {
 		semd_PTR fromFreeList = allocSemd();
 
 		if(fromFreeList) {
+			fromFreeList->s_semAdd = semAdd;
+			fromFreeList->s_procQ = mkEmptyProcQ();
 			insertProcQ(fromFreeList->s_procQ, p);
+
+			/* Find location and insert */
+			semd_PTR nomad = semd_h;
+			while ((nomad->s_next != NULL) && (nomad->s_next->semAdd < semAdd)) {
+				nomad = nomad->s_next;
+			}
+
+			fromFreeList->s_next = nomad->s_next;
+			nomad->s_next = fromFreeList;
 		} else {
-			/* Block adding new semd, we are out */
+			/* Block adding new semd, we have no more */
 		}
-		return TRUE;
+
+		return (TRUE);
 	}
 }
 
@@ -134,7 +146,9 @@ void initASL (){
 
 	semdFree_h = mkEmptyProcQ(); /* Init semdFree list */
 
-	for(int i=0; i<MAXPROC; i++) {
+	semdTable[0].s_semAdd = 0;
+	semd_h = &(semdTable[0]); /* Set permanent dummy node for the Active Sema4 List */
+	for(int i=1; i<MAXPROC; i++) {
 		freeSemd(&(semdTable[i]));
 	}
 }
