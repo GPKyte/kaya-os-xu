@@ -106,14 +106,19 @@ pcb_PTR removeBlocked (int *semAdd) {
 }
 
 /*
- *
+ * Remove the ProcBlk pointed to by p from the process queue associated
+ * with p’s semaphore (p→ p semAdd) on the ASL. If ProcBlk pointed to by p
+ * does not appear in the process queue associated with p’s semaphore,
+ * which is an error condition, return NULL; otherwise, return p.
  */
 pcb_PTR outBlocked (pcb_PTR p) {
 
 }
 
 /*
- *
+ * Return a pointer to the ProcBlk that is at the head of the process queue
+ * associated with the semaphore semAdd. Return NULL if semAdd is not found on
+ * the ASL or if the process queue associated with semAdd is empty.
  */
 pcb_PTR headBlocked (int *semAdd) {
 
@@ -121,7 +126,7 @@ pcb_PTR headBlocked (int *semAdd) {
 
 /*
  * Initialize the semdFree list to contain all the elements of the static array
- * of MAXPROC semaphroes. This method will be only called once during data structure
+ * of MAXPROC semaphores. This method will be only called once during data structure
  * initialization.
  */
 void initASL (){
