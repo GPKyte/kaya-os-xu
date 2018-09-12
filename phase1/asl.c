@@ -7,11 +7,12 @@
 #include "../e/pcb.e"
 
 semd_PTR semdFree_h;
+semd_PTR semd_h;
 
 /*
  *
  */
-HIDDEN void freeSemd (pcb_PTR p) {
+HIDDEN void freeSemd (semd_PTR p) {
 	insertBlocked(semdFree_h, p);
 }
 
