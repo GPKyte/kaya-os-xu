@@ -42,13 +42,15 @@ HIDDEN semd_PTR allocSemd (void) {
  */
 HIDDEN semd_PTR searchSemd (int *semAdd) {
 	semd_PTR nomad = semd_h;
-	while ((nomad->s_next != NULL) && (semAdd != nomad->s_next->semAdd)) {
+	while ((nomad->s_next != NULL) && (nomad->s_next->semAdd < semAdd)) {
 		nomad = nomad->s_next;
 	}
 	if (nomad->s_next == NULL) {
 		return (NULL);
-	} else {
+	} else if(nomad->s_next->s_semAdd == semAdd){
 		return (nomad);
+	} else {
+		return (NULL);
 	}
 }
 
