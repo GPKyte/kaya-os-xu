@@ -102,9 +102,8 @@ pcb_PTR removeProcQ (pcb_PTR *tp) {
 }
 
 /*
- * Mutator method to remove a specific node on the list and gives a pointer to the node
- * Return NULL if p does not exist, otherwise return p
- * TODO: Simplify logic here
+ * Mutator method to remove a specific node on the list and gives a pointer to the node.
+ * Returns NULL if p does not exist, otherwise return p.
  */
 pcb_PTR outProcQ (pcb_PTR *tp, pcb_PTR p) {
 	/* check if p exists in the list */

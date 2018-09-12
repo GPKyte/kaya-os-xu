@@ -21,7 +21,7 @@ typedef struct {
 	unsigned int d_data1;
 } device_t;
 
-#define t_recv_status		d_status
+#define t_recv_status			d_status
 #define t_recv_command		d_command
 #define t_transm_status		d_data0
 #define t_transm_command	d_data1
@@ -50,7 +50,7 @@ typedef struct state_t {
 	unsigned int	s_cause;
 	unsigned int	s_status;
 	unsigned int	s_pc;
-	int		s_reg[STATEREGNUM];
+	int						s_reg[STATEREGNUM];
 } state_t, *state_PTR;
 
 #define	s_at	s_reg[0]
@@ -89,15 +89,15 @@ typedef struct state_t {
 typedef struct pcb_t {
 	/* process queue fields */
 	struct pcb_t	*p_next,	/* pointer to next entry */
-					*p_prev,	/* pointer to previous entry */
+								*p_prev,	/* pointer to previous entry */
 
 	/* process tree fields */
-					*p_prnt,	/* pointer to parent */
-					*p_child,	/* pointer to 1st child */
-					*p_sib;		/* pointer to sibling */
+								*p_prnt,	/* pointer to parent */
+								*p_child,	/* pointer to 1st child */
+								*p_sib;		/* pointer to sibling */
 
-	state_t 		p_s;		/* processor state */
-	int 			*p_semAdd;	/* pointer to semaphore on which process blocked */
+	state_t 			p_s;		/* processor state */
+	int 					*p_semAdd;	/* pointer to semaphore on which process blocked */
 } pcb_t, *pcb_PTR;
 
 /* define default fields for pcb_t */
@@ -107,9 +107,9 @@ static const struct EmptyPcb {
 
 /* semaphore descriptor type */
 typedef struct semd_t {
-	struct semd_t	*s_next;		/* next element on the ASL */
-	int				*s_semAdd;		/* pointer to the semaphore */
-	pcb_t			*s_procQ;		/* tail pointer to a process queue */
+	struct semd_t		*s_next;		/* next element on the ASL */
+	int							*s_semAdd;		/* pointer to the semaphore */
+	pcb_t						*s_procQ;		/* tail pointer to a process queue */
 } semd_t, *semd_PTR;
 
 #endif
