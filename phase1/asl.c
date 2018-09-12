@@ -21,17 +21,24 @@ HIDDEN void freeSemd (pcb_PTR p) {
  * return NULL if semdFree list is empty. Otherwise, remove an element from the semdFree list,
  * and then return a pointer to the removed element.
  */
-HIDDEN pcb_PTR allocSemd (void) {
+HIDDEN semd_PTR allocSemd (void) {
 
 }
 
 /*
- * find the given sema4 desciptor and returns its predecessor if it exists
+ * find the given sema4 desciptor from active list and returns its predecessor if it exists
  * in the list. If not, return NULL
  */
-HIDDEN pcb_PTR searchSemd (int *semAdd) {
-
-
+HIDDEN semd_PTR searchSemd (int *semAdd) {
+	semd_PTR nomad = semd_h;
+	while ((nomad->s_next != NULL) && (semAdd != nomad->s_next->semAdd)) {
+		nomad = nomad->s_next;
+	}
+	if (nomad->s_next == NULL) {
+		return (NULL);
+	} else {
+		return (nomad);
+	}
 }
 
 /*
@@ -46,14 +53,19 @@ HIDDEN pcb_PTR searchSemd (int *semAdd) {
  */
 int insertBlocked (int *semAdd, pcb_PTR p) {
 	p->p_semAdd = semAdd;
-	pcb_PTR predecessor = searchSemd(semAdd);
+	semd_PTR predecessor = searchSemd(semAdd);
 	if(predecessor) {
-		insertProcQ(predecessor->p_next, p);
+		insertProcQ(predecessor->s_next->s_procQ, p);
 		return FALSE;
 	} else {
-		pcb_PTR fromFreeList = allocSemd();
-		insertProcQ(fromFreeList, p);
-		return (fromFreeList == NULL);
+		semd_PTR fromFreeList = allocSemd();
+
+		if(fromFreeList) {
+			insertProcQ(fromFreeList->s_procQ, p);
+		} else {
+			/* Block adding new semd, we are out */
+		}
+		return TRUE;
 	}
 }
 
