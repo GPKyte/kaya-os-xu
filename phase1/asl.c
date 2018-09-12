@@ -37,21 +37,15 @@ HIDDEN semd_PTR allocSemd (void) {
 }
 
 /*
- * find the given sema4 desciptor from active list and returns its predecessor if it exists
- * in the list. If not, return NULL
+ * Find the predecessor/proper location of the desired sema4,
+ * regardless of whether it exists yet.
  */
 HIDDEN semd_PTR searchSemd (int *semAdd) {
 	semd_PTR nomad = semd_h;
-	while ((nomad->s_next != NULL) && (nomad->s_next->semAdd < semAdd)) {
+	while (nomad->s_next->semAdd < semAdd) {
 		nomad = nomad->s_next;
 	}
-	if (nomad->s_next == NULL) {
-		return (NULL);
-	} else if(nomad->s_next->s_semAdd == semAdd){
-		return (nomad);
-	} else {
-		return (NULL);
-	}
+	return (nomad);
 }
 
 /*
@@ -65,32 +59,27 @@ HIDDEN semd_PTR searchSemd (int *semAdd) {
  * allocated and the semdFree list is empty, return TRUE, otherwise return FALSE.
  */
 int insertBlocked (int *semAdd, pcb_PTR p) {
-	p->p_semAdd = semAdd;
+	semd_PTR target; /* object to insert p into */
+	p->s_semAdd = semAdd;
 	semd_PTR predecessor = searchSemd(semAdd);
-	if(predecessor) {
-		insertProcQ(predecessor->s_next->s_procQ, p);
-		return (FALSE);
+	/* Verify if sema4 already in place or needs allocated */
+	if(predecessor->s_next->s_semAdd == semAdd) {
+		target = predecessor->s_next;
 	} else {
-		semd_PTR fromFreeList = allocSemd();
+		semd_PTR target = allocSemd();
+	}
 
-		if(fromFreeList) {
-			fromFreeList->s_semAdd = semAdd;
-			fromFreeList->s_procQ = mkEmptyProcQ();
-			insertProcQ(fromFreeList->s_procQ, p);
-
-			/* Find location and insert */
-			semd_PTR nomad = semd_h;
-			while ((nomad->s_next != NULL) && (nomad->s_next->semAdd < semAdd)) {
-				nomad = nomad->s_next;
-			}
-
-			fromFreeList->s_next = nomad->s_next;
-			nomad->s_next = fromFreeList;
-		} else {
-			/* Block adding new semd, we have no more */
-		}
-
+	if(target == NULL) {
+		/* Allocation failed or invalid state */
 		return (TRUE);
+	} else {
+		target->s_procQ = mkEmptyProcQ();
+		target->s_semAdd = semAdd;
+		target->s_next = predecessor->s_next;
+		predecessor->s_next = target;
+
+		insertProcQ(target, p);
+		return (FALSE);
 	}
 }
 
@@ -142,13 +131,17 @@ pcb_PTR headBlocked (int *semAdd) {
  * initialization.
  */
 void initASL (){
-	static semd_t semdTable[MAXPROC + 1]; /* +1 for dummy node at head */
+	static semd_t semdTable[MAXPROC + 2]; /* +2 for dummy nodes */
 
 	semdFree_h = mkEmptyProcQ(); /* Init semdFree list */
 
+	/* Set ASL dummy nodes */
 	semdTable[0].s_semAdd = 0;
-	semd_h = &(semdTable[0]); /* Set permanent dummy node for the Active Sema4 List */
-	for(int i=1; i<MAXPROC; i++) {
+	semdTable[1].s_semAdd = MAXINT;
+	semd_h = &(semdTable[0]);
+	semd_h->s_next = &(semdTable[1]);
+
+	for(int i=2; i<MAXPROC; i++) {
 		freeSemd(&(semdTable[i]));
 	}
 }
