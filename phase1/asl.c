@@ -22,7 +22,18 @@ HIDDEN void freeSemd (pcb_PTR p) {
  * and then return a pointer to the removed element.
  */
 HIDDEN semd_PTR allocSemd (void) {
+	if(semdFree_h == NULL) { /* Maybe should abstract this line */
+		return (NULL);
+	} else {
+		semd_PTR gift = semdFree_h;
+		semdFree_h = semdFree_h->s_next;
 
+		/* Clean semd */
+		gift->s_next = NULL;
+		gift->s_procQ = NULL;
+		gift->s_semAdd = NULL;
+		return (gift);
+	}
 }
 
 /*
