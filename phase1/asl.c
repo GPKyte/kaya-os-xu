@@ -13,8 +13,8 @@ semd_PTR semd_h; /* pointer to the active head list */
 /*
  * Insert a semaphore onto the semdFree list
  */
-HIDDEN void freeSemd (pcb_PTR p) {
-	insertBlocked(semdFree_h, p);
+HIDDEN void freeSemd (semd_PTR p) {
+	return;
 }
 
 /*
@@ -114,7 +114,9 @@ pcb_PTR removeBlocked (int *semAdd) {
  * which is an error condition, return NULL; otherwise, return p.
  */
 pcb_PTR outBlocked (pcb_PTR p) {
-
+  if(emptyProc(p)) {
+    return NULL;
+  }
 }
 
 /*
@@ -123,7 +125,7 @@ pcb_PTR outBlocked (pcb_PTR p) {
  * the ASL or if the process queue associated with semAdd is empty.
  */
 pcb_PTR headBlocked (int *semAdd) {
-
+	return (headProcQ(searchSemd(semAdd)->s_next->s_procQ));
 }
 
 /*
