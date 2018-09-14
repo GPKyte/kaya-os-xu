@@ -7,7 +7,7 @@ LIBDIR = /usr/local/lib/umps2
 
 DEFS = ../h/const.h ../h/types.h ../e/asl.e ../e/pcb.e $(INCDIR)/libumps.e Makefile
 
-CFLAGS = -ansi -pedantic -Wall -c
+CFLAGS = -ansi -pedantic -Wall -mno-memcpy -c
 LDAOUTFLAGS = -T $(SUPDIR)/elf32ltsmip.h.umpsaout.x
 LDCOREFLAGS =  -T $(SUPDIR)/elf32ltsmip.h.umpscore.x
 #LDAOUTFLAGS = -T $(SUPDIR)/elf32btsmip.h.umpsaout.x
@@ -29,8 +29,8 @@ kernel: p1test.o asl.o pcb.o
 p1test.o: p1test.c $(DEFS)
 	$(CC) $(CFLAGS) p1test.c
  
-asl.o: asl.c $(DEFS)
-	$(CC) $(CFLAGS) asl.c
+#asl.o: asl.c $(DEFS)
+#	$(CC) $(CFLAGS) asl.c
 
 pcb.o: pcb.c $(DEFS)
 	$(CC) $(CFLAGS) pcb.c
