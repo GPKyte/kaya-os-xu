@@ -133,18 +133,18 @@ pcb_PTR headBlocked (int *semAdd) {
  * of MAXPROC semaphores. This method will be only called once during data structure
  * initialization.
  */
-void initASL (){
+void initASL (void) {
 	static semd_t semdTable[MAXPROC + 2]; /* +2 for dummy nodes */
 
 	semdFree_h = mkEmptyProcQ(); /* Init semdFree list */
 
-	/* Set ASL dummy nodes */
-	semdTable[0].s_semAdd = 0;
-	semdTable[1].s_semAdd = MAXINT;
-	semd_h = &(semdTable[0]);
-	semd_h->s_next = &(semdTable[1]);
-
 	for(int i=2; i<MAXPROC; i++) {
 		freeSemd(&(semdTable[i]));
 	}
+	
+	/* Set ASL dummy nodes */
+	semdTable[MAXPROC].s_semAdd = 0;
+	semd_h = &(semdTable[MAXPROC]);
+	semdTable[MAXPROC + 1].s_semAdd = MAXINT;
+	semd_h->s_next = &(semdTable[MAXPROC + 1]);
 }
