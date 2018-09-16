@@ -11,18 +11,24 @@ semd_PTR semdFree_h; /* pointer to the head of semdFree list */
 semd_PTR semd_h; /* pointer to the active head list */
 
 /*
- * Insert a semaphore onto the semdFree list
+ * Insert a semaphore descriptor onto the semdFree list
  */
-HIDDEN void freeSemd (semd_PTR p) {
+HIDDEN void freeSemd (semd_PTR s) {
+	/* Hope that no one ever frees the dummy nodes */
+	semd_PTR predecessor = searchSemd(s->s_semAdd);
+	predecessor->s_next = s->s_next;
+	s->s_next = semdFree_h;
+	semdFree_h = s;
 	return;
 }
 
 /*
  * return NULL if semdFree list is empty. Otherwise, remove an element from the semdFree list,
- * and then return a pointer to the removed element.
+ * and then return a pointer to the removed element. Note, it is up to the calling
+ * function to add the Semd to the ASL.
  */
 HIDDEN semd_PTR allocSemd (void) {
-	if(semdFree_h == NULL) { /* Maybe should abstract this line */
+	if(semdFree_h == NULL) {
 		return (NULL);
 	} else {
 		semd_PTR gift = semdFree_h;
@@ -147,7 +153,7 @@ void initASL (void) {
 	for(int i=2; i<MAXPROC; i++) {
 		freeSemd(&(semdTable[i]));
 	}
-	
+
 	/* Set ASL dummy nodes */
 	semdTable[MAXPROC].s_semAdd = 0;
 	semd_h = &(semdTable[MAXPROC]);
