@@ -11,18 +11,24 @@ semd_PTR semdFree_h; /* pointer to the head of semdFree list */
 semd_PTR semd_h; /* pointer to the active head list */
 
 /*
- * Insert a semaphore onto the semdFree list
+ * Insert a semaphore descriptor onto the semdFree list
  */
-HIDDEN void freeSemd (pcb_PTR p) {
-	insertBlocked(semdFree_h, p);
+HIDDEN void freeSemd (semd_PTR s) {
+	/* Hope that no one ever frees the dummy nodes */
+	semd_PTR predecessor = searchSemd(s->s_semAdd);
+	predecessor->s_next = s->s_next;
+	s->s_next = semdFree_h;
+	semdFree_h = s;
+	return;
 }
 
 /*
  * return NULL if semdFree list is empty. Otherwise, remove an element from the semdFree list,
- * and then return a pointer to the removed element.
+ * and then return a pointer to the removed element. Note, it is up to the calling
+ * function to add the Semd to the ASL.
  */
 HIDDEN semd_PTR allocSemd (void) {
-	if(semdFree_h == NULL) { /* Maybe should abstract this line */
+	if(semdFree_h == NULL) {
 		return (NULL);
 	} else {
 		semd_PTR gift = semdFree_h;
@@ -114,6 +120,14 @@ pcb_PTR removeBlocked (int *semAdd) {
  * which is an error condition, return NULL; otherwise, return p.
  */
 pcb_PTR outBlocked (pcb_PTR p) {
+  semd_PTR predecessor = searchSemd(p->p_semAdd);
+	if(predecessor->s_next->s_semAdd == p->p_semAdd) {
+		/* Yay. Let outProcQ return successfully or report the error w/ NULL */
+		return (outProcQ( &(predecessor->s_next->s_procQ), p));
+	} else {
+		/* p's associated semd is missing from ASL */
+		return (NULL);
+	}
 
 }
 
@@ -123,7 +137,7 @@ pcb_PTR outBlocked (pcb_PTR p) {
  * the ASL or if the process queue associated with semAdd is empty.
  */
 pcb_PTR headBlocked (int *semAdd) {
-
+	return (headProcQ(searchSemd(semAdd)->s_next->s_procQ));
 }
 
 /*
@@ -131,18 +145,18 @@ pcb_PTR headBlocked (int *semAdd) {
  * of MAXPROC semaphores. This method will be only called once during data structure
  * initialization.
  */
-void initASL (){
+void initASL (void) {
 	static semd_t semdTable[MAXPROC + 2]; /* +2 for dummy nodes */
 
 	semdFree_h = mkEmptyProcQ(); /* Init semdFree list */
 
-	/* Set ASL dummy nodes */
-	semdTable[0].s_semAdd = 0;
-	semdTable[1].s_semAdd = MAXINT;
-	semd_h = &(semdTable[0]);
-	semd_h->s_next = &(semdTable[1]);
-
 	for(int i=2; i<MAXPROC; i++) {
 		freeSemd(&(semdTable[i]));
 	}
+
+	/* Set ASL dummy nodes */
+	semdTable[MAXPROC].s_semAdd = 0;
+	semd_h = &(semdTable[MAXPROC]);
+	semdTable[MAXPROC + 1].s_semAdd = MAXINT;
+	semd_h->s_next = &(semdTable[MAXPROC + 1]);
 }
