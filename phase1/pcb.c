@@ -11,20 +11,35 @@
 #include "../e/pcb.e"
 
 pcb_PTR pcbFree_h;
+int debugCounterA;
 
 void debugA (int a, int b) {
 	int i;
-	i <0;
+	i = a + b;
+	i++;
 }
 
 HIDDEN void cleanPcb(pcb_PTR p) {
+	int i;
+
+	/* TODO: clarify what default state should be */
+	/* Set state fields */
+	p->p_s.s_asid = 0;
+	p->p_s.s_cause = 0;
+	p->p_s.s_status = 0;
+	p->p_s.s_pc = 0;
+	i = 0;
+	while(i < STATEREGNUM) {
+		p->p_s.s_reg[i] = 0;
+		i++;
+	}
+
 	p->p_next = NULL;
 	p->p_prev = NULL;
 	p->p_prnt = NULL;
 	p->p_child = NULL;
 	p->p_old = NULL;
 	p->p_yng = NULL;
-	p->p_s = NULL;
 	p->p_semAdd = NULL;
 }
 
@@ -41,7 +56,7 @@ void freePcb (pcb_PTR p) {
  */
 pcb_PTR allocPcb (void) {
 	pcb_PTR gift = removeProcQ( &pcbFree_h); /* Update of tail pointer handled by method */
-	cleanPcb(gift);
+	if(gift != NULL) { cleanPcb(gift); }
 	return gift;
 }
 
@@ -105,10 +120,16 @@ pcb_PTR removeProcQ (pcb_PTR *tp) {
 	} else {
 		/* Grab head */
 		pcb_PTR head = (*tp)->p_next;
-		/* Link tail to next head */
-		(*tp)->p_next = head->p_next;
-		/* Link the next head to tail */
-		(*tp)->p_next->p_prev = (*tp);
+		if((*tp) == head) {
+			/* Handle case of disappearing snake */
+			(*tp) = NULL;
+		} else {
+			/* Link tail to next head */
+			(*tp)->p_next = head->p_next;
+			/* Link the next head to tail */
+			(*tp)->p_next->p_prev = (*tp);
+		}
+
 		return head;
 	}
 }
@@ -206,12 +227,12 @@ pcb_PTR outChild (pcb_PTR p) {
 		return (NULL);
 	} else if(p->p_prnt->p_child == p) {
 		/* First Child */
-		p->p_prnt->p_child = p->p_sib;
-		p->p_sib->p_yng = NULL;
+		p->p_prnt->p_child = p->p_old;
+		p->p_old->p_yng = NULL;
 	} else {
 		/* Middle or last child */
-		if(p->p_old) { p->p_sib->p_yng = p->p_yng; } /* In case sibling is NULL */
-		p->p_yng->p_old = p->p_sib;
+		if(p->p_old) { p->p_old->p_yng = p->p_yng; } /* In case sibling is NULL */
+		p->p_yng->p_old = p->p_old;
 	}
 
 	/* Clean up orphan */
