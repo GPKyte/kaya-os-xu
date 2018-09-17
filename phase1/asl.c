@@ -72,7 +72,7 @@ HIDDEN semd_PTR searchSemd (int *semAdd) {
 	while(nomad->s_next->s_semAdd != semAdd) {
 		nomad = nomad->s_next;
 		if(nomad->s_next->s_semAdd > semAdd) {
-			return;
+			return (nomad);
 		}
 	}
 	return (nomad);
