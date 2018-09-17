@@ -11,7 +11,7 @@
 /* Prototypes */
 HIDDEN void freeSemd (semd_PTR);
 HIDDEN semd_PTR allocSemd(void);
-HIDDEN semd_PTR searchSemd(int);
+HIDDEN semd_PTR searchSemd(int*);
 
 semd_PTR semdFree_h; /* pointer to the head of semdFree list */
 semd_PTR semd_h; /* pointer to the active head list */
@@ -21,8 +21,7 @@ semd_PTR semd_h; /* pointer to the active head list */
  */
 HIDDEN void freeSemd (semd_PTR s) {
 	/* Hope that no one ever frees the dummy nodes */
-	int *semAdd = s->s_semAdd;
-	semd_PTR predecessor = searchSemd(semAdd);
+	semd_PTR predecessor = searchSemd(s->s_semAdd);
 	predecessor->s_next = s->s_next;
 	s->s_next = semdFree_h;
 	semdFree_h = s;
