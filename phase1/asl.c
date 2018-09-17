@@ -17,8 +17,9 @@ semd_PTR semdFree_h; /* pointer to the head of semdFree list */
 semd_PTR semd_h; /* pointer to the active head list */
 int debugCounterB;
 
-void debugB (int a) {
+void debugB (int a, int b) {
 	int i;
+	i = a + b;
 	i++;
 }
 /*
@@ -64,6 +65,7 @@ HIDDEN semd_PTR searchSemd (int *semAdd) {
 	}
 
 	while(nomad->s_next->s_semAdd < semAdd) {
+		debugB((int)semAdd, 40);
 		nomad = nomad->s_next;
 	}
 	return (nomad);
@@ -95,7 +97,6 @@ int insertBlocked (int *semAdd, pcb_PTR p) {
 			return (TRUE);
 		} else {
 			/* Insert new semd into ASL */
-			debugB((int)semAdd);
 			target->s_procQ = mkEmptyProcQ();
 			target->s_semAdd = semAdd;
 			target->s_next = predecessor->s_next;
@@ -174,7 +175,6 @@ void initASL (void) {
 	semd_h->s_next = &(semdTable[MAXPROC + 1]);
 
 	while(i<MAXPROC) {
-		debugB(i);
 		freeSemd(&(semdTable[i]));
 		i++;
 	}
