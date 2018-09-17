@@ -100,12 +100,6 @@ typedef struct pcb_t {
 	int 			*p_semAdd;	/* pointer to semaphore on which process blocked */
 } pcb_t, *pcb_PTR;
 
-/* define default fields for pcb_t */
-static const struct EmptyPcb {
-	struct pcb_t EmptyPcb = {NULL,NULL,NULL,NULL,NULL,NULL,NULL};
-} EmptyPcb;
-
-
 /* semaphore descriptor type */
 typedef struct semd_t {
 	struct semd_t	*s_next;		/* next element on the ASL */
