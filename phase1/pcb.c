@@ -228,10 +228,10 @@ pcb_PTR outChild (pcb_PTR p) {
 	} else if(p->p_prnt->p_child == p) {
 		/* First Child */
 		p->p_prnt->p_child = p->p_old;
-		p->p_old->p_yng = NULL;
+		if(p->p_old != NULL) { p->p_old->p_yng = NULL; }
 	} else {
 		/* Middle or last child */
-		if(p->p_old) { p->p_old->p_yng = p->p_yng; } /* In case sibling is NULL */
+		if(p->p_old != NULL) { p->p_old->p_yng = p->p_yng; } /* In case sibling is NULL */
 		p->p_yng->p_old = p->p_old;
 	}
 
