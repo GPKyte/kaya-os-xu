@@ -54,7 +54,7 @@ HIDDEN semd_PTR allocSemd (void) {
  */
 HIDDEN semd_PTR searchSemd (int *semAdd) {
 	semd_PTR nomad = semd_h;
-	while (nomad->s_next->semAdd < semAdd) {
+	while (nomad->s_next->s_semAdd < semAdd) {
 		nomad = nomad->s_next;
 	}
 	return (nomad);
@@ -72,7 +72,7 @@ HIDDEN semd_PTR searchSemd (int *semAdd) {
  */
 int insertBlocked (int *semAdd, pcb_PTR p) {
 	semd_PTR target; /* object to insert p into */
-	p->s_semAdd = semAdd;
+	p->p_semAdd = semAdd;
 	semd_PTR predecessor = searchSemd(semAdd);
 	/* Verify if sema4 already in place or needs allocated */
 	if(predecessor->s_next->s_semAdd == semAdd) {
