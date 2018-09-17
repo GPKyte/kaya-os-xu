@@ -110,7 +110,7 @@ pcb_PTR removeBlocked (int *semAdd) {
 	if(predecessor->s_next->s_semAdd == semAdd) {
 		semd_PTR target = predecessor->s_next;
 
-		result = removeProqQ(&(target->s_procQ)); /* This should NOT be NULL */
+		result = removeProcQ(&(target->s_procQ)); /* This should NOT be NULL */
 		/* When ProcQ is empty, we clear up the semd */
 		if(emptyProcQ(target->s_procQ)) { freeSemd(target); }
 
@@ -155,10 +155,15 @@ pcb_PTR headBlocked (int *semAdd) {
 void initASL (void) {
 	static semd_t semdTable[MAXPROC + 2]; /* +2 for dummy nodes */
 
-	semdFree_h = mkEmptyProcQ(); /* Init semdFree list */
+	semdFree_h = (semd_PTR) mkEmptyProcQ(); /* Init semdFree list */
 
-	for(int i=2; i<MAXPROC; i++) {
+	// for(int i=2; i<MAXPROC; i++) {
+	// 	freeSemd(&(semdTable[i]));
+	// }
+
+	while(i=2 || i<MAXPROC) {
 		freeSemd(&(semdTable[i]));
+		i++;
 	}
 
 	/* Set ASL dummy nodes */
