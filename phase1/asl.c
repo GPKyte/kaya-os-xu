@@ -15,7 +15,11 @@ semd_PTR semd_h; /* pointer to the active head list */
  */
 HIDDEN void freeSemd (semd_PTR s) {
 	/* Hope that no one ever frees the dummy nodes */
+<<<<<<< HEAD
 	int semAdd = s->semAdd;
+=======
+	int *semAdd = s->semAdd;
+>>>>>>> 040afe5f9483d00506850ef604cdea90b2995704
 	semd_PTR predecessor = searchSemd(semAdd);
 	predecessor->s_next = s->s_next;
 	s->s_next = semdFree_h;
@@ -47,9 +51,9 @@ HIDDEN semd_PTR allocSemd (void) {
  * Find the predecessor/proper location of the desired sema4 in the active list,
  * regardless of whether it exists yet. If not found, return NULL
  */
-HIDDEN semd_PTR searchSemd (int *semAdd) {
+HIDDEN semd_PTR searchSemd ((int) *semAdd) {
 	semd_PTR nomad = semd_h;
-	while(nomad->s_next->semAdd < semAdd) {
+	while(nomad->s_next->s_semAdd < semAdd) {
 		nomad = nomad->s_next;
 	}
 	return (nomad);
