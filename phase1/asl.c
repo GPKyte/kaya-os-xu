@@ -73,7 +73,7 @@ HIDDEN semd_PTR searchSemd (int *semAdd) {
 int insertBlocked (int *semAdd, pcb_PTR p) {
 	semd_PTR predecessor = searchSemd(semAdd);
 	semd_PTR target; /* object to insert p into */
-	
+
 	p->p_semAdd = semAdd;
 	/* Verify if sema4 already in place or needs allocated */
 	if(predecessor->s_next->s_semAdd == semAdd) {
@@ -93,7 +93,7 @@ int insertBlocked (int *semAdd, pcb_PTR p) {
 		}
 	}
 
-	insertProcQ(target, p);
+	insertProcQ(*target, p);
 	return (FALSE);
 }
 
