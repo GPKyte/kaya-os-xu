@@ -6,6 +6,12 @@
 #include "../h/types.h"
 
 #include "../e/pcb.e"
+#include "../e/asl.e"
+
+/* Prototypes */
+HIDDEN void freeSemd (semd_PTR);
+HIDDEN semd_PTR allocSemd(void);
+HIDDEN semd_PTR searchSemd(int);
 
 semd_PTR semdFree_h; /* pointer to the head of semdFree list */
 semd_PTR semd_h; /* pointer to the active head list */
