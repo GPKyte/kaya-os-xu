@@ -74,7 +74,7 @@ HIDDEN semd_PTR searchSemd (int *semAdd) {
 	}
 
 	while(nomad->s_next->s_semAdd < semAdd) {
-		debugB(semAdd);
+		debugB((int*)semAdd);
 		nomad = nomad -> s_next;
 	}
 	return (nomad);
