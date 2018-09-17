@@ -72,28 +72,28 @@ HIDDEN semd_PTR searchSemd (int *semAdd) {
  */
 int insertBlocked (int *semAdd, pcb_PTR p) {
 	semd_PTR predecessor = searchSemd(semAdd);
-	semd_PTR *target; /* object to insert p into */
+	semd_PTR target; /* object to insert p into */
 
 	p->p_semAdd = semAdd;
 	/* Verify if sema4 already in place or needs allocated */
 	if(predecessor->s_next->s_semAdd == semAdd) {
-		(*target) = predecessor->s_next;
+		target = predecessor->s_next;
 	} else {
-		(*target) = allocSemd();
+		target = allocSemd();
 
-		if((*target) == NULL) {
+		if(target == NULL) {
 			/* Allocation failed or invalid state */
 			return (TRUE);
 		} else {
 			/* Insert new semd into ASL */
-			(*target)->s_procQ = mkEmptyProcQ();
-			(*target)->s_semAdd = semAdd;
-			(*target)->s_next = predecessor->s_next;
+			target->s_procQ = mkEmptyProcQ();
+			target->s_semAdd = semAdd;
+			target->s_next = predecessor->s_next;
 			predecessor->s_next = target;
 		}
 	}
 
-	insertProcQ((*target), p);
+	insertProcQ((&target), p);
 	return (FALSE);
 }
 
