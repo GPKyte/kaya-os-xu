@@ -163,15 +163,15 @@ void initASL (void) {
 	static semd_t semdTable[MAXPROC + 2]; /* +2 for dummy nodes */
 	semdFree_h = (semd_PTR) mkEmptyProcQ(); /* Init semdFree list */
 
-	while(i<MAXPROC) {
-		debugB(i);
-		freeSemd(&(semdTable[i]));
-		i++;
-	}
-
 	/* Set ASL dummy nodes */
 	semdTable[MAXPROC].s_semAdd = 0;
 	semd_h = &(semdTable[MAXPROC]);
 	semdTable[MAXPROC + 1].s_semAdd = MAXINT;
 	semd_h->s_next = &(semdTable[MAXPROC + 1]);
+
+	while(i<MAXPROC) {
+		debugB(i);
+		freeSemd(&(semdTable[i]));
+		i++;
+	}
 }
