@@ -60,10 +60,11 @@ HIDDEN semd_PTR allocSemd (void) {
  */
 HIDDEN semd_PTR searchSemd (int *semAdd) {
 	semd_PTR nomad = semd_h;
-	if(semAdd == NULL) {
-		semAdd = (int*) MAXINT;
-	}
-
+	/* if(semAdd == NULL) {
+	 * semAdd = (int*) MAXINT;
+	 * }
+	 */
+	 
 	while(nomad->s_next->s_semAdd < semAdd) {
 		debugB((int)semAdd, 40);
 		nomad = nomad->s_next;
