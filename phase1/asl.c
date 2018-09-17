@@ -21,7 +21,8 @@ semd_PTR semd_h; /* pointer to the active head list */
  */
 HIDDEN void freeSemd (semd_PTR s) {
 	/* Hope that no one ever frees the dummy nodes */
-	semd_PTR predecessor = searchSemd(s->s_semAdd);
+	int *semAdd = s->s_semAdd;
+	semd_PTR predecessor = searchSemd(semAdd);
 	predecessor->s_next = s->s_next;
 	s->s_next = semdFree_h;
 	semdFree_h = s;
