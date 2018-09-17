@@ -95,6 +95,7 @@ int insertBlocked (int *semAdd, pcb_PTR p) {
 			return (TRUE);
 		} else {
 			/* Insert new semd into ASL */
+			debugB((int)semAdd);
 			target->s_procQ = mkEmptyProcQ();
 			target->s_semAdd = semAdd;
 			target->s_next = predecessor->s_next;
