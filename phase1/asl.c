@@ -107,10 +107,10 @@ int insertBlocked (int *semAdd, pcb_PTR p) {
 pcb_PTR removeBlocked (int *semAdd) {
 	pcb_PTR result;
 	semd_PTR predecessor = searchSemd(semAdd);
-	if(predecessor->s_next->semAdd == semAdd) {
+	if(predecessor->s_next->s_semAdd == semAdd) {
 		semd_PTR target = predecessor->s_next;
 
-		result = removeProqQ(target->s_procQ); /* This should NOT be NULL */
+		result = removeProqQ((pcb_PTR)(&target)->s_procQ); /* This should NOT be NULL */
 		/* When ProcQ is empty, we clear up the semd */
 		if(emptyProcQ(target->s_procQ)) { freeSemd(target); }
 
