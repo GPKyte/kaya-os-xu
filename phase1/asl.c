@@ -60,7 +60,7 @@ HIDDEN semd_PTR allocSemd (void) {
 HIDDEN semd_PTR searchSemd (int *semAdd) {
 	semd_PTR nomad = semd_h;
 	while (nomad->s_next->s_semAdd < semAdd) {
-		debug(nomad->s_semAdd);
+		debugB(nomad->s_semAdd);
 		nomad = nomad->s_next;
 	}
 	return (nomad);
