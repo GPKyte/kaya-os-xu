@@ -71,9 +71,10 @@ HIDDEN semd_PTR searchSemd (int *semAdd) {
  * allocated and the semdFree list is empty, return TRUE, otherwise return FALSE.
  */
 int insertBlocked (int *semAdd, pcb_PTR p) {
-	semd_PTR target; /* object to insert p into */
-	p->p_semAdd = semAdd;
 	semd_PTR predecessor = searchSemd(semAdd);
+	semd_PTR target; /* object to insert p into */
+	
+	p->p_semAdd = semAdd;
 	/* Verify if sema4 already in place or needs allocated */
 	if(predecessor->s_next->s_semAdd == semAdd) {
 		target = predecessor->s_next;
