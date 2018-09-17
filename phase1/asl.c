@@ -57,11 +57,23 @@ HIDDEN semd_PTR allocSemd (void) {
  * Find the predecessor/proper location of the desired sema4,
  * regardless of whether it exists yet.
  */
+/*
+ *	HIDDEN semd_PTR searchSemd (int *semAdd) {
+ *	semd_PTR nomad = semd_h;
+ *	while (nomad->s_next->s_semAdd < semAdd) {
+ *		nomad = nomad->s_next;
+ *	}
+ *	return (nomad);
+ * }
+ */
+
 HIDDEN semd_PTR searchSemd (int *semAdd) {
 	semd_PTR nomad = semd_h;
-	while (nomad->s_next->s_semAdd < semAdd) {
-		debugB((int) nomad->s_semAdd);
+	while(nomad->s_next->s_semAdd !== semAdd) {
 		nomad = nomad->s_next;
+		if(nomad->s_next->s_semAdd > semAdd) {
+			break;
+		}
 	}
 	return (nomad);
 }
