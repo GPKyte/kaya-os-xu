@@ -17,9 +17,8 @@ semd_PTR semdFree_h; /* pointer to the head of semdFree list */
 semd_PTR semd_h; /* pointer to the active head list */
 int debugCounterB;
 
-void debugB (int a, int b) {
+void debugB (int a) {
 	int i;
-	i = a + b;
 	i++;
 }
 /*
@@ -91,6 +90,7 @@ int insertBlocked (int *semAdd, pcb_PTR p) {
 			/* Allocation failed or invalid state */
 			return (TRUE);
 		} else {
+			debugB(42);
 			/* Insert new semd into ASL */
 			target->s_procQ = mkEmptyProcQ();
 			target->s_semAdd = semAdd;
@@ -164,6 +164,7 @@ void initASL (void) {
 	semdFree_h = (semd_PTR) mkEmptyProcQ(); /* Init semdFree list */
 
 	while(i<MAXPROC) {
+		debugB(i);
 		freeSemd(&(semdTable[i]));
 		i++;
 	}
