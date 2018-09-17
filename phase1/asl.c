@@ -153,11 +153,10 @@ pcb_PTR headBlocked (int *semAdd) {
  * initialization.
  */
 void initASL (void) {
+	int i = 0;
 	static semd_t semdTable[MAXPROC + 2]; /* +2 for dummy nodes */
-
 	semdFree_h = (semd_PTR) mkEmptyProcQ(); /* Init semdFree list */
 
-	int i = 0;
 	while(i<MAXPROC) {
 		freeSemd(&(semdTable[i]));
 		i++;
