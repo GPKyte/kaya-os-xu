@@ -15,6 +15,17 @@ void debugA (int a, int b) {
 	i <0;
 }
 
+HIDDEN void cleanPcb (pcb_PTR p) {
+	p->p_next = NULL;
+	p->p_prev = NULL;
+	p->p_prnt = NULL;
+	p->p_child = NULL;
+	p->p_old = NULL;
+	p->p_yng = NULL;
+	p->p_s = NULL;
+	p->p_semAdd = NULL;
+}
+
 /* Insert the element onto the pcbFree list */
 void freePcb (pcb_PTR p) {
 	insertProcQ(pcbFree_h, p);
@@ -27,11 +38,8 @@ void freePcb (pcb_PTR p) {
  * value persist in a pcb when it gets reallocated.
  */
 pcb_PTR allocPcb () {
-	pcb_PTR gift = removeProcQ(pcbFree_h);
-	/* Clean and rewrap present */
-	(*gift) = EmptyPcb;
-
-	pcbFree_h = gift->p_next;
+	pcb_PTR gift = removeProcQ(&pcbFree_h); /* Update of tail pointer handled by method */
+	cleanPcb(gift);
 	return gift;
 }
 
@@ -39,13 +47,15 @@ pcb_PTR allocPcb () {
  * Initialize the pcbFree list to contain all the elements of the static array of MAXPROC pcbs.
  * This methods will be called only once during data structure initialization.
  */
-void initPcbs () {
+void initPcbs (void) {
 	static pcb_t procTable[MAXPROC];
+	int i = 0;
 
 	pcbFree_h = mkEmptyProcQ(); /* Init pcbFree list */
 
-	for(int i=0; i<MAXPROC; i++) {
+	while(i<MAXPROC) {
 		freePcb(&(procTable[i]));
+		i++;
 	}
 }
 
@@ -53,7 +63,7 @@ void initPcbs () {
  * Initialize a variable to be the tail pointer to a process queue.
  * Return a pointer to the tail of an empty process queue; i.e. NULL.
  */
-pcb_PTR mkEmptyProcQ () {
+pcb_PTR mkEmptyProcQ (void) {
 	return NULL;
 }
 
@@ -148,19 +158,70 @@ pcb_PTR headProcQ (pcb_PTR tp) {
 }
 
 /* Tree management methods */
-/* TO-DO: implement */
+/*
+ * Return TRUE if the ProcBlk pointed to by p has no children.
+ * Return False, otherwise.
+ */
 int emptyChild (pcb_PTR p) {
-	return 1;
+	return (p == NULL || p->p_child == NULL);
 }
 
+/*
+ * Make the ProcBlk pointed to by p a child of the ProcBlk pointed to by prnt.
+ */
 void insertChild (pcb_PTR prnt, pcb_PTR p) {
-
+	p->p_prnt = prnt;
+	if(emptyChild(prnt)) {
+		prnt->p_child = p;
+		/* Force clean NULL border, but don't worry about children */
+		p->p_old = NULL;
+		p->p_yng = NULL;
+	} else {
+		p->p_old = prnt->p_child;
+		p->p_yng = NULL;
+		p->p_old->p_yng = p;
+		prnt->p_child = p;
+	}
 }
 
+/*
+ * Make the first child of the ProcBlk point to by prnt no longer a child of prnt
+ * Return NULL if initially there were no children of prnt.
+ * Otherwise, return a pointer to this removed first child ProcBlk.
+ */
 pcb_PTR removeChild (pcb_PTR prnt) {
-	return NULL;
+	if(emptyChild(prnt)) {
+		return (NULL);
+	} else {
+		return (outChild(prnt->p_child));
+	}
 }
 
+/*
+ * Make the ProcBlk pointed to by p no longer the child of its parent.
+ * If the ProcBlk pointed to by p has no parent, return NULL;
+ * otherwise, return p.
+ * Note, the element pointed to by p needs not be the first child of its parent.
+ */
 pcb_PTR outChild (pcb_PTR p) {
-	return NULL;
+	if(p == NULL || p->p_prnt == NULL || p->p_prnt->p_child == NULL) {
+		/* Trolling; invalid input/state */
+		return (NULL);
+	} else if(p->p_prnt->p_child == p) {
+		/* First Child */
+		p->p_prnt->p_child = p->p_sib;
+		p->p_sib->p_yng = NULL;
+	} else {
+		/* Middle or last child */
+		if(p->p_old) {
+			p->p_sib->p_yng = p->p_yng; /* In case sibling is NULL */
+		}
+		p->p_yng->p_old = p->p_sib;
+	}
+
+	/* CLean up orphan */
+	p->p_prnt = NULL;
+	p->p_old = NULL;
+	p->p_yng = NULL;
+	return (p);
 }
