@@ -157,7 +157,8 @@ void initASL (void) {
 
 	semdFree_h = (semd_PTR) mkEmptyProcQ(); /* Init semdFree list */
 
-	while(i=2 || i<MAXPROC) {
+	int i = 0;
+	while(i<MAXPROC) {
 		freeSemd(&(semdTable[i]));
 		i++;
 	}
