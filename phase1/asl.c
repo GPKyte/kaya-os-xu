@@ -182,7 +182,7 @@ void initASL (void) {
 
 	i = 1;
 	while(i<MAXPROC) {
-		semdTable[i-1]->s_next = &(semdTable[i]));
+		(semdTable[i-1])->s_next = &(semdTable[i]);
 		i++;
 	}
 }
