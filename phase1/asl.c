@@ -60,17 +60,22 @@ HIDDEN semd_PTR allocSemd (void) {
  */
 HIDDEN semd_PTR searchSemd (int *semAdd) {
 	semd_PTR nomad = semd_h;
-	/* if(semAdd == NULL) {
-	 * semAdd = (int*) MAXINT;
-	 * }
-	 */
-	 
+
 	while(nomad->s_next->s_semAdd < semAdd) {
 		debugB((int)semAdd, 40);
 		nomad = nomad->s_next;
 	}
 	return (nomad);
 }
+
+/*
+ * Return a pointer to the head of an empty sema4 list; i.e. NULL.
+ */
+semd_PTR mkEmptySemdList (void) {
+	return NULL;
+}
+
+
 
 /*
  * A mutator to insert the ProcBlk, p, at the tail of the process queue
@@ -165,9 +170,9 @@ pcb_PTR headBlocked (int *semAdd) {
  * initialization.
  */
 void initASL (void) {
-	int i = 0;
+	int i;
 	static semd_t semdTable[MAXPROC + 2]; /* +2 for dummy nodes */
-	semdFree_h = (semd_PTR) mkEmptyProcQ(); /* Init semdFree list */
+	semdFree_h = mkEmptySemdList(); /* Init semdFree list */
 
 	/* Set ASL dummy nodes */
 	semdTable[MAXPROC].s_semAdd = 0;
@@ -175,8 +180,9 @@ void initASL (void) {
 	semdTable[MAXPROC + 1].s_semAdd = MAXINT;
 	semd_h->s_next = &(semdTable[MAXPROC + 1]);
 
+	i = 1;
 	while(i<MAXPROC) {
-		freeSemd(&(semdTable[i]));
+		semdTable[i-1]->s_next = &(semdTable[i]));
 		i++;
 	}
 }

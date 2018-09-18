@@ -22,7 +22,7 @@ void debugA (int a, int b) {
 HIDDEN void cleanPcb(pcb_PTR p) {
 	int i;
 
-	/* TODO: clarify what default state should be */
+	/* TO-DO: clarify what default state should be */
 	/* Set state fields */
 	p->p_s.s_asid = 0;
 	p->p_s.s_cause = 0;
