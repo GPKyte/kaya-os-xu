@@ -26,12 +26,8 @@ void debugB (int a, int b) {
  * Insert a semaphore descriptor onto the semdFree list
  */
 HIDDEN void freeSemd (semd_PTR s) {
-	/* Hope that no one ever frees the dummy nodes */
-	semd_PTR predecessor = searchSemd(s->s_semAdd);
-	predecessor->s_next = s->s_next;
 	s->s_next = semdFree_h;
 	semdFree_h = s;
-	return;
 }
 
 /*
@@ -44,11 +40,11 @@ HIDDEN semd_PTR allocSemd (void) {
 		return (NULL);
 	} else {
 		semd_PTR gift = semdFree_h;
-		semdFree_h = semdFree_h->s_next;
+		semdFree_h = gift->s_next;
 
 		/* Clean semd */
 		gift->s_next = NULL;
-		gift->s_procQ = NULL;
+		gift->s_procQ = mkEmptyProcQ();
 		gift->s_semAdd = NULL;
 		return (gift);
 	}
@@ -62,7 +58,6 @@ HIDDEN semd_PTR searchSemd (int *semAdd) {
 	semd_PTR nomad = semd_h;
 
 	while(nomad->s_next->s_semAdd < semAdd) {
-		debugB((int)semAdd, 40);
 		nomad = nomad->s_next;
 	}
 	return (nomad);
@@ -97,7 +92,6 @@ int insertBlocked (int *semAdd, pcb_PTR p) {
 		target = predecessor->s_next;
 	} else {
 		target = allocSemd();
-
 		if(target == NULL) {
 			/* Allocation failed or invalid state */
 			return (TRUE);
@@ -129,7 +123,10 @@ pcb_PTR removeBlocked (int *semAdd) {
 
 		result = removeProcQ(&(target->s_procQ)); /* This should NOT be NULL */
 		/* When ProcQ is empty, we clear up the semd */
-		if(emptyProcQ(target->s_procQ)) { freeSemd(target); }
+		if(emptyProcQ(target->s_procQ)) {
+			predecessor->s_next = target->s_next;
+			freeSemd(target);
+		}
 
 		return (result);
 	} else {
@@ -144,10 +141,11 @@ pcb_PTR removeBlocked (int *semAdd) {
  * which is an error condition, return NULL; otherwise, return p.
  */
 pcb_PTR outBlocked (pcb_PTR p) {
-  semd_PTR predecessor = searchSemd(p->p_semAdd);
+	semd_PTR predecessor = searchSemd(p->p_semAdd);
 	if(predecessor->s_next->s_semAdd == p->p_semAdd) {
 		/* Yay. Let outProcQ return successfully or report the error w/ NULL */
-		return (outProcQ( &(predecessor->s_next->s_procQ), p));
+		pcb_PTR result = outProcQ( &(predecessor->s_next->s_procQ), p);
+		return (result);
 	} else {
 		/* p's associated semd is missing from ASL */
 		return (NULL);
@@ -161,7 +159,12 @@ pcb_PTR outBlocked (pcb_PTR p) {
  * the ASL or if the process queue associated with semAdd is empty.
  */
 pcb_PTR headBlocked (int *semAdd) {
-	return (headProcQ(searchSemd(semAdd)->s_next->s_procQ));
+	semd_PTR predecessor = searchSemd(semAdd);
+	if(predecessor->s_next->s_semAdd == semAdd) {
+		return(headProcQ(predecessor->s_next->s_procQ));
+	} else {
+		return(NULL);
+	}
 }
 
 /*
@@ -181,8 +184,10 @@ void initASL (void) {
 	semd_h->s_next = &(semdTable[MAXPROC + 1]);
 
 	i = 1;
+	semdFree_h = &(semdTable[0]);
 	while(i<MAXPROC) {
 		(semdTable[i-1]).s_next = &(semdTable[i]);
 		i++;
 	}
+	(semdTable[MAXPROC-1]).s_next = NULL; /* Boundary, clean this up later */
 }
