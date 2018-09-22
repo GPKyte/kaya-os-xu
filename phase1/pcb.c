@@ -142,10 +142,15 @@ pcb_PTR outProcQ (pcb_PTR *tp, pcb_PTR p) {
 	/* check if p exists in the list */
 	if(emptyProcQ(*tp)) {
 		return NULL;
+	} else if((*tp) == p && (*tp)->p_next == (*tp) && (*tp)->p_prev == (*tp)) {
+		/* Last node in queue */
+		(*tp) = NULL;
+		return(p);
 	} else if((*tp) == p) {
 		/* remove and return p, and update tp */
 		(*tp)->p_next->p_prev = (*tp)->p_prev;
 		(*tp)->p_prev->p_next = (*tp)->p_next;
+		(*tp) = (*tp)->p_prev;
 		return (*tp);
 	} else {
 		/* traverse the list */

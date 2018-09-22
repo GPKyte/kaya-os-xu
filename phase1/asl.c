@@ -86,14 +86,13 @@ int insertBlocked (int *semAdd, pcb_PTR p) {
 	semd_PTR predecessor = searchSemd(semAdd);
 	semd_PTR target; /* object to insert p into */
 
-	p->p_semAdd = semAdd;
 	/* Verify if sema4 already in place or needs allocated */
 	if(predecessor->s_next->s_semAdd == semAdd) {
 		target = predecessor->s_next;
 	} else {
 		target = allocSemd();
 		if(target == NULL) {
-			/* Allocation failed or invalid state */
+			/* Allocation failed, empty free list */
 			return (TRUE);
 		} else {
 			/* Insert new semd into ASL */
@@ -104,6 +103,7 @@ int insertBlocked (int *semAdd, pcb_PTR p) {
 		}
 	}
 
+	p->p_semAdd = semAdd;
 	insertProcQ(&(target->s_procQ), p);
 	return (FALSE);
 }
@@ -144,8 +144,7 @@ pcb_PTR outBlocked (pcb_PTR p) {
 	semd_PTR predecessor = searchSemd(p->p_semAdd);
 	if(predecessor->s_next->s_semAdd == p->p_semAdd) {
 		/* Yay. Let outProcQ return successfully or report the error w/ NULL */
-		pcb_PTR result = outProcQ( &(predecessor->s_next->s_procQ), p);
-		return (result);
+		return (outProcQ( &(predecessor->s_next->s_procQ), p));
 	} else {
 		/* p's associated semd is missing from ASL */
 		return (NULL);
@@ -175,19 +174,17 @@ pcb_PTR headBlocked (int *semAdd) {
 void initASL (void) {
 	int i;
 	static semd_t semdTable[MAXPROC + 2]; /* +2 for dummy nodes */
+
 	semdFree_h = mkEmptySemdList(); /* Init semdFree list */
+
+	for(i=0; i < MAXPROC; i++) {
+		freeSemd(&(semdTable[i]));
+	}
 
 	/* Set ASL dummy nodes */
 	semdTable[MAXPROC].s_semAdd = 0;
 	semd_h = &(semdTable[MAXPROC]);
 	semdTable[MAXPROC + 1].s_semAdd = MAXINT;
 	semd_h->s_next = &(semdTable[MAXPROC + 1]);
-
-	i = 1;
-	semdFree_h = &(semdTable[0]);
-	while(i<MAXPROC) {
-		(semdTable[i-1]).s_next = &(semdTable[i]);
-		i++;
-	}
-	(semdTable[MAXPROC-1]).s_next = NULL; /* Boundary, clean this up later */
+	semd_h->s_next->s_next = NULL;
 }
