@@ -3,6 +3,10 @@
  *		1) Free list management
  *		2) Queue management
  *		3) Process tree management (or Parent-child management)
+ *
+ * AUTHORS: Gavin Kyte & Ploy Sithisakulrat
+ * CONTRIBUTOR/ADVISOR: Michael Goldweber
+ * DATE PUBLISHED: 9.24.2018
  */
 
 #include "../h/types.h"
@@ -10,8 +14,7 @@
 
 #include "../e/pcb.e"
 
-pcb_PTR pcbFree_h;
-int debugCounterA;
+pcb_PTR pcbFree_h; /* head pointer to the pcbFree list */
 
 void debugA (int a, int b) {
 	int i;
@@ -19,6 +22,10 @@ void debugA (int a, int b) {
 	i++;
 }
 
+/* 
+ * cleanPcb - used to set up default states of variables
+ * PARAM:	p - pointer to a process block
+ */
 HIDDEN void cleanPcb(pcb_PTR p) {
 	int i;
 
@@ -43,25 +50,31 @@ HIDDEN void cleanPcb(pcb_PTR p) {
 	p->p_semAdd = NULL;
 }
 
-/* Insert the element onto the pcbFree list */
+/* 
+ * freePcb - a mutator used to insert the element onto the pcbFree list.
+ * PARAM:	p - a pcb pointer to be added to the pcbFree list.
+ */
 void freePcb (pcb_PTR p) {
-	insertProcQ( &pcbFree_h, p);
+	insertProcQ(&pcbFree_h, p);
 }
 
 /*
- * Return NULL if pcbFree list is empty. Otherwise, remove an element from the pcbFree list,
- * provide initial values for ALL of the pcbs' fields (i.e. NULL and/or 0) and then return
- * a pointer to the removed element. Pcbs get reused, so it is important that no previous
- * value persist in a pcb when it gets reallocated.
+ * allocPcb - a mutator to remove an element from the pcbFreelist, provide initial values 
+ * for ALL of the pcbs' fields (i.e. NULL and/or 0) and then return a pointer to the removed element. 
+ * Pcbs get reused, so it is important that no previous value persist in a pcb when it gets reallocated.
+ * RETURN: 	NULL if the pcbFree list is empty; otherwise, return a pointer to the removed element from pcbFree list.
  */
 pcb_PTR allocPcb (void) {
-	pcb_PTR gift = removeProcQ( &pcbFree_h); /* Update of tail pointer handled by method */
-	if(gift != NULL) { cleanPcb(gift); }
-	return gift;
+	pcb_PTR gift = removeProcQ(&pcbFree_h); /* Update of tail pointer handled by method */
+	
+	if(gift != NULL) { 
+		cleanPcb(gift); 
+	}
+	return (gift);
 }
 
 /*
- * Initialize the pcbFree list to contain all the elements of the static array of MAXPROC pcbs.
+ * initPCBs - initialize the pcbFree list to contain all the elements of the static array of MAXPROC pcbs.
  * This methods will be called only once during data structure initialization.
  */
 void initPcbs (void) {
@@ -70,29 +83,34 @@ void initPcbs (void) {
 
 	pcbFree_h = mkEmptyProcQ(); /* Init pcbFree list */
 
-	while(i<MAXPROC) {
+	while(i < MAXPROC) {
 		freePcb(&(procTable[i]));
 		i++;
 	}
 }
 
 /*
- * Initialize a variable to be the tail pointer to a process queue.
- * Return a pointer to the tail of an empty process queue; i.e. NULL.
+ * mkEmptyProcQ - an accessor initializes a variable to be the tail pointer to a process queue.
+ * RETURN: 	a tail pointer of an empty process queue, i.e. NULL.
  */
 pcb_PTR mkEmptyProcQ (void) {
-	return NULL;
+	return (NULL);
 }
 
 /*
- * An accessor method returns TRUE if the queue is empty, FALSE otherwise
+ * emptyProcQ - an accessor method to check whether the process queue is empty
+ * RETURN:	TRUE if the queue is empty, FALSE otherwise.
  */
 int emptyProcQ (pcb_PTR tp) {
 	return (tp == NULL);
 }
 
 /*
- * A mutator method that inserts a pcb node to linked list
+ * insertProcQ - a mutator method to insert a process block into the process queue whose
+ * tail pointer is pointed to by tp. Note: the double indirection through tp to allow for
+ * the possible updating of the tail pointer as well.
+ * PARAM:	*tp - a tail pointer of the process queue.
+ * 		p - a process block to be inserted to process queue.
  */
 void insertProcQ (pcb_PTR *tp, pcb_PTR p) {
 	if(emptyProcQ(*tp)) {
@@ -112,11 +130,13 @@ void insertProcQ (pcb_PTR *tp, pcb_PTR p) {
 }
 
 /*
- * A mutator method to remove and return the next node in the Queue
+ * removeProcQ - a mutator method to remove and return the first (head) element from the proceses queue.
+ * PARAM:	*tp - tail pointer to the process queue.
+ * RETURN:	NULL if process queue is initally empty. Otherwise, return the first element that has been removed.
  */
 pcb_PTR removeProcQ (pcb_PTR *tp) {
 	if(emptyProcQ(*tp)) {
-		return NULL;
+		return (NULL);
 	} else {
 		/* Grab head */
 		pcb_PTR head = (*tp)->p_next;
@@ -130,18 +150,22 @@ pcb_PTR removeProcQ (pcb_PTR *tp) {
 			(*tp)->p_next->p_prev = (*tp);
 		}
 
-		return head;
+		return (head);
 	}
 }
 
 /*
- * Mutator method to remove a specific node on the list and gives a pointer to the node.
- * Returns NULL if p does not exist, otherwise return p.
+ * outProcQ - a mutator method to remove a specific node on the list and
+ * update the tail pointer of the process queue.
+ * Note that p can point to any element of the process queue.
+ * PARAM:	*tp - tail pointer to the process queue.
+ * 		p - the desired node to be removed from the process queue.
+ * RETURN:	NULL if p does not exist, otherwise return p.
  */
 pcb_PTR outProcQ (pcb_PTR *tp, pcb_PTR p) {
 	/* check if p exists in the list */
 	if(emptyProcQ(*tp)) {
-		return NULL;
+		return (NULL);
 	} else if((*tp) == p && (*tp)->p_next == (*tp) && (*tp)->p_prev == (*tp)) {
 		/* Last node in queue */
 		(*tp) = NULL;
@@ -164,18 +188,20 @@ pcb_PTR outProcQ (pcb_PTR *tp, pcb_PTR p) {
 				return nomad;
 			} else if(nomad == (*tp)) {
 				/* p not found in list */
-				return NULL;
+				return (NULL);
 			} else {
 				nomad = nomad->p_next;
 			}
 		}
 		/* Fell off the list. This should not happen */
-		return NULL;
+		return (NULL);
 	}
 }
 
 /*
- * Accessor method to return the next to dequeue (the head node)
+ * headProcQ - an accessor method to return the next to dequeue (the head node).
+ * PARAM:	tp - tail pointer to the process queue.
+ * RETURN:	NULL if the process queue is empty, otherwise return the head node.
  */
 pcb_PTR headProcQ (pcb_PTR tp) {
 	if(emptyProcQ(tp)) {
@@ -185,14 +211,22 @@ pcb_PTR headProcQ (pcb_PTR tp) {
 	}
 }
 
-/* Tree management methods */
+/* 
+ * Process Trees Management Methods
+ */
 
-/* Return TRUE if the ProcBlk pointed to by p has no children. Return FALSE otherwise. */
+/* emptyChild - an accessor methos to check whether or not the node pointerd by p has a child.
+ * PARAM:	p - a process tree node.
+ * RETURN:	TRUE if the ProcBlk pointed to by p has no children. Return FALSE otherwise. 
+ */
 int emptyChild (pcb_PTR p) {
 	return (p == NULL || p->p_child == NULL);
 }
 
-/* Make the ProcBlk pointed to by p a child of the ProcBlk pointed to by prnt. */
+/* insertChild - a mutator to make the ProcBlk pointed to by p a child of the ProcBlk pointed to by prnt. 
+ * PARAM:	prnt - a parent node.
+ * 		p - a node to make it a child.
+ */
 void insertChild (pcb_PTR prnt, pcb_PTR p) {
 	p->p_prnt = prnt;
 	if(emptyChild(prnt)) {
@@ -209,9 +243,10 @@ void insertChild (pcb_PTR prnt, pcb_PTR p) {
 }
 
 /*
- * Make the first child of the ProcBlk pointed to by prnt no longer a child of prnt.
- * Return NULL if initially there were no children of prnt.
- * Otherwise, return a pointer to this removed first child ProcBlk.
+ * removeChild - a mutator method to make the first child of the ProcBlk pointed to by prnt no longer a child of prnt.
+ * PARAM:	prnt - a parent node.
+ * RETURN:	NULL if initially there were no children of prnt.
+ * 		Otherwise, return a pointer to this removed first child ProcBlk.
  */
 pcb_PTR removeChild (pcb_PTR prnt) {
 	if(emptyChild(prnt)) {
@@ -222,8 +257,9 @@ pcb_PTR removeChild (pcb_PTR prnt) {
 }
 
 /*
- * Make the ProcBlk pointed to by p no longer the child of its parent.
- * If the ProcBlk pointed to by p has no parent, return NULL; otherwise, return p.
+ * outChild - a mutator to make the ProcBlk pointed to by p no longer the child of its parent.
+ * PARAM:	p - a child node
+ * RETURN:	NULL if the ProcBlk pointed to by p has no parent; otherwise, return p.
  * Note that the element pointed to by p need not be the first child of its parent.
  */
 pcb_PTR outChild (pcb_PTR p) {
