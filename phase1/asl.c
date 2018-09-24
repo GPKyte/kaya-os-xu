@@ -3,14 +3,14 @@
  *
  * AUTHORS: Gavin Kyte & Ploy Sithisakulrat
  * CONTRIBUTOR/ADVISOR: Michael Goldweber
- * DATE PUBLISHED: 9.23.2018
+ * DATE PUBLISHED: 9.24.2018
  */
 
-#include "..h/const.h"
-#include "..h/types.h"
+#include "../h/const.h"
+#include "../h/types.h"
 
-#include "..e/pcb.e"
-#include "..e/asl.e"
+#include "../e/pcb.e"
+#include "../e/asl.e"
 
 
 /* Prototypes */
