@@ -6,11 +6,11 @@
  * DATE PUBLISHED: 9.23.2018
  */
 
-#include "..h/const.h"
-#include "..h/types.h"
+#include "../h/const.h"
+#include "../h/types.h"
 
-#include "..e/pcb.e"
-#include "..e/asl.e"
+#include "../e/pcb.e"
+#include "../e/asl.e"
 
 
 /* Prototypes */
@@ -21,9 +21,7 @@ HIDDEN semd_PTR searchSemd(int*);
 semd_PTR semdFree_h; /* pointer to the head of semdFree list */
 semd_PTR semd_h; /* pointer to the active head list */
 
-/*
- * debugging function
- */
+/* debugging function used to check value of a and give b = line number */
 void debugB (int a, int b) {
 	int i;
 	i = a + b;
