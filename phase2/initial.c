@@ -1,6 +1,11 @@
 /*
- * initial.c - Initialize the primary data structures for OS
- * Assign interrupt handlers and load main program into memory.
+ * initial.c - Start Kaya OS
+ * Define states of 4 "New" state vectors out of 8 for context switches
+ * Init Queue service for processes
+ * Init Active Semaphore List
+ *
+ * Status definitions are kept in constants file
+ * Hardware generates machine specific info like RAMSIZE at RAMBASEADDR
  */
 
 #include "../h/const.h"
@@ -12,7 +17,7 @@
 
 int procCount, softBlkCount;
 pcb_PTR curProc;
-pcb_PTR readyQ; /* 'ready' status waiting for the scheduler to pick them to run */
+pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
 
 /*
  * main() populates the four new areas in low memory
@@ -33,8 +38,7 @@ int main() {
   unsigned int intStatusBit = 0;
   unsigned int baseStatus = localTimeStatusBit | VMStatusBit | kernalModeStatusBit | intStatusBit;
 
-  devregarea = (devregarea_t *) RAMBASEADDR;
-  /* initialize RAMTOP */
+  devregarea = (devregarea_t *) RAMBASEADDR; /* Predefined hardware details */
   RAMTOP = (devregarea->rambase) + (devregarea->ramsize);
 
   /* Init new processor state areas */
@@ -66,7 +70,7 @@ int main() {
   pgrmTrpNewArea->s_sp = RAMTOP;
   sysCallNewArea->s_sp = RAMTOP;
 
-  /* status: VM OFF, Interrupts disabled, kernel-mode, and Local Timer enabled */
+  /* status: VM off, interrupts off, user-mode off, and local timer on */
   intNewArea->status = baseStatus;
   tlbMgntNewArea->status = baseStatus;
   pgrmTrpNewArea->status = baseStatus;
@@ -87,12 +91,12 @@ int main() {
     p->p_s.s_reg[i] = 0;
   }
 
-  /* set a single process status to:
-   *    VM off,
-   *    Interrupts enabled
-   *    proc Local Timer enabled
-   *    and in kernel-mode */
-  /* p->p_s.s_status = 0; */
+  /*
+   * Setting state for initial process:
+   *    VM off, interrupts on, local timer on, user mode off
+   *    Stack starts below reserved page
+   *    Set PC to start at P2's test
+   */
   p->p_s.s_status = baseStatus | 1;
   p->p_s.s_sp = RAMTOP - PAGESIZE;
   p->p_s.s_pc = (memaddr) test;
