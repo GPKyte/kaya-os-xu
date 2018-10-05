@@ -1,4 +1,4 @@
-/*
+/**************************************************************
  * Scheduler.c
  *
  * Decides the next process to run for Kaya OS
@@ -13,8 +13,9 @@
  *    waiting: procCount > 0 && softBlkCount > 0
  *
  * AUTHORS: Ploy Sithisakulrat & Gavin Kyte
- * ADVISOR: Michael Goldweber
- */
+ * ADVISOR/CONTRIBUTER: Michael Goldweber
+ * DATE PUBLISHED: 10.04.2018
+ *************************************************************/
  #include "../h/const.h"
  #include "../h/types.h"
 
