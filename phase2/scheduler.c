@@ -16,41 +16,43 @@
  * ADVISOR/CONTRIBUTER: Michael Goldweber
  * DATE PUBLISHED: 10.04.2018
  *************************************************************/
- #include "../h/const.h"
- #include "../h/types.h"
+#include "../h/const.h"
+#include "../h/types.h"
 
- #include "../e/pcb.e"
- #include "../e/asl.e"
- #include "/usr/local/include/umps2/umps/libumps.e"
+#include "../e/pcb.e"
+#include "../e/asl.e"
+#include "/usr/local/include/umps2/umps/libumps.e"
 
- /********************* Helper methods ***********************/
+/* Time slice value in microseconds */
+
+/********************* Helper methods ***********************/
 
 
- /******************** External methods ***********************/
+/******************** External methods ***********************/
 
- /*
-  * Mutator method that decides the currently running process
-  * and manages the associated queues and meta data.
-  *
-  * Pre: Any context switch
-  * Post: curProc points to next job and starts or if no available
-  *   jobs, system will HALT, PANIC, or WAIT appropriately
-  */
- void scheduler() {
-   /* Elevate priority by masking all interrupts */
+/*
+* Mutator method that decides the currently running process
+* and manages the associated queues and meta data.
+*
+* Pre: Any context switch
+* Post: curProc points to next job and starts or if no available
+*   jobs, system will HALT, PANIC, or WAIT appropriately
+*/
+void scheduler() {
+  /* Elevate priority by masking all interrupts */
 
-   /* Finished all jobs so HALT system */
-   /* Detected deadlock so PANIC */
+  /* Finished all jobs so HALT system */
+  /* Detected deadlock so PANIC */
 
-   /*
-    * Store curProc back in Queue if unfinished
-    * Otherwise release process and decrement procCount
-    */
+  /*
+   * Store curProc back in Queue if unfinished
+   * Otherwise release process and decrement procCount
+   */
 
-   /* Decide which process goes next */
-      /* No ready jobs, so we WAIT for next interrupt */
+  /* Decide which process goes next */
+    /* No ready jobs, so we WAIT for next interrupt */
 
-   /* Prepare state for next job */
-   /* Put time on clock */
-   /* Load context of process and continue execution */
- }
+  /* Prepare state for next job */
+  /* Put time on clock */
+  /* Load context of process and continue execution */
+}
