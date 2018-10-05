@@ -1,32 +1,38 @@
-/*
- * initial.c - Start Kaya OS
- * Define states of 4 "New" state vectors out of 8 for context switches
- * Init Queue service for processes
- * Init Active Semaphore List
+/*************************************************************
+ * Initial.c
  *
- * Status definitions are kept in constants file
- * Hardware generates machine specific info like RAMSIZE at RAMBASEADDR
- */
+ * Start Kaya OS:
+ *    Define states of the 4 "New" state vectors (4 Old left empty)
+ *    Init Queue service for processes
+ *    Init Active Semaphore List
+ *
+ * Status bit definitions are kept in constants file
+ * Hardware generates machine specific info and ROM code
+ *    like RAMSIZE at RAMBASEADDR before this is run
+ *
+ * AUTHORS: Ploy Sithisakulrat & Gavin Kyte
+ * ADVISOR/CONTRIBUTER: Michael Goldweber
+ * DATE PUBLISHED: 10.04.2018
+ *************************************************************/
 
 #include "../h/const.h"
 #include "../h/types.h"
 
 #include "../e/pcb.e"
 #include "../e/asl.e"
+#include "../e/scheduler.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
+
+extern void test();
 
 int procCount, softBlkCount;
 pcb_PTR curProc;
 pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
 
 /*
- * main() populates the four new areas in low memory
- *  - set the sp (last page of physical memory)
- *  - set PC
- *  - set the status: VM OFF
- *                    Interrupts masked (disabled)
- *                    Supervisor mode on (kernel-mode)
- * It is being called only once.
+ * Populate the four new areas in low memory. Allocate finite
+ * resources for the nucleus to manage.
+ * Only runs once. Scheduler takes control after this method
  */
 int main() {
   int i;
@@ -70,7 +76,7 @@ int main() {
   pgrmTrpNewArea->s_sp = RAMTOP;
   sysCallNewArea->s_sp = RAMTOP;
 
-  /* status: VM off, interrupts off, user-mode off, and local timer on */
+  /* status: VM off, interrupts off, kernal-mode, and local timer on */
   intNewArea->status = baseStatus;
   tlbMgntNewArea->status = baseStatus;
   pgrmTrpNewArea->status = baseStatus;
@@ -104,5 +110,6 @@ int main() {
 
   procCount++;
   insertProcQ(&readyQ, p);
+  scheduler();
   return 0;
 }

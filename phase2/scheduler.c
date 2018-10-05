@@ -23,7 +23,10 @@
  #include "../e/asl.e"
  #include "/usr/local/include/umps2/umps/libumps.e"
 
- /* Helper methods */
+ /********************* Helper methods ***********************/
+
+
+ /******************** External methods ***********************/
 
  /*
   * Mutator method that decides the currently running process
@@ -33,7 +36,7 @@
   * Post: curProc points to next job and starts or if no available
   *   jobs, system will HALT, PANIC, or WAIT appropriately
   */
- void scheduleNext() {
+ void scheduler() {
    /* Elevate priority by masking all interrupts */
 
    /* Finished all jobs so HALT system */
