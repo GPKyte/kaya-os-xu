@@ -111,10 +111,44 @@ HIDDEN void sys8_waitForIODevice() {}
 /***************** Start of external methods *****************/
 /*
  * Offer 255 system calls; 1-8 are privileged; 9 is for breakpoints
+ * The rest are passed up. See helper methods for description of
+ * each system call.
  */
 void sysCallHandler() {
   /* Load in context from old-state vector */
 
   /* Check for reserved instruction error pre-emptively for less code */
   /* Let a0 register decide SysCall type and execute appropriate method */
+}
+
+/*
+ * Method called in event that a process performs an illegal
+ * or undefined action. The cause will be set in the PgmTrap
+ * old state vector's Cause.ExcCode
+ *
+ * Either passes up the offending process or terminates it (sys2) per
+ * the existence of a specified exceptiont state vector (sys5)
+ */
+void trapHandler() {
+  /* Check excptn type and existence of a specified exception state vector */
+    /* Terminate */
+
+    /*
+     * Pass up the processor state from old area into the process blk's
+     * Specified old area address. Then load the pcb's specified new area into
+     * the Process block.
+     */
+}
+
+/*
+ * Called when TLB Management Exception occurs,
+ * i.e. when virtual -> physical mem address translation fails for
+ * any of the following reasons:
+ *    TLB-Modification, TLB-Invalid, Bad-PgTbl, or PTE-MISS
+ *
+ * Either passes up the offending process or terminates it (sys2) per
+ * the existence of a specified exceptiont state vector (sys5)
+ */
+void tlbHandler() {
+  /* Same as trapHandler, delete this comment once implemented */
 }
