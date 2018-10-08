@@ -20,17 +20,20 @@
 
 state_t *oldState;
 
-/********************** Private methods **********************/
+/********************** Helper methods **********************/
 
 /*
- * Creates new child process with given state
+ * Creates new process with given state as child of executing process
  *
  * EX: int SYSCALL (CREATEPROCESS, state_t *statep)
  *    Where CREATEPROCESS has the value of 1.
  * PARAM: a1 = physical address of processor state area
  * RETURN: v0 = 0 on success, -1 (NULL) on failure
  */
-HIDDEN void sys1_createProcess() {}
+HIDDEN void sys1_createProcess() {
+  /* Birth new process as child of executing pcb */
+  /* Return control to calling process */
+}
 
 /*
  * Kills the executing process and all descendents
@@ -126,6 +129,7 @@ HIDDEN void sys8_waitForIODevice() {}
  */
 void sysCallHandler() {
   /* Load in context from old-state vector */
+  /* Increment PC regardless of whether process lives after this call */
 
   /* Check for reserved instruction error pre-emptively for less code */
   /* Let a0 register decide SysCall type and execute appropriate method */
