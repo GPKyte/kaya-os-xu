@@ -38,11 +38,7 @@ int main() {
   int i;
   unsigned int RAMTOP;
   devregarea_t *devregarea;
-  unsigned int localTimeStatusBit = 1 << 27;
-  unsigned int VMStatusBit = 0 << 24;
-  unsigned int kernalModeStatusBit = 0 << 1;
-  unsigned int intStatusBit = 0;
-  unsigned int baseStatus = localTimeStatusBit | VMStatusBit | kernalModeStatusBit | intStatusBit;
+  unsigned int baseStatus;
 
   devregarea = (devregarea_t *) RAMBASEADDR; /* Predefined hardware details */
   RAMTOP = (devregarea->rambase) + (devregarea->ramsize);
@@ -77,6 +73,7 @@ int main() {
   sysCallNewArea->s_sp = RAMTOP;
 
   /* status: VM off, interrupts off, kernal-mode, and local timer on */
+  baseStatus = LOCALTIMEON & ~VMpON & ~INTpON & ~USERMODEON);
   intNewArea->status = baseStatus;
   tlbMgntNewArea->status = baseStatus;
   pgrmTrpNewArea->status = baseStatus;
@@ -103,7 +100,7 @@ int main() {
    *    Stack starts below reserved page
    *    Set PC to start at P2's test
    */
-  p->p_s.s_status = baseStatus | 1;
+  p->p_s.s_status = INTMASKOFF | INTpON | LOCALTIMEON & ~USERMODEON & ~VMpON;
   p->p_s.s_sp = RAMTOP - PAGESIZE;
   p->p_s.s_pc = (memaddr) test;
   p->p_s.s_t9 = p->p_s.s_pc; /* For technical reasons, setting t9 to pc */

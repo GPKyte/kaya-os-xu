@@ -29,7 +29,13 @@
 #define	OFF			0
 #define	HIDDEN		static
 #define	Bool		int
-#define	EOS			'\0'
+#define	EOS		'\0'
+/* Turn 1 and 2 On, but 3 off: 1ON | 2ON & ~3ON */
+#define VMpON		(1 << 25)
+#define INTpON	(1 << 2)
+#define INTMASKOFF 	(0b111111110000000) /* Not masking means interrupts on */
+#define USERMODEON	(1 << 3)
+#define LOCALTIMEON	(1 << 27)
 
 #define NULL ((void *)0xFFFFFFFF)
 #define MAXINT ((void *)0x7FFFFFFF)
