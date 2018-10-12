@@ -1,6 +1,11 @@
 /*
  * asl.c supports active semaphore list (ASL) and its operations.
  *
+ * The ASL is maintained as a priority queue sorted on semd_PTR->s_semAdd
+ * with two dummy nodes at 0 and MAXINT for boundary condition simplicity.
+ *
+ * The free list is kept as a singley linked stack, order is not-important.
+ *
  * AUTHORS: Gavin Kyte & Ploy Sithisakulrat
  * CONTRIBUTOR/ADVISOR: Michael Goldweber
  * DATE PUBLISHED: 9.24.2018
@@ -13,15 +18,10 @@
 #include "../e/pcb.e"
 #include "../e/asl.e"
 
-
-/* Prototypes */
-HIDDEN void freeSemd (semd_PTR);
-HIDDEN semd_PTR allocSemd(void);
-HIDDEN semd_PTR searchSemd(int*);
-
 semd_PTR semdFree_h; /* pointer to the head of semdFree list */
 semd_PTR semd_h; /* pointer to the active head list */
 
+/********************* Helper methods ***********************/
 /*
  * freeSemd - A mutator used to insert a sema4 descriptor into semdFree list
  * PARAM:	s - semaphore descriptor to be added to the free list.
@@ -74,6 +74,7 @@ HIDDEN semd_PTR searchSemd (int *semAdd) {
 	return (nomad);
 }
 
+/******************** External methods ***********************/
 /*
  * insertBlocked - a mutator to insert the ProcBlk at the tail of the process
  *		queue associated with the semaphore whose physical address is semAdd
