@@ -4,6 +4,7 @@
  * AUTHORS: Gavin Kyte & Ploy Sithisakulrat
  * CONTRIBUTOR/ADVISOR: Michael Goldweber
  * DATE PUBLISHED: 9.24.2018
+ * LAST UPDATED: 10.8.2018
  */
 
 #include "../h/const.h"
@@ -20,13 +21,6 @@ HIDDEN semd_PTR searchSemd(int*);
 
 semd_PTR semdFree_h; /* pointer to the head of semdFree list */
 semd_PTR semd_h; /* pointer to the active head list */
-
-/* debugging function used to check value of a and give b = line number */
-void debugB (int a, int b) {
-	int i;
-	i = a + b;
-	i++;
-}
 
 /*
  * freeSemd - A mutator used to insert a semaphore descriptor onto the semdFree list.
