@@ -86,7 +86,13 @@ HIDDEN void sys4_passeren() {}
  *        a2 = address of old state vector to be stored in for this process
  *        a3 = address of new state vector to be loaded from after exception
  */
-HIDDEN void sys5_specifyExceptionStateVector() {}
+HIDDEN void sys5_specifyExceptionStateVector() {
+  /* Check wether exception state vector is already specified (error) */
+  /* Yes: call SYS2 */
+
+  /* Specify old and new state vectors */
+  /* Return contral to process (LDST) */
+}
 
 /*
  * Accesses the processor time (in microseconds) of the requesting process.
@@ -95,7 +101,11 @@ HIDDEN void sys5_specifyExceptionStateVector() {}
  *    Where the mnemonic constant GETCPUTIME has the value of 6.
  * RETURN: v0 = processor time in microseconds
  */
-HIDDEN void sys6_getCPUTime() {}
+HIDDEN void sys6_getCPUTime() {
+  /* Get partial quantum amount */
+  /* Get accumulated time */
+  /* Return sum of times */
+}
 
 /*
  * Performs a P operation on the nucleus-maintained pseudo-clock timer
