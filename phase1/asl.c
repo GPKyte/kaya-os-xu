@@ -157,11 +157,21 @@ pcb_PTR removeBlocked (int *semAdd) {
  * RETURN:	p if found; otherwise, return NULL (error)
  */
 pcb_PTR outBlocked (pcb_PTR p) {
+	pcb_PTR shouldBeP;
 	semd_PTR predecessor = searchSemd(p->p_semAdd);
 
 	if(predecessor->s_next->s_semAdd == p->p_semAdd) {
-		/* Yay. Let outProcQ return successfully or report the error w/ NULL */
-		return (outProcQ( &(predecessor->s_next->s_procQ), p));
+		semd_PTR target = predecessor->s_next;
+		shouldBeP = outProcQ( &(target->s_procQ), p);
+
+		/* When ProcQ is empty, we clear up the semd */
+		if(emptyProcQ(target->s_procQ)) {
+			predecessor->s_next = target->s_next;
+			freeSemd(target);
+		}
+
+		/* Yay. Return outProcQ result successfully or report error w/ NULL */
+		return shouldBeP;
 	} else {
 		/* p's associated semd is missing from ASL */
 		return (NULL);
