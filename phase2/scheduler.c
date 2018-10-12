@@ -26,8 +26,22 @@
 /* Time slice value in microseconds */
 
 /********************* Helper methods ***********************/
+/*
+ * Select next process to be scheduled as curProc
+ * RETURN: pcb_PTR to ready process for execution
+ */
+HIDDEN pcb_PTR removeFromPool() {
+  /* In Round-Robin style, grab next process */
+  return removeProcQ(&readyQ);
+}
 
-
+/*
+ * Put process in a ready state
+ * PARAM: pointer to PCB to be returned to pool
+ */
+HIDDEN void putInPool(pcb_PTR p) {
+  insertProcQ(&readyQ, p);
+}
 /******************** External methods ***********************/
 
 /*
@@ -53,6 +67,6 @@ void scheduler() {
     /* No ready jobs, so we WAIT for next interrupt */
 
   /* Prepare state for next job */
-  /* Put time on clock */
-  /* Load context of process and continue execution */
+    /* Put time on clock */
+    /* Load context of process and continue execution */
 }
