@@ -71,6 +71,7 @@ pcb_PTR allocPcb (void) {
 			i++;
 		}
 
+		gift->p_CPUTime = 0;
 		gift->p_next = NULL;
 		gift->p_prev= NULL;
 		gift->p_prnt = NULL;

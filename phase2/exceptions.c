@@ -192,9 +192,9 @@ HIDDEN void sys5_specifyExceptionStateVector() {
  * RETURN: v0 = processor time in microseconds
  */
 HIDDEN void sys6_getCPUTime() {
-  /* Get partial quantum amount */
-  /* Get accumulated time */
-  /* Return sum of times */
+  int partialQuantum = QUANTUMTIME - getTIMER();
+  int totalTime = curProc->p_CPUTime;
+  oldSys.s_v0 = partialQuantum + totalTime;
 }
 
 /*

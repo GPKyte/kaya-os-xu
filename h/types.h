@@ -102,7 +102,8 @@ typedef struct pcb_t {
 	state_t	*p_exceptionConfig[2][3];
 
 	state_t 	p_s;		/* processor state */
-	int 			*p_semAdd;	/* pointer to semaphore on which process blocked */
+	int 			*p_semAdd;	/* ptr to sema4 where pcb blocked */
+	unsigned int p_CPUTime; /* total exec time in μ seconds */
 } pcb_t, *pcb_PTR;
 
 /* semaphore descriptor type */
