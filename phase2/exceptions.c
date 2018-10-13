@@ -30,6 +30,35 @@ state_t *oldSys;
 HIDDEN void loadState(state_t *statep) {
   LDST(&statep);
 }
+
+HIDDEN void avadaKedavra(pcb_PTR p) {
+  /* top-down method */
+  while(!emptyChild(p)) {
+    avadaKedavra(removeChild(p));
+  }
+
+  /* bottom-up: dealing with each individual PCB */
+  /* If semaphore value negative, increment the semaphore? */
+  /* If terminating a blocked process, do NOT adjust semaphore. Because the
+   * semaphore will get V'd by the interrupt handler */
+  if(p == curProc) {
+    outChild(p);
+    curProc = NULL;
+  } else if(outProcQ(&readyQ, p) == p) {
+    /* Know p was on Ready Queue, do nothing */
+  } else if(outBlocked(p) == p) {
+    /* if p is a device sema4: soft block-- & leave sema4++ to intHandler */
+    /* if NOT a device sema4: sema4++ */
+  } else {
+    /* Unexpected behavior */
+    error();
+  }
+
+  /* Adjust procCount and softBlkCount */
+  freePcb(p);
+  procCount--;
+}
+
 /*
  * Creates new process with given state as child of executing process
  *
@@ -59,23 +88,31 @@ HIDDEN void sys1_createProcess() {
 /*
  * Kills the executing process and all descendents
  *
+ * From the Kaya specifications (to be simplified later):
+ * The root of the sub-tree of terminated processes must be “orphaned” from
+ its parents; its parent can no longer have this ProcBlk as one of its progeny.
+ * If the value of a semaphore is negative, it is an invariant that the
+ absolute value of the semaphore equal the number of ProcBlk’s blocked on
+ that semaphore. Hence if a terminated process is blocked on a semaphore, the
+  value of the semaphore must be adjusted; i.e. incremented.
+ * If a terminated process is blocked on a device semaphore, the semaphore
+ should NOT be adjusted. When the interrupt eventually occurs the semaphore
+ will get V’ed by the interrupt handler.
+ * The process count and soft-blocked variables need to be adjusted accordingly.
+ * Processes (i.e. ProcBlk’s) can’t hide. A ProcBlk is either the current process,
+ sitting on the ready queue, blocked on a device semaphore, or blocked on a non-device semaphore.
+ *
+ *
  * EX: void SYSCALL (TERMINATEPROCESS)
  *   Where TERMINATEPROCESS has the value of 2.
  */
 HIDDEN void sys2_terminateProcess() {
-  /* Not sure if we will abstract away the method further */
-  /*
-   * From the Kaya specifications (to be simplified later):
-   * The root of the sub-tree of terminated processes must be “orphaned” from its parents; its parent can no longer have this ProcBlk as one of its progeny.
-   * If the value of a semaphore is negative, it is an invariant that the abso- lute value of the semaphore equal the number of ProcBlk’s blocked on that semaphore. Hence if a terminated process is blocked on a semaphore, the value of the semaphore must be adjusted; i.e. incremented.
-   * If a terminated process is blocked on a device semaphore, the semaphore should NOT be adjusted. When the interrupt eventually occurs the semaphore will get V’ed by the interrupt handler.
-   * The process count and soft-blocked variables need to be adjusted accord- ingly.
-   * Processes (i.e. ProcBlk’s) can’t hide. A ProcBlk is either the current pro- cess, sitting on the ready queue, blocked on a device semaphore, or blocked on a non-device semaphore.
-   */
+  avadaKedavra(curProc);
+  scheduler();
 }
 
 /*
- * Perform V operation on a Semaphore
+ * Perform V (Increase) operation on a Semaphore
  *
  * EX: void SYSCALL (VERHOGEN, int *semaddr)
  *    Where the mnemonic constant VERHOGEN has the value of 3.
@@ -84,7 +121,7 @@ HIDDEN void sys2_terminateProcess() {
 HIDDEN void sys3_verhogen() {}
 
 /*
- * Perform P operation on a Semaphore
+ * Perform P (Pass) operation on a Semaphore
  *
  * EX: void SYSCALL (PASSEREN, int *semaddr)
  *    Where the mnemonic constant PASSEREN has the value of 4.

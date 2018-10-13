@@ -34,6 +34,7 @@ pcb_PTR pcbFree_h; /* head pointer to the pcbFree list */
 /*
  * freePcb - a mutator used to insert the element onto the pcbFree
  * list in which managed as a circular, doubly linked list.
+ * Risk of dangling pointer, handle in calling function?
  *
  * PARAM:	p - a pcb pointer to be added to the pcbFree list.
  */
