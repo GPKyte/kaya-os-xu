@@ -27,7 +27,9 @@
 #define	FALSE		0
 #define	ON			1
 #define	OFF			0
-#define	HIDDEN		static
+#define	OLD			0
+#define	NEW			1
+#define	HIDDEN	static
 #define	Bool		int
 #define	EOS		'\0'
 /* Turn 1 and 2 On, but 3 off: 1ON | 2ON & ~3ON */

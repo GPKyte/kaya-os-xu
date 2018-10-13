@@ -146,10 +146,19 @@ HIDDEN void sys4_passeren() {}
  */
 HIDDEN void sys5_specifyExceptionStateVector() {
   /* Check wether exception state vector is already specified (error) */
-  /* Yes: call SYS2 */
+  if(curProc->p_exceptionConfig[OLD][oldSys.s_a1] != NULL
+    || curProc->p_exceptionConfig[NEW][oldSys.s_a1] != NULL) {
+    /* Error, exception state already specified */
+    sys2_terminateProcess();
+    return;
+  }
 
   /* Specify old and new state vectors */
-  /* Return contral to process (LDST) */
+  curProc->p_exceptionConfig[OLD][oldSys.s_a1] = (state_t *) oldSys.s_a2;
+  curProc->p_exceptionConfig[NEW][oldSys.s_a1] = (state_t *) oldSys.s_a3;
+
+  /* Return control to process (LDST) */
+  loadState(oldSys);
 }
 
 /*

@@ -98,7 +98,10 @@ typedef struct pcb_t {
 					*p_old,		/* pointer to next older sibling */
 					*p_yng;		/* pointer to next younger sibling */
 
-	state_t 		p_s;		/* processor state */
+	/* state exception vector array [OLD/NEW][exceptionType] */
+	state_t	*p_exceptionConfig[2][3];
+
+	state_t 	p_s;		/* processor state */
 	int 			*p_semAdd;	/* pointer to semaphore on which process blocked */
 } pcb_t, *pcb_PTR;
 
