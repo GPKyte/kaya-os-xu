@@ -99,7 +99,7 @@ HIDDEN void sys1_createProcess() {
     return;
   }
 
-  copyState(&(oldSys.s_a1), &child);
+  copyState(oldSys.s_a1, &(child.p_s));
   insertChild(curProc, child);
 
   oldSys.s_v0 = CHILD;
