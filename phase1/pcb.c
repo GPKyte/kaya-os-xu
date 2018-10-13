@@ -79,6 +79,12 @@ pcb_PTR allocPcb (void) {
 		gift->p_old = NULL;
 		gift->p_yng = NULL;
 		gift->p_semAdd = NULL;
+		gift->p_exceptionConfig[OLD][TLBTRAP] = NULL;
+		gift->p_exceptionConfig[OLD][PROGTRAP] = NULL;
+		gift->p_exceptionConfig[OLD][SYSTRAP] = NULL;
+		gift->p_exceptionConfig[NEW][TLBTRAP] = NULL;
+		gift->p_exceptionConfig[NEW][PROGTRAP] = NULL;
+		gift->p_exceptionConfig[NEW][SYSTRAP] = NULL;
 	}
 	return (gift);
 }
