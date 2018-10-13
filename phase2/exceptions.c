@@ -60,6 +60,29 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
 }
 
 /*
+ *
+ */
+HIDDEN genericExceptionTrapHandler(int exceptionType) {
+  /* Check exception type and existence of a specified excep state vector */
+  if(curProc->p_exceptionConfig[OLD][exceptionType] == NULL
+    || curProc->p_exceptionConfig[NEW][exceptionType] == NULL) {
+    /* Default, exception state not specified */
+    sys2_terminateProcess();
+    return;
+  }
+
+  /*
+   * Pass up the processor state from old area into the process blk's
+   * Specified old area address. Then load the pcb's specified new area into
+   * the Process block.
+   * TODO: clarify what is stored and loaded, i.e. STST vs copyState
+   */
+  copyState(oldSys, curProc->p_exceptionConfig[OLD][exceptionType]);
+  copyState(curProc->p_exceptionConfig[NEW][exceptionType], &(curProc->p_s));
+  loadState(&(curProc->p_s));
+}
+
+/*
  * Creates new process with given state as child of executing process
  *
  * EX: int SYSCALL (CREATEPROCESS, state_t *statep)
@@ -218,17 +241,11 @@ void sysCallHandler() {
  * old state vector's Cause.ExcCode
  *
  * Either passes up the offending process or terminates it (sys2) per
- * the existence of a specified exceptiont state vector (sys5)
+ * the existence of a specified exception state vector (sys5)
  */
 void trapHandler() {
-  /* Check excptn type and existence of a specified exception state vector */
-    /* Terminate */
-
-    /*
-     * Pass up the processor state from old area into the process blk's
-     * Specified old area address. Then load the pcb's specified new area into
-     * the Process block.
-     */
+  oldSys = (state_t *) ROMPAGESTART + 4 * STATESIZE;
+  genericExceptionTrapHandler(PROGTRAP);
 }
 
 /*
@@ -241,5 +258,6 @@ void trapHandler() {
  * the existence of a specified exceptiont state vector (sys5)
  */
 void tlbHandler() {
-  /* Same as trapHandler, delete this comment once implemented */
+  oldSys = (state_t *) ROMPAGESTART + 2 * STATESIZE;
+  genericExceptionTrapHandler(TLBTRAP);
 }
