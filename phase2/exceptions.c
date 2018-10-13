@@ -9,7 +9,7 @@
  * Based on context from old-state vectors, decides course of action
  * loads the corresponding and appropriate new context.
  *
- * Uses oldState globally for simplicity and speed of reference
+ * Uses oldSys globally for simplicity and speed of reference
  * parameters and return values are handled at psuedo-register level
  * by accessing and mutating stored context.
  *
@@ -18,10 +18,18 @@
  * DATE PUBLISHED: 10.04.2018
  *************************************************************/
 
-state_t *oldState;
+#define CHILD 0;
+#define NOCHILD -1;
+state_t *oldSys;
 
 /********************** Helper methods **********************/
 
+/*
+ * An abstraction of LDST() to aid in debugging and encapsulation
+ */
+HIDDEN void loadState(state_t *statep) {
+  LDST(&statep);
+}
 /*
  * Creates new process with given state as child of executing process
  *
@@ -32,7 +40,20 @@ state_t *oldState;
  */
 HIDDEN void sys1_createProcess() {
   /* Birth new process as child of executing pcb */
+  pcb_PTR child = allocPcb();
+
+  if(child == NULL) {
+    oldSys.s_v0 = NOCHILD;
+    return;
+  }
+
+  copyState(&(oldSys.s_a1), &child);
+  insertChild(curProc, child);
+
+  oldSys.s_v0 = CHILD;
+  insertProcQ(&readyQ, child); /* insert child to the readyQ */
   /* Return control to calling process */
+  loadState(&oldSys);
 }
 
 /*
