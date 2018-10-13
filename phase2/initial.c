@@ -44,10 +44,10 @@ int main() {
   RAMTOP = (devregarea->rambase) + (devregarea->ramsize);
 
   /* Init new processor state areas */
-  state_PTR intNewArea = ROMPAGESTART + STATESIZE;
-  state_PTR tlbMgntNewArea = ROMPAGESTART + 3 * STATESIZE;
-  state_PTR pgrmTrpNewArea = ROMPAGESTART + 5 * STATESIZE;
-  state_PTR sysCallNewArea = ROMPAGESTART + 7 * STATESIZE;
+  state_PTR intNewArea = (state_t *) ROMPAGESTART + STATESIZE;
+  state_PTR tlbMgntNewArea = (state_t *) ROMPAGESTART + 3 * STATESIZE;
+  state_PTR pgrmTrpNewArea = (state_t *) ROMPAGESTART + 5 * STATESIZE;
+  state_PTR sysCallNewArea = (state_t *) ROMPAGESTART + 7 * STATESIZE;
 
   for(i = 0; i < STATEREGNUM; i++) {
     intNewArea->p_s.s_reg[i] = 0;
