@@ -18,6 +18,14 @@
  * DATE PUBLISHED: 10.04.2018
  *************************************************************/
 
+#include "../h/const.h"
+#include "../h/types.h"
+
+#include "../e/pcb.e"
+#include "../e/asl.e"
+#include "../e/scheduler.e"
+#include "/usr/local/include/umps2/umps/libumps.e"
+
 #define CHILD 0;
 #define NOCHILD -1;
 state_t *oldSys;
@@ -28,9 +36,14 @@ state_t *oldSys;
  * An abstraction of LDST() to aid in debugging and encapsulation
  */
 HIDDEN void loadState(state_t *statep) {
-  LDST(&statep);
+  LDST(statep);
 }
 
+/*
+ * Mutator method to recursively kill the given pcb_PTR and all of its
+ * progeny. Leaves parent and siblings unaffected.
+ * Used for sys2; impacts global variable curProc
+ */
 HIDDEN void avadaKedavra(pcb_PTR p) {
   /* top-down method */
   while(!emptyChild(p)) {
@@ -45,7 +58,7 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
     outChild(p);
     curProc = NULL;
   } else if(outProcQ(&readyQ, p) == p) {
-    /* Know p was on Ready Queue, do nothing */
+    /* Know p was on Ready Queue, do nothing more */
   } else if(outBlocked(p) == p) {
     /* if p is a device sema4: soft block-- & leave sema4++ to intHandler */
     /* if NOT a device sema4: sema4++ */
@@ -54,13 +67,15 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
     error();
   }
 
-  /* Adjust procCount and softBlkCount */
+  /* Adjust procCount */
   freePcb(p);
   procCount--;
 }
 
 /*
- *
+ * Decides whether to kill process for exception,
+ *    or to fulfill specified exception behaviour.
+ * PARAM: exceptionType {0: TLB, 1: PgrmTrap, 2: SYS/Bp}
  */
 HIDDEN genericExceptionTrapHandler(int exceptionType) {
   /* Check exception type and existence of a specified excep state vector */
@@ -88,7 +103,7 @@ HIDDEN genericExceptionTrapHandler(int exceptionType) {
  * EX: int SYSCALL (CREATEPROCESS, state_t *statep)
  *    Where CREATEPROCESS has the value of 1.
  * PARAM: a1 = physical address of processor state area
- * RETURN: v0 = 0 on success, -1 (NULL) on failure
+ * RETURN: v0 = 0 (CHILD) on success, -1 (NOCHILD) on failure
  */
 HIDDEN void sys1_createProcess() {
   /* Birth new process as child of executing pcb */
@@ -105,7 +120,7 @@ HIDDEN void sys1_createProcess() {
   oldSys.s_v0 = CHILD;
   insertProcQ(&readyQ, child); /* insert child to the readyQ */
   /* Return control to calling process */
-  loadState(&oldSys);
+  loadState(oldSys);
 }
 
 /*
@@ -223,16 +238,53 @@ HIDDEN void sys8_waitForIODevice() {}
 
 /***************** Start of external methods *****************/
 /*
- * Offer 255 system calls; 1-8 are privileged; 9 is for breakpoints
- * The rest are passed up. See helper methods for description of
- * each system call.
+ * Offer 255 system calls; 1-8 are privileged & the rest are passed up
+ * See helper methods for description of each system call.
+ *
+ * PARAM: a0 = int for system call number
  */
 void sysCallHandler() {
-  /* Load in context from old-state vector */
+  oldSys = (state_t *) ROMPAGESTART + 6 * STATESIZE;
   /* Increment PC regardless of whether process lives after this call */
-
+  oldSys.s_pc = oldSys.s_pc + 4;
   /* Check for reserved instruction error pre-emptively for less code */
+  Bool isUserMode = (oldSys.s_status & USERMODEON);
+  if(isUserMode && oldSys.s_a0 <= 8 && oldSys.s_a0 > 0) {
+    /* Set Reserved Instruction in Cause register and kill process */
+    sys2_terminateProcess();
+    return;
+  }
   /* Let a0 register decide SysCall type and execute appropriate method */
+  switch (oldSys.s_a0) {
+    case 1:
+      sys1_createProcess(); /* Keeps control */
+      break;
+    case 2:
+      sys2_terminateProcess(); /* Changes control */
+      break;
+    case 3:
+      sys3_verhogen(); /* ? control */
+      break;
+    case 4:
+      sys4_passeren(); /* ? control */
+      break;
+    case 5:
+      sys5_specifyExceptionStateVector(); /* Keeps control */
+      break;
+    case 6:
+      sys6_getCPUTime(); /* Keeps control */
+      break;
+    case 7:
+      sys7_waitForClock(); /* ? control */
+      break;
+    case 8:
+      sys8_waitForIODevice(); /* ? control */
+      break;
+    default:
+      genericExceptionTrapHandler(SYSTRAP); /* Changes control */
+      break;
+  }
+
 }
 
 /*
