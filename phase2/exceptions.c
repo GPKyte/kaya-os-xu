@@ -156,7 +156,18 @@ HIDDEN void sys2_terminateProcess() {
  *    Where the mnemonic constant VERHOGEN has the value of 3.
  * PARAM: a1 = semaphore address
  */
-HIDDEN void sys3_verhogen() {}
+HIDDEN void sys3_verhogen() {
+  int mutex = *(oldSys->s_a1);
+  mutex--;
+  if(mutex < 0) {
+    /* Put process in line to use semaphore and move on */
+    insertBlocked(&mutex, curProc);
+    scheduler();
+  } else {
+    /* Ready to go right now */
+    loadState(&oldSys);
+  }
+}
 
 /*
  * Perform P (Pass) operation on a Semaphore
@@ -165,7 +176,16 @@ HIDDEN void sys3_verhogen() {}
  *    Where the mnemonic constant PASSEREN has the value of 4.
  * PARAM: a1 = semaphore address
  */
-HIDDEN void sys4_passeren() {}
+HIDDEN void sys4_passeren() {
+  int mutex = *(oldSys->s_a1);
+  mutex++;
+  if(mutex <= 0) {
+    /* Give turn to next waiting process from semaphore */
+    pcb_PTR p = removeBlocked(&mutex);
+    insertBlocked(&index, p);
+  }
+  loadState(&oldSys)
+}
 
 /*
  * Specify where a process will save and load its state from
