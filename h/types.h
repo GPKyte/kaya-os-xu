@@ -106,8 +106,11 @@ typedef struct pcb_t {
 	unsigned int p_CPUTime; /* total exec time in μ seconds */
 } pcb_t, *pcb_PTR;
 
-/* semaphore descriptor type */
+/* Either we use 49 semd's; 32normal + 2*8terminal (r/w) + 1timer for space */
+/* Or we use 96; 8lines * 8devices and accept the lost space for clean logic */
+#define MAXSEM 96
 typedef struct semd_t {
+/* semaphore descriptor type */
 	struct semd_t	*s_next;		/* next element on the ASL */
 	int				*s_semAdd;		/* pointer to the semaphore */
 	pcb_t			*s_procQ;		/* tail pointer to a process queue */

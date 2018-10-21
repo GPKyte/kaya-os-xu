@@ -19,7 +19,7 @@
 #include "../e/asl.e"
 
 semd_PTR semdFree_h; /* pointer to the head of semdFree list */
-semd_PTR semd_h; /* pointer to the active head list */
+semd_PTR semd_h; /* pointer to the active semaphore list */
 
 /********************* Helper methods ***********************/
 /*
@@ -200,25 +200,25 @@ pcb_PTR headBlocked (int *semAdd) {
 }
 
 /*
- * initAS: - a method used to initialize the semdFree list to contain
- *		all the elements of the static array of MAXPROC semaphores.
+ * initASL: - a method used to initialize the semdFree list to contain
+ *		all the elements of the static array of MAXSEM semaphores.
  *
  * This method will be only called once during data structure initialization.
  */
 void initASL (void) {
 	int i;
-	static semd_t semdTable[MAXPROC + 2]; /* +2 for dummy nodes */
+	static semd_t semdTable[MAXSEM + 2]; /* +2 for dummy nodes */
 
 	semdFree_h = mkEmptySemdList(); /* Init semdFree list */
 
-	for(i=0; i < MAXPROC; i++) {
+	for(i=0; i < MAXSEM; i++) {
 		freeSemd(&(semdTable[i]));
 	}
 
 	/* Set ASL dummy nodes */
-	semdTable[MAXPROC].s_semAdd = 0;
-	semd_h = &(semdTable[MAXPROC]);
-	semdTable[MAXPROC + 1].s_semAdd = MAXINT;
-	semd_h->s_next = &(semdTable[MAXPROC + 1]);
+	semdTable[MAXSEM].s_semAdd = 0;
+	semd_h = &(semdTable[MAXSEM]);
+	semdTable[MAXSEM + 1].s_semAdd = MAXINT;
+	semd_h->s_next = &(semdTable[MAXSEM + 1]);
 	semd_h->s_next->s_next = NULL;
 }

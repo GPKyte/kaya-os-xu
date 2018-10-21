@@ -28,6 +28,7 @@ extern void test();
 int procCount, softBlkCount;
 pcb_PTR curProc;
 pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
+static int[MAXSEMD] semaphores; /* static may be redundant here */
 
 /*
  * Populate the four new areas in low memory. Allocate finite
@@ -40,7 +41,13 @@ int main() {
   devregarea_t *devregarea;
   unsigned int baseStatus;
 
-  devregarea = (devregarea_t *) RAMBASEADDR; /* Predefined hardware details */
+  /* Init semaphores to 0 */
+  /* The first semaphore describes device at interrupt line 0, device 0 */
+  for(i = 0; i < MAXSEM; i++) {
+    semaphores[i] = 0;
+  }
+
+  devregarea = (devregarea_t *) RAMBASEADDR; /* ROM defined hardware info */
   RAMTOP = (devregarea->rambase) + (devregarea->ramsize);
 
   /* Init new processor state areas */
