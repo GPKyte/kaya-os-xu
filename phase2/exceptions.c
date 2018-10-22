@@ -185,7 +185,7 @@ HIDDEN void sys4_passeren() {
     pcb_PTR p = removeBlocked(&mutex);
     insertBlocked(&index, p);
   }
-  loadState(&oldSys)
+  loadState(&oldSys);
 }
 
 /*
@@ -235,25 +235,51 @@ HIDDEN void sys6_getCPUTime() {
 /*
  * Performs a P operation on the nucleus-maintained pseudo-clock timer
  * semaphore. This semaphore is V’ed every 100 milliseconds
- * automatically by the nucleus.
+ * automatically by the nucleus elsewhere; do not set timer here.
  *
  * EX: void SYSCALL (WAITCLOCK)
  *    Where the mnemonic constant WAITCLOCK has the value of 7.
  */
-HIDDEN void sys7_waitForClock() {}
+HIDDEN void sys7_waitForClock() {
+  /* Select and P the psuedo-clock timer */
+  int* psuedoClock = &(semaphores[1 * 8 + 0]); /* Line 2, device 0 */
+  oldSys.s_a1 = psuedoClock; /* Set argument for sys4 */
+  sys4_passeren();
+}
 
 /*
  * Put process into a blocked / waiting state and perform a P operation
  * on the semaphore associated with the I/O device
  * indicated by the values in a1, a2[, a3]
  *
- * EX: unsigned int SYSCALL (WAITIO, int intlNo, int dnum, int waitForTermRead)
+ * EX: unsigned int SYSCALL (WAITIO, int intlNo, int dnum, Bool isReadTerminal)
  *    Where the mnemonic constant WAITIO has the value of 8.
- * PARAM: a1 = Interrupt line number
+ * PARAM: a1 = Interrupt line number ([0..7])
  *        a2 = device number ([0..7])
  *        a3 = wait for terminal read operation -> SysCall TRUE / FALSE
  */
-HIDDEN void sys8_waitForIODevice() {}
+HIDDEN void sys8_waitForIODevice() {
+  /* Choose appropriate semaphore */
+  int lineNumber = oldSys.s_a1;
+  int deviceNumber = oldSys.s_a2;
+  Bool isReadTerminal = oldSys.s_a3;
+
+  int* semAdd = &(semaphores[(lineNumber + isReadTerminal) * 8 + deviceNumber]);
+
+  /* Remove curProc and place on semaphore if successful */
+  if(outProcQ(curProc) == NULL) {
+    PANIC();
+  }
+
+  /* Replicate sys4 code for special handling */
+  (*semAdd)--;
+  if((*semAdd) < 0) {
+    insertBlocked(semAdd, curProc);
+    softBlkCount++;
+  } else {
+    PANIC(); /* Error condition, will explore later */
+  }
+}
 
 
 /***************** Start of external methods *****************/
