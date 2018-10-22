@@ -91,7 +91,9 @@
 #define	ALIGNED(A)	(((unsigned)A & 0x3) == 0)
 
 /* Useful operations */
+/* Accesses time of day clock at that moment, this TOD clock has no interrupt */
 #define STCK(T) ((T) = ((* ((cpu_t *) TODLOADDR)) / (* ((cpu_t *) TIMESCALEADDR))))
+/* Sets count-down timer, used for giving a process a QUANTUMTIME to execute */
 #define LDIT(T)	((* ((cpu_t *) INTERVALTMR)) = (T) * (* ((cpu_t *) TIMESCALEADDR)))
 
 

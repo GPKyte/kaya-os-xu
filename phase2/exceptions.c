@@ -36,6 +36,7 @@ state_t *oldSys;
  * An abstraction of LDST() to aid in debugging and encapsulation
  */
 HIDDEN void loadState(state_t *statep) {
+  STCK(startTOD); /* Also captures loading time, is there a better way? */
   LDST(statep);
 }
 
@@ -170,7 +171,7 @@ HIDDEN void sys3_verhogen() {
 }
 
 /*
- * Perform P (Pass) operation on a Semaphore
+ * Perform P (Test) operation on a Semaphore
  *
  * EX: void SYSCALL (PASSEREN, int *semaddr)
  *    Where the mnemonic constant PASSEREN has the value of 4.
@@ -227,9 +228,8 @@ HIDDEN void sys5_specifyExceptionStateVector() {
  * RETURN: v0 = processor time in microseconds
  */
 HIDDEN void sys6_getCPUTime() {
-  int partialQuantum = QUANTUMTIME - getTIMER();
-  int totalTime = curProc->p_CPUTime;
-  oldSys.s_v0 = partialQuantum + totalTime;
+  int partialQuantum = stopTOD - startTOD;
+  oldSys.s_v0 = partialQuantum + curProc->p_CPUTime; /* set return for LDST */
 }
 
 /*
@@ -264,6 +264,8 @@ HIDDEN void sys8_waitForIODevice() {}
  * PARAM: a0 = int for system call number
  */
 void sysCallHandler() {
+  /* Stop counting time for curProc */
+  STCK(stopTOD);
   oldSys = (state_t *) ROMPAGESTART + 6 * STATESIZE;
   /* Increment PC regardless of whether process lives after this call */
   oldSys.s_pc = oldSys.s_pc + 4;

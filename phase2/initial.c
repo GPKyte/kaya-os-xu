@@ -25,6 +25,8 @@
 
 extern void test();
 
+cpu_t startTOD;
+cpu_t stopTOD;
 int procCount, softBlkCount;
 pcb_PTR curProc;
 pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
