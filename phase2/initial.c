@@ -11,7 +11,7 @@
 #include "/usr/local/include/umps2/umps/libumps.e"
 
 int procCount, softBlkCount;
-pcb_PTR curProc;
+pcb_PTR curProc; /* current running process */
 pcb_PTR readyQ; /* 'ready' status waiting for the scheduler to pick them to run */
 
 /*
@@ -87,11 +87,7 @@ int main() {
     p->p_s.s_reg[i] = 0;
   }
 
-  /* set a single process status to:
-   *    VM off,
-   *    Interrupts enabled
-   *    proc Local Timer enabled
-   *    and in kernel-mode */
+  /* set a single process status to: VM off, Interrupts enabled, kernel-mode, and Local Timer enabled */
   /* p->p_s.s_status = 0; */
   p->p_s.s_status = baseStatus | 1;
   p->p_s.s_sp = RAMTOP - PAGESIZE;
