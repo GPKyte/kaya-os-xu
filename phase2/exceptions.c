@@ -127,20 +127,15 @@ HIDDEN void sys1_createProcess() {
 /*
  * Kills the executing process and all descendents
  *
- * From the Kaya specifications (to be simplified later):
- * The root of the sub-tree of terminated processes must be “orphaned” from
- its parents; its parent can no longer have this ProcBlk as one of its progeny.
- * If the value of a semaphore is negative, it is an invariant that the
- absolute value of the semaphore equal the number of ProcBlk’s blocked on
- that semaphore. Hence if a terminated process is blocked on a semaphore, the
-  value of the semaphore must be adjusted; i.e. incremented.
- * If a terminated process is blocked on a device semaphore, the semaphore
- should NOT be adjusted. When the interrupt eventually occurs the semaphore
- will get V’ed by the interrupt handler.
- * The process count and soft-blocked variables need to be adjusted accordingly.
- * Processes (i.e. ProcBlk’s) can’t hide. A ProcBlk is either the current process,
- sitting on the ready queue, blocked on a device semaphore, or blocked on a non-device semaphore.
+ * Orphan curProc from its parent and siblings
+ * If a terminated process is blocked on a semaphore,
+ * increment the semaphore to indicate a loss of a blocked job.
+ * Else, if a terminated process is blocked on a device semaphore, the semaphore
+ * should NOT be adjusted because when the I/O eventually occurs,
+ * the semaphore will get V’ed by the interrupt handler.
  *
+ * A ProcBlk is either the current process, sitting on the ready queue,
+ * blocked on a device semaphore, or blocked on a non-device semaphore.
  *
  * EX: void SYSCALL (TERMINATEPROCESS)
  *   Where TERMINATEPROCESS has the value of 2.
