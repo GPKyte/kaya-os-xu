@@ -1,47 +1,62 @@
-/*
- * initial.c - Initialize the primary data structures for OS
- * Assign interrupt handlers and load main program into memory.
- */
+/*************************************************************
+ * Initial.c
+ *
+ * Start Kaya OS:
+ *    Define states of the 4 "New" state vectors (4 Old left empty)
+ *    Init Queue service for processes
+ *    Init Active Semaphore List
+ *
+ * Status bit definitions are kept in constants file
+ * Hardware generates machine specific info and ROM code
+ *    like RAMSIZE at RAMBASEADDR before this is run
+ *
+ * AUTHORS: Ploy Sithisakulrat & Gavin Kyte
+ * ADVISOR/CONTRIBUTER: Michael Goldweber
+ * DATE PUBLISHED: 10.04.2018
+ *************************************************************/
 
 #include "../h/const.h"
 #include "../h/types.h"
 
 #include "../e/pcb.e"
 #include "../e/asl.e"
+#include "../e/scheduler.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
+extern void test();
+
+cpu_t startTOD;
+cpu_t stopTOD;
 int procCount, softBlkCount;
-pcb_PTR curProc; /* current running process */
-pcb_PTR readyQ; /* 'ready' status waiting for the scheduler to pick them to run */
+pcb_PTR curProc;
+pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
+static int[MAXSEMD] semaphores; /* static may be redundant here */
 
 /*
- * main() populates the four new areas in low memory
- *  - set the sp (last page of physical memory)
- *  - set PC
- *  - set the status: VM OFF
- *                    Interrupts masked (disabled)
- *                    Supervisor mode on (kernel-mode)
- * It is being called only once.
+ * Populate the four new areas in low memory. Allocate finite
+ * resources for the nucleus to manage.
+ * Only runs once. Scheduler takes control after this method
  */
 int main() {
   int i;
   unsigned int RAMTOP;
   devregarea_t *devregarea;
-  unsigned int localTimeStatusBit = 1 << 27;
-  unsigned int VMStatusBit = 0 << 24;
-  unsigned int kernalModeStatusBit = 0 << 1;
-  unsigned int intStatusBit = 0;
-  unsigned int baseStatus = localTimeStatusBit | VMStatusBit | kernalModeStatusBit | intStatusBit;
+  unsigned int baseStatus;
 
-  devregarea = (devregarea_t *) RAMBASEADDR;
-  /* initialize RAMTOP */
+  /* Init semaphores to 0 */
+  /* The first semaphore describes device at interrupt line 0, device 0 */
+  for(i = 0; i < MAXSEM; i++) {
+    semaphores[i] = 0;
+  }
+
+  devregarea = (devregarea_t *) RAMBASEADDR; /* ROM defined hardware info */
   RAMTOP = (devregarea->rambase) + (devregarea->ramsize);
 
   /* Init new processor state areas */
-  state_PTR intNewArea = ROMPAGESTART + STATESIZE;
-  state_PTR tlbMgntNewArea = ROMPAGESTART + 3 * STATESIZE;
-  state_PTR pgrmTrpNewArea = ROMPAGESTART + 5 * STATESIZE;
-  state_PTR sysCallNewArea = ROMPAGESTART + 7 * STATESIZE;
+  state_PTR intNewArea = (state_t *) ROMPAGESTART + STATESIZE;
+  state_PTR tlbMgntNewArea = (state_t *) ROMPAGESTART + 3 * STATESIZE;
+  state_PTR pgrmTrpNewArea = (state_t *) ROMPAGESTART + 5 * STATESIZE;
+  state_PTR sysCallNewArea = (state_t *) ROMPAGESTART + 7 * STATESIZE;
 
   for(i = 0; i < STATEREGNUM; i++) {
     intNewArea->p_s.s_reg[i] = 0;
@@ -66,7 +81,8 @@ int main() {
   pgrmTrpNewArea->s_sp = RAMTOP;
   sysCallNewArea->s_sp = RAMTOP;
 
-  /* status: VM OFF, Interrupts disabled, kernel-mode, and Local Timer enabled */
+  /* status: VM off, interrupts off, kernal-mode, and local timer on */
+  baseStatus = LOCALTIMEON & ~VMpON & ~INTpON & ~USERMODEON);
   intNewArea->status = baseStatus;
   tlbMgntNewArea->status = baseStatus;
   pgrmTrpNewArea->status = baseStatus;
@@ -87,14 +103,19 @@ int main() {
     p->p_s.s_reg[i] = 0;
   }
 
-  /* set a single process status to: VM off, Interrupts enabled, kernel-mode, and Local Timer enabled */
-  /* p->p_s.s_status = 0; */
-  p->p_s.s_status = baseStatus | 1;
+  /*
+   * Setting state for initial process:
+   *    VM off, interrupts on, local timer on, user mode off
+   *    Stack starts below reserved page
+   *    Set PC to start at P2's test
+   */
+  p->p_s.s_status = INTMASKOFF | INTpON | LOCALTIMEON & ~USERMODEON & ~VMpON;
   p->p_s.s_sp = RAMTOP - PAGESIZE;
   p->p_s.s_pc = (memaddr) test;
   p->p_s.s_t9 = p->p_s.s_pc; /* For technical reasons, setting t9 to pc */
 
   procCount++;
   insertProcQ(&readyQ, p);
+  scheduler();
   return 0;
 }

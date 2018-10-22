@@ -98,12 +98,20 @@ typedef struct pcb_t {
 					*p_old,		/* pointer to next older sibling */
 					*p_yng;		/* pointer to next younger sibling */
 
-	state_t 		p_s;		/* processor state */
-	int 			*p_semAdd;	/* pointer to semaphore on which process blocked */
+	/* state exception vector array [OLD/NEW][exceptionType] */
+	state_t	*p_exceptionConfig[2][3];
+
+	state_t 	p_s;		/* processor state */
+	int 			*p_semAdd;	/* ptr to sema4 where pcb blocked */
+	unsigned int p_CPUTime; /* total exec time in μ seconds */
 } pcb_t, *pcb_PTR;
 
-/* semaphore descriptor type */
+/* Either we use 49 sem's; 32normal + 2*8terminal (r/w) + 1timer
+ * Or we use 104; 8lines * 8devices + 8write terminals
+ * and accept the lost space for cleaner logic */
+#define MAXSEM 104
 typedef struct semd_t {
+/* semaphore descriptor type */
 	struct semd_t	*s_next;		/* next element on the ASL */
 	int				*s_semAdd;		/* pointer to the semaphore */
 	pcb_t			*s_procQ;		/* tail pointer to a process queue */
