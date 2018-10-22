@@ -21,8 +21,17 @@
 #define INTERVALTMR   0x10000020
 #define TIMESCALEADDR 0x10000024
 #define QUANTUMTIME   5000 /* microseconds, 5 milliseconds */
-#define INTERVALTIME  100000 
+#define INTERVALTIME  100000
 
+/* System call constants */
+#define CREATEPROCESS				1
+#define TERMINATEPROCESS			2
+#define VERHOGEN				3
+#define PASSEREN				4
+#define SPECTRAPVEC				5
+#define GETCPUTIME				6
+#define WAITCLOCK				7
+#define WAITIO					8
 
 /* utility constants */
 #define	TRUE		1
