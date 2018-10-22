@@ -21,6 +21,7 @@
 #define INTERVALTMR   0x10000020
 #define TIMESCALEADDR 0x10000024
 #define QUANTUMTIME   5000 /* microseconds, 5 milliseconds */
+#define INTERVALTIME  100000 
 
 
 /* utility constants */

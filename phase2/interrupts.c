@@ -45,6 +45,8 @@ void intHandler() {
 	/* V the semaphore of the interrupting subdevice */
 		/* Index of sema4 = line * 8 + device index */
 	/* Handle case for timer, use psuedo-clock timer sema4 */
+		/* Perform V operation on psuedo-clock timer */
+		/* LDIT(INTERVALTIME); /* Arbitrary interval time */
 	/* Handle weird timing issues surrounding sys8-wait command */
 		/* Use result of V operation to determine race condition */
 		/* If waiting for this I/O, store status in process */
