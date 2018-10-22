@@ -40,10 +40,39 @@ HIDDEN void ack(/* Address to interrupting device */)
 
 /********************** External Methods *********************/
 void intHandler() {
+	devregarea_t devregarea;
+	int lineIndex; /* 0 is line 3 in deviceRegisterArea */
+	int deviceIndex;
+	int deviceMask;
+	int interruptingSemaphore;
+	device_t interruptingDevice;
+	unsigned int interruptStatus;
+	/* Check Processor Local Timer and Interval Timers */
+
+	/* Determine line number of highest priority interrupt */
+	devregarea = (devregarea_t *) RAMBASEADDR;
+	lineIndex = 0;
+	while (devregarea->interrupt_dev[lineIndex] == 0) {
+		++lineIndex;
+	}
+
+	/* Select device number */
+	deviceIndex = 0;
+	deviceMask = 1;
+	while (devregarea->interrupt_dev[lineIndex] & deviceMask) == 0) {
+		deviceIndex++;
+		deviceMask = 1 << deviceIndex;
+	}
+
+	interruptingDevice = devregarea->devreg[lineIndex * 8 + deviceIndex];
 	/* Save status for special handling */
+	interruptStatus = interruptingDevice->d_status;
+
 	/* Acknowledge interrupt to turn it off */
-	/* V the semaphore of the interrupting subdevice */
-		/* Index of sema4 = line * 8 + device index */
+	ack(&interruptingDevice);
+
+	interruptingSemaphore = /* Find semaphore */;
+	SYSCALL(VERHOGEN, &interruptingSemaphore);
 	/* Handle case for timer, use psuedo-clock timer sema4 */
 		/* Perform V operation on psuedo-clock timer */
 		/* LDIT(INTERVALTIME); /* Arbitrary interval time */
