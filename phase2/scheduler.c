@@ -83,7 +83,7 @@ void scheduler() {
           } else {
             /* Prepare state for next job */
               /* Put time on clock */
-            curProc.p_s = INTMASKOFF; /* turn interrupts on */
+            curProc->p_s.s_status = INTMASKOFF; /* turn interrupts on */
             setTIMER(INTERVALTIME) /* TODO: INTERVALTIME ?? */
 
             /* Decide which process goes next */
@@ -94,6 +94,10 @@ void scheduler() {
       }
     } else {
       /* TODO: clean this up to use loadState() in exceptions.c*/
-      LDST(&(curProc.p_s))
+      loadState(curProc);
     }
+}
+
+void loadState(state_t *statep) {
+  LDST(&(statep->p_s));
 }
