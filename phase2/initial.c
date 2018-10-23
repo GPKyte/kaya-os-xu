@@ -30,7 +30,7 @@ cpu_t stopTOD;
 int procCount, softBlkCount;
 pcb_PTR curProc;
 pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
-static int[MAXSEMD] semaphores; /* static may be redundant here */
+static int[MAXSEM] semaphores; /* static may be redundant here */
 
 /*
  * Populate the four new areas in low memory. Allocate finite
