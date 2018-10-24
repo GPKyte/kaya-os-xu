@@ -14,13 +14,14 @@
  *
  * AUTHORS: Ploy Sithisakulrat & Gavin Kyte
  * ADVISOR/CONTRIBUTER: Michael Goldweber
- * DATE PUBLISHED: 10.04.2018
+ * DATE PUBLISHED: 10.22.2018
  *************************************************************/
 #include "../h/const.h"
 #include "../h/types.h"
 
 #include "../e/pcb.e"
 #include "../e/asl.e"
+#include "../e/initial.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
 /* Time slice value in microseconds */
@@ -53,51 +54,37 @@ HIDDEN void putInPool(pcb_PTR p) {
 *   jobs, system will HALT, PANIC, or WAIT appropriately
 */
 void scheduler() {
-  /* Elevate priority by masking all interrupts */
-
-  /* Finished all jobs so HALT system */
-  /* Detected deadlock so PANIC */
-
+  /* TODO: Elevate priority by masking all interrupts? */
+  
+  state_t *waitState;
   /*
-   * Store curProc back in Queue if unfinished
+   * TODO: Store curProc back in Queue if unfinished
    * Otherwise release process and decrement procCount
    */
 
-  /* Decide which process goes next */
-    /* No ready jobs, so we WAIT for next interrupt */
-  /* Prepare state for next job */
+  curProc = removeFromPool();
+  if(curProc != NULL) {
+    /* Prepare state for next job */
     /* Put time on clock */
-    /* Load context of process and continue execution */
-    curProc = removeProcQ(&readyQ);
+    setLocalTimer(QUANTUMTIME) /* TODO: declare setLocalTimer */
+    loadState(&(curProc->p_s));
+  }
 
-    if(curProc == NULL) {
+  if(procCount == 0) { /* Finished all jobs so HALT system */
+    HALT();
+  } /* thus, procCount is positive */
 
-      if(emptyProcQ(readyQ)) {
+  if(softBlkCount == 0) { /* Detected deadlock so PANIC */
+    PANIC();
+  }
 
-        if(procCount == 0) { /* Finished all jobs so HALT system */
-          HALT();
-        } else if(procCount > 0) {
+  waitState = getSTATUS() | INTMASKOFF;
+  setSTATUS(waitState); /* turn interrupts on */
 
-          if(softBlkCount == 0) { /* Detected deadlock so PANIC */
-            PANIC();
-          } else {
-            /* Prepare state for next job */
-              /* Put time on clock */
-            curProc->p_s.s_status = INTMASKOFF; /* turn interrupts on */
-            setTIMER(INTERVALTIME) /* TODO: INTERVALTIME ?? */
-
-            /* Decide which process goes next */
-              /* No ready jobs, so we WAIT for next interrupt */
-            WAIT();
-          }
-        }
-      }
-    } else {
-      /* TODO: clean this up to use loadState() in exceptions.c*/
-      loadState(curProc);
-    }
+  /* No ready jobs, so we WAIT for next interrupt */
+  WAIT();
 }
 
 void loadState(state_t *statep) {
-  LDST(&(statep->p_s));
+  LDST(statep);
 }
