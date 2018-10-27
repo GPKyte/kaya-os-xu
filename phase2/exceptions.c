@@ -153,11 +153,11 @@ HIDDEN void sys2_terminateProcess() {
  * PARAM: a1 = semaphore address
  */
 HIDDEN void sys3_verhogen() {
-  int mutex = *(oldSys->s_a1);
-  mutex--;
-  if(mutex < 0) {
+  int mutex = oldSys->s_a1;
+  (*mutex)--;
+  if((*mutex) < 0) {
     /* Put process in line to use semaphore and move on */
-    insertBlocked(&mutex, curProc);
+    insertBlocked(mutex, curProc);
     scheduler();
   } else {
     /* Ready to go right now */
@@ -173,12 +173,13 @@ HIDDEN void sys3_verhogen() {
  * PARAM: a1 = semaphore address
  */
 HIDDEN void sys4_passeren() {
-  int mutex = *(oldSys->s_a1);
-  mutex++;
-  if(mutex <= 0) {
+  int *mutex = oldSys->s_a1;
+  (*mutex)++;
+  if((*mutex) <= 0) {
     /* Give turn to next waiting process from semaphore */
-    pcb_PTR p = removeBlocked(&mutex);
-    insertBlocked(&index, p);
+    if(headBlocked(mutex)) {
+      insertProcQ(&readyQ, removeBlocked(mutex));
+    }
   }
   loadState(&oldSys);
 }
@@ -237,9 +238,13 @@ HIDDEN void sys6_getCPUTime() {
  */
 HIDDEN void sys7_waitForClock() {
   /* Select and P the psuedo-clock timer */
-  int* psuedoClock = &(semaphores[1 * 8 + 0]); /* Line 2, device 0 */
-  oldSys.s_a1 = psuedoClock; /* Set argument for sys4 */
-  sys4_passeren();
+  (*psuedoClock)++;
+  if((*psuedoClock) <= 0) {
+    if(headBlocked(psuedoClock)) {
+      insertProcQ(&readyQ, removeBlocked(psuedoClock));
+      softBlkCount--;
+    }
+  }
 }
 
 /*
@@ -266,7 +271,7 @@ HIDDEN void sys8_waitForIODevice() {
     PANIC();
   }
 
-  /* Replicate sys4 code for special handling */
+  /* Replicate sys3 code for special handling */
   (*semAdd)--;
   if((*semAdd) < 0) {
     insertBlocked(semAdd, curProc);

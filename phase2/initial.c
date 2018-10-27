@@ -30,6 +30,7 @@ cpu_t startTOD;
 int procCount, softBlkCount;
 pcb_PTR curProc;
 pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
+int *psuedoClock; /* a semaphore */
 static int[MAXSEM] semaphores; /* static may be redundant here */
 
 /*
@@ -39,15 +40,15 @@ static int[MAXSEM] semaphores; /* static may be redundant here */
  */
 int main() {
   int i;
-  unsigned int ramtop;
+  unsigned int ramtop, baseStatus;
   devregarea_t *devregarea;
-  unsigned int baseStatus;
 
   /* Init semaphores to 0 */
   /* The first semaphore describes device at interrupt line 3, 1st device */
   for(i = 0; i < MAXSEM; i++) {
     semaphores[i] = 0;
   }
+  psuedoClock = &(semaphores[MAXSEM - 1]);
 
   devregarea = (devregarea_t *) RAMBASEADDR; /* ROM defined hardware info */
   ramtop = (devregarea->rambase) + (devregarea->ramsize);
