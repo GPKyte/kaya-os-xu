@@ -2,7 +2,8 @@
  * Initial.c
  *
  * Start Kaya OS:
- *    Define states of the 4 "New" state vectors (4 Old left empty)
+ *    Define states of the 4 "New" state vectors
+ *      (4 Old left empty)
  *    Init Queue service for processes
  *    Init Active Semaphore List
  *
@@ -26,7 +27,6 @@
 extern void test();
 
 cpu_t startTOD;
-cpu_t stopTOD;
 int procCount, softBlkCount;
 pcb_PTR curProc;
 pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
@@ -39,7 +39,7 @@ static int[MAXSEM] semaphores; /* static may be redundant here */
  */
 int main() {
   int i;
-  unsigned int RAMTOP;
+  unsigned int ramtop;
   devregarea_t *devregarea;
   unsigned int baseStatus;
 
@@ -50,20 +50,13 @@ int main() {
   }
 
   devregarea = (devregarea_t *) RAMBASEADDR; /* ROM defined hardware info */
-  RAMTOP = (devregarea->rambase) + (devregarea->ramsize);
+  ramtop = (devregarea->rambase) + (devregarea->ramsize);
 
   /* Init new processor state areas */
-  state_PTR intNewArea = (state_t *) ROMPAGESTART + STATESIZE;
-  state_PTR tlbMgntNewArea = (state_t *) ROMPAGESTART + 3 * STATESIZE;
-  state_PTR pgrmTrpNewArea = (state_t *) ROMPAGESTART + 5 * STATESIZE;
-  state_PTR sysCallNewArea = (state_t *) ROMPAGESTART + 7 * STATESIZE;
-
-  for(i = 0; i < STATEREGNUM; i++) {
-    intNewArea->p_s.s_reg[i] = 0;
-    tlbMgntNewArea->p_s.s_reg[i] = 0;
-    pgrmTrpNewArea->p_s.s_reg[i] = 0;
-    sysCallNewArea->p_s.s_reg[i] = 0;
-  }
+  state_PTR intNewArea = (state_t *) INTOLDAREA + STATESIZE;
+  state_PTR tlbMgntNewArea = (state_t *) TLBOLDAREA + STATESIZE;
+  state_PTR pgrmTrpNewArea = (state_t *) PGRMOLDAREA + STATESIZE;
+  state_PTR sysCallNewArea = (state_t *) SYSOLDAREA + STATESIZE;
 
   intNewArea->s_pc = (memaddr) intHandler;
   tlbMgntNewArea->s_pc = (memaddr) tlbHandler;
@@ -76,10 +69,10 @@ int main() {
   sysCallNewArea->s_t9 = (memaddr) sysCallHandler;
 
   /* Initialize stack pointer  */
-  intNewArea->s_sp = RAMTOP;
-  tlbMgntNewArea->s_sp = RAMTOP;
-  pgrmTrpNewArea->s_sp = RAMTOP;
-  sysCallNewArea->s_sp = RAMTOP;
+  intNewArea->s_sp = ramtop;
+  tlbMgntNewArea->s_sp = ramtop;
+  pgrmTrpNewArea->s_sp = ramtop;
+  sysCallNewArea->s_sp = ramtop;
 
   /* status: VM off, interrupts off, kernal-mode, and local timer on */
   baseStatus = LOCALTIMEON & ~VMpON & ~INTpON & ~USERMODEON);
@@ -96,12 +89,7 @@ int main() {
   softBlkCount = 0;
   curProc = NULL;
   readyQ = mkEmptyProcQ();
-
   pcb_PTR p = allocPcb();
-  /* initialize the process state */
-  for(i = 0; i < STATEREGNUM; i++) {
-    p->p_s.s_reg[i] = 0;
-  }
 
   /*
    * Setting state for initial process:
@@ -110,12 +98,11 @@ int main() {
    *    Set PC to start at P2's test
    */
   p->p_s.s_status = INTMASKOFF | INTpON | LOCALTIMEON & ~USERMODEON & ~VMpON;
-  p->p_s.s_sp = RAMTOP - PAGESIZE;
+  p->p_s.s_sp = ramtop - PAGESIZE;
   p->p_s.s_pc = (memaddr) test;
   p->p_s.s_t9 = p->p_s.s_pc; /* For technical reasons, setting t9 to pc */
 
   procCount++;
   insertProcQ(&readyQ, p);
   scheduler();
-  return 0;
 }

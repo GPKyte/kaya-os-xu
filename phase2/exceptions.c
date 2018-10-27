@@ -350,7 +350,7 @@ void trapHandler() {
  *    TLB-Modification, TLB-Invalid, Bad-PgTbl, or PTE-MISS
  *
  * Either passes up the offending process or terminates it (sys2) per
- * the existence of a specified exceptiont state vector (sys5)
+ * the existence of a specified exception state vector (sys5)
  */
 void tlbHandler() {
   oldSys = (state_t *) ROMPAGESTART + 2 * STATESIZE;
