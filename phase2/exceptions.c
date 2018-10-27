@@ -29,6 +29,19 @@
 state_t *oldSys;
 
 /********************** Helper methods **********************/
+/*
+ * A utility to copy over states
+ */
+HIDDEN void copyState(state_PTR orig, state_PTR dest) {
+  int i;
+  dest->s_asid = orig->s_asid;
+  dest->s_cause = orig->s_cause;
+  dest->s_status = orig->s_status;
+  dest->s_pc = orig->s_pc;
+  for(i = 0; i < STATEREGNUM; i++) {
+    dest->s_reg[i] = orig->s_reg[i];
+  }
+}
 
 /*
  * An abstraction of LDST() to aid in debugging and encapsulation
