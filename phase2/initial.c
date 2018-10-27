@@ -44,7 +44,7 @@ int main() {
   unsigned int baseStatus;
 
   /* Init semaphores to 0 */
-  /* The first semaphore describes device at interrupt line 0, device 0 */
+  /* The first semaphore describes device at interrupt line 3, 1st device */
   for(i = 0; i < MAXSEM; i++) {
     semaphores[i] = 0;
   }

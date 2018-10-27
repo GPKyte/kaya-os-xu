@@ -6,21 +6,23 @@
  * or when the Local or Interval Timers
  * transition from 0x0000.0000 -> 0xFFFF.FFFF
  *
- * We manage 8 types of devices (interal and external), each type group can
- * have 8 devices and are ordered sequentially by type-priority.
- * The associated 4-word device registers are kept in ROM.
+ * The Cause register in the OLDINTAREA describes current ints
  *
- * There are 48 managed semaphores in total: 8 ea. for
- * disks, tapes, printers, netw cards, and read/write terminals.
- * Terminals have two semaphores for r/w, but use the same register space.
+ * There are 49 managed semaphores in total: 1 psuedo-clock
+ * & 8 ea. for disks, tapes, printers, netw cards,
+ * and read/write terminals which have two semaphores for r/w,
+ * but use the same ROM device-register space.
+ * Start at managed devices at interrupt line 3
  *
- * We use a contiguous block of 104 semaphores (int's) to represent all
- * possible devices. About half will be unused, but this design
- * will help simplify semaphore referencing related to devices.
+ * We use a contiguous block of 48 semaphores (int's) to represent
+ * all devices and a special variable for the psuedo-clock
  *
  * Note: Multiple interrupts can be active at once,
  * we prioritize for the lower interrupt line and device #;
- * also terminal transmission (W) > terminal receiving (R)
+ * & prioritize terminal write > terminal read.
+ *
+ * Currently, we only handle one interrupt per context switch
+ * Later, it would be desireable to optimize this.
  *
  * AUTHORS: Ploy Sithisakulrat & Gavin Kyte
  * ADVISOR/CONTRIBUTER: Michael Goldweber
