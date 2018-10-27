@@ -128,7 +128,7 @@ void intHandler() {
 		scheduler();
 
 	} else if (lineNumber == 2) { /* Handle Interval Timer */
-		*INTERVALTMR = INTERVALTIME /* Put time on clock */
+		*INTERVALTMR = INTERVALTIME; /* Put time on clock */
 
 		/* V the psuedoClock */
 		(*psuedoClock)--;

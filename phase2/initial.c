@@ -61,7 +61,7 @@ int main() {
 
   intNewArea->s_pc = (memaddr) intHandler;
   tlbMgntNewArea->s_pc = (memaddr) tlbHandler;
-  pgrmTrpNewArea->s_pc = (memaddr) trapHandler;
+  pgrmTrpNewArea->s_pc = (memaddr) pgrmTrapHandler;
   sysCallNewArea->s_pc = (memaddr) sysCallHandler;
 
   intNewArea->s_t9 = (memaddr) intHandler;

@@ -353,8 +353,8 @@ void sysCallHandler() {
  * Either passes up the offending process or terminates it (sys2) per
  * the existence of a specified exception state vector (sys5)
  */
-void trapHandler() {
-  oldSys = (state_t *) ROMPAGESTART + 4 * STATESIZE;
+void pgrmTrapHandler() {
+  oldSys = (state_t *) PGRMOLDAREA;
   genericExceptionTrapHandler(PROGTRAP);
 }
 
@@ -368,6 +368,6 @@ void trapHandler() {
  * the existence of a specified exception state vector (sys5)
  */
 void tlbHandler() {
-  oldSys = (state_t *) ROMPAGESTART + 2 * STATESIZE;
+  oldSys = (state_t *) TLBOLDAREA;
   genericExceptionTrapHandler(TLBTRAP);
 }
