@@ -38,22 +38,125 @@
 #include "/usr/local/include/umps2/umps/libumps.e"
 
 /*********************** Helper Methods **********************/
-HIDDEN void ack(device_t*) {}
-HIDDEN int findDeviceIndex() {}
-HIDDEN int findLineIndex() {}
+HIDDEN status ack(lineNumber, deviceNumber) {
+	unsigned int status;
+	device_t *device;
+	device_t *devRegArray = ((devregarea_t *) RAMBASEADDR)->devreg;
+
+	device = &(devRegArray[(lineNumber - LINENUMOFFSET) * 8 + deviceNumber]);
+	if(lineNumber == TERMINT) {
+		status = handleTerminal(deviceNumber);
+	} else {
+		status = device->d_status;
+		device->d_status = 1;
+	}
+
+	return status;
+}
+
+/* Select device number */
+HIDDEN int findDeviceIndex(int intLine) {
+	int deviceIndex;
+	int deviceMask;
+	devregarea_t * devregarea = (devregarea_t *) RAMBASEADDR;
+	unsigned int deviceBits = devregarea->interrupt_dev[intLine - LINENUMOFFSET];
+
+	for(deviceIndex = 0; deviceIndex < DEVPERINT; deviceIndex++) {
+		deviceMask = 1 << deviceIndex;
+
+		if(deviceBits & deviceMask) {
+			break;
+		}
+	}
+
+	return deviceIndex;
+}
+
+/* Determine line number of highest priority interrupt */
+HIDDEN int findLineIndex(unsigned int causeRegister) {
+	int lineIndex;
+	int numOfIntLines = 8;
+	unsigned int lineMask = 1;
+	unsigned int intLineBits = (causeRegister & INTPENDMASK) >> 8;
+
+	for(lineIndex = 0; lineIndex < numOfIntLines; lineIndex++) {
+		lineMask = 1 << lineIndex;
+
+		if(intLineBits & lineMask) {
+			break;
+		}
+	}
+
+	return lineIndex;
+}
+
+HIDDEN unsigned int handleTerminal(int terminal) {
+	/* handle writes then reads */
+	unsigned int status;
+	unsigned int *writeStatus;
+	unsigned int *readStatus;
+
+	writeStatus = device + DEVREGLEN * RECVSTATUS;
+	readStatus = device + DEVREGLEN * TRANSTATUS;
+	if(*writeStatus != ACK) {
+		status = *writeStatus;
+		*writeStatus = ACK;
+	} else {
+		status = *readStatus;
+		*readStatus = ACK;
+	}
+
+	return status;
+}
 
 /********************** External Methods *********************/
 void intHandler() {
-	/* Check Processor Local Timer and Interval Timers */
-	/* Determine line number of highest priority interrupt */
-	/* Select device number */
-	/* Save status for special handling */
-	/* Acknowledge interrupt to turn it off */
-	/* Handle case for timer, use psuedo-clock timer sema4 */
-		/* Perform V operation on psuedo-clock timer */
-		/* LDIT(INTERVALTIME); /* Arbitrary interval time */
-	/* Handle weird timing issues surrounding sys8-wait command */
-		/* Use result of V operation to determine race condition */
-		/* If waiting for this I/O, store status in process */
-		/* If I/O before waiting, store the interrupting status somewhere */
+	pcb_PTR proc;
+	int *semAdd;
+	int lineNumber, deviceNumber;
+	unsigned int status;
+
+	unsigned int stopTOD = STCK();
+	state_t *oldInt = (state_t *) OLDINTAREA;
+	lineNumber = findLineIndex(oldInt->s_cause);
+
+	if(lineNumber == 0) { /* Handle inter-processor interrupt (not now) */
+		PANIC();
+
+	} else if (lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
+		/* Timing stuff maybe? */
+		scheduler();
+
+	} else if (lineNumber == 2) { /* Handle Interval Timer */
+		*INTERVALTMR = INTERVALTIME /* Put time on clock */
+
+		/* V the psuedoClock */
+		(*psuedoClock)--;
+		if((*psuedoClock) <= 0) {
+			insertBlocked(psuedoClock, curProc);
+			softBlkCount++;
+			scheduler();
+
+		} else {
+			loadState(&oldInt);
+		}
+
+	} else { /* lineNumber >= 3; Handle I/O device interrupt */
+		/* Handle external device interrupts */
+		deviceNumber = findDeviceIndex(lineNumber);
+		status = ack(lineNumber, deviceNumber);
+
+		/* Be aware that I/O int can occur BEFORE sys8_waitForIODevice */
+		/* V the device's semaphore, once io complete, put back on ready queue */
+		semAdd = &(semaphores[(lineNumber - LINENUMOFFSET) * DEVPERINT + device]);
+		(*semAdd)++;
+		if((*semAdd) <= 0) {
+			proc = removeBlocked(semAdd);
+			insertProcQ(&readyQ, proc);
+			softBlkCount--;
+		}
+	}
+
+	oldInt->s_v0 = status;
+	loadState(&oldInt);
 }
