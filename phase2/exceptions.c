@@ -26,8 +26,6 @@
 #include "../e/scheduler.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
-#define CHILD 0;
-#define NOCHILD -1;
 state_t *oldSys;
 
 /********************** Helper methods **********************/
@@ -260,11 +258,11 @@ HIDDEN void sys7_waitForClock() {
  */
 HIDDEN void sys8_waitForIODevice() {
   /* Choose appropriate semaphore */
-  int lineNumber = oldSys.s_a1;
+  int lineNumber = oldSys.s_a1 - LINENUMBEROFFSET;
   int deviceNumber = oldSys.s_a2;
   Bool isReadTerminal = oldSys.s_a3;
 
-  int* semAdd = &(semaphores[(lineNumber + isReadTerminal) * 8 + deviceNumber]);
+  int* semAdd = &(semaphores[(lineNumber + isReadTerminal) * DEVPERINT + deviceNumber]);
 
   /* Remove curProc and place on semaphore if successful */
   if(outProcQ(curProc) == NULL) {
