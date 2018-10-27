@@ -66,12 +66,10 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
   /* If semaphore value negative, increment the semaphore? */
   /* If terminating a blocked process, do NOT adjust semaphore. Because the
    * semaphore will get V'd by the interrupt handler */
-  if(p == curProc) {
-    outChild(p);
-    curProc = NULL;
-  } else if(outProcQ(&readyQ, p) == p) {
+  if(outProcQ(&readyQ, p) == p) {
     /* Know p was on Ready Queue, do nothing more */
   } else if(outBlocked(p) == p) {
+    /* TODO: make test to decide if was blocked on device sema4 */
     /* if p is a device sema4: soft block-- & leave sema4++ to intHandler */
     /* if NOT a device sema4: sema4++ */
   } else {
@@ -152,7 +150,8 @@ HIDDEN void sys1_createProcess() {
  *   Where TERMINATEPROCESS has the value of 2.
  */
 HIDDEN void sys2_terminateProcess() {
-  avadaKedavra(curProc);
+  avadaKedavra(outChild(curProc));
+  curProc == NULL;
   scheduler();
 }
 
