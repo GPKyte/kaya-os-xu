@@ -27,6 +27,7 @@
 /* Time slice value in microseconds */
 
 /********************* Helper methods ***********************/
+/* TODO: Decide if put/remove methods are public */
 /*
  * Select next process to be scheduled as curProc
  * RETURN: pcb_PTR to ready process for execution
@@ -54,8 +55,6 @@ HIDDEN void putInPool(pcb_PTR p) {
 *   jobs, system will HALT, PANIC, or WAIT appropriately
 */
 void scheduler() {
-  /* TODO: Elevate priority by masking all interrupts? */
-  
   state_t *waitState;
   /*
    * TODO: Store curProc back in Queue if unfinished

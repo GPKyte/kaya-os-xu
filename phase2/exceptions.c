@@ -6,12 +6,8 @@
  *    2) System Calls & Breakpoints
  *    3) Table Management
  *
- * Based on context from old-state vectors, decides course of action
- * loads the corresponding and appropriate new context.
- *
- * Uses oldSys globally for simplicity and speed of reference
- * parameters and return values are handled at psuedo-register level
- * by accessing and mutating stored context.
+ * State decided by SYSOLDAREA context, this module provides
+ * system services and manages TRAP and TLB Exceptions.
  *
  * AUTHORS: Ploy Sithisakulrat & Gavin Kyte
  * ADVISOR/CONTRIBUTER: Michael Goldweber
@@ -26,7 +22,7 @@
 #include "../e/scheduler.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
-state_t *oldSys;
+state_t *oldSys; /* TODO: Make this local and change methods to match */
 
 /********************** Helper methods **********************/
 /*
@@ -44,6 +40,7 @@ HIDDEN void copyState(state_PTR orig, state_PTR dest) {
 }
 
 /*
+ * TODO: move this to scheduler and make multiple entry points
  * An abstraction of LDST() to aid in debugging and encapsulation
  */
 HIDDEN void loadState(state_t *statep) {
@@ -53,8 +50,8 @@ HIDDEN void loadState(state_t *statep) {
 
 /*
  * Mutator method to recursively kill the given pcb_PTR and all of its
- * progeny. Leaves parent and siblings unaffected.
- * Used for sys2; impacts global variable curProc
+ * progeny. Leaves parent and siblings unaffected. Removes from any Queue/semd_t
+ * Used for sys2 abstraction
  */
 HIDDEN void avadaKedavra(pcb_PTR p) {
   /* top-down method */
@@ -63,7 +60,7 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
   }
 
   /* bottom-up: dealing with each individual PCB */
-  /* If semaphore value negative, increment the semaphore? */
+  /* TODO: If semaphore value negative, increment the semaphore? */
   /* If terminating a blocked process, do NOT adjust semaphore. Because the
    * semaphore will get V'd by the interrupt handler */
   if(outProcQ(&readyQ, p) == p) {
