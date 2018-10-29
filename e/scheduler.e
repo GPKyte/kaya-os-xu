@@ -8,6 +8,7 @@
 *  Written by Gavin Kyte
 */
 
+extern void loadState(state_t *state);
 extern void scheduler();
 
 /***************************************************************/

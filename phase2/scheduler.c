@@ -47,6 +47,15 @@ HIDDEN void putInPool(pcb_PTR p) {
 /******************** External methods ***********************/
 
 /*
+ * TODO: make multiple entry points to context switching fxns
+ * An abstraction of LDST() to aid in debugging and encapsulation
+ */
+void loadState(state_t *statep) {
+  STCK(startTOD); /* Also captures loading time, is there a better way? */
+  LDST(statep);
+}
+
+/*
 * Mutator method that decides the currently running process
 * and manages the associated queues and meta data.
 *

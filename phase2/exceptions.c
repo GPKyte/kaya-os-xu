@@ -41,15 +41,6 @@ HIDDEN void copyState(state_PTR orig, state_PTR dest) {
 }
 
 /*
- * TODO: move this to scheduler and make multiple entry points
- * An abstraction of LDST() to aid in debugging and encapsulation
- */
-HIDDEN void loadState(state_t *statep) {
-  STCK(startTOD); /* Also captures loading time, is there a better way? */
-  LDST(statep);
-}
-
-/*
  * Mutator method to recursively kill the given pcb_PTR and all of its
  * progeny. Leaves parent and siblings unaffected. Removes from any Queue/semd_t
  * Used for sys2 abstraction

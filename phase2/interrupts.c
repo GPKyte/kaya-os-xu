@@ -39,22 +39,6 @@
 #include "/usr/local/include/umps2/umps/libumps.e"
 
 /*********************** Helper Methods **********************/
-HIDDEN status ack(lineNumber, deviceNumber) {
-	unsigned int status;
-	device_t *device;
-	device_t *devRegArray = ((devregarea_t *) RAMBASEADDR)->devreg;
-
-	device = &(devRegArray[(lineNumber - LINENUMOFFSET) * 8 + deviceNumber]);
-	if(lineNumber == TERMINT) {
-		status = handleTerminal(deviceNumber);
-	} else {
-		status = device->d_status;
-		device->d_status = 1;
-	}
-
-	return status;
-}
-
 /* Select device number */
 HIDDEN int findDeviceIndex(int intLine) {
 	int deviceIndex;
@@ -91,14 +75,14 @@ HIDDEN int findLineIndex(unsigned int causeRegister) {
 	return lineIndex;
 }
 
-HIDDEN unsigned int handleTerminal(int terminal) {
+HIDDEN unsigned int handleTerminal(int terminal, device_t *device) {
 	/* handle writes then reads */
 	unsigned int status;
 	unsigned int *writeStatus;
 	unsigned int *readStatus;
 
-	writeStatus = device + DEVREGLEN * RECVSTATUS;
-	readStatus = device + DEVREGLEN * TRANSTATUS;
+	writeStatus = (unsigned int *) ((unsigned int) device + DEVREGLEN * RECVSTATUS);
+	readStatus = (unsigned int *) ((unsigned int) device + DEVREGLEN * TRANSTATUS);
 	if(*writeStatus != ACK) {
 		status = *writeStatus;
 		*writeStatus = ACK;
@@ -110,15 +94,33 @@ HIDDEN unsigned int handleTerminal(int terminal) {
 	return status;
 }
 
+HIDDEN int ack(int lineNumber, int deviceNumber) {
+	unsigned int status;
+	device_t *device;
+	device_t *devRegArray = ((devregarea_t *) RAMBASEADDR)->devreg;
+
+	device = &(devRegArray[(lineNumber - LINENUMOFFSET) * 8 + deviceNumber]);
+	if(lineNumber == TERMINT) {
+		status = handleTerminal(deviceNumber, device);
+	} else {
+		status = device->d_status;
+		device->d_status = 1;
+	}
+
+	return status;
+}
+
 /********************** External Methods *********************/
 void intHandler() {
+	state_t *oldInt;
 	pcb_PTR proc;
 	int *semAdd;
 	int lineNumber, deviceNumber;
 	unsigned int status;
+	unsigned int stopTOD;
 
-	unsigned int stopTOD = STCK();
-	state_t *oldInt = (state_t *) OLDINTAREA;
+	STCK(stopTOD);
+	oldInt = (state_t *) INTOLDAREA;
 	lineNumber = findLineIndex(oldInt->s_cause);
 
 	if(lineNumber == 0) { /* Handle inter-processor interrupt (not now) */
@@ -129,7 +131,7 @@ void intHandler() {
 		scheduler();
 
 	} else if (lineNumber == 2) { /* Handle Interval Timer */
-		*INTERVALTMR = INTERVALTIME; /* Put time on clock */
+		/* TODO: Set interval timer INTERVALTMR = INTERVALTIME; */
 
 		/* V the psuedoClock */
 		(*psuedoClock)--;
@@ -139,7 +141,7 @@ void intHandler() {
 			scheduler();
 
 		} else {
-			loadState(&oldInt);
+			loadState(oldInt);
 		}
 
 	} else { /* lineNumber >= 3; Handle I/O device interrupt */
@@ -149,7 +151,7 @@ void intHandler() {
 
 		/* Be aware that I/O int can occur BEFORE sys8_waitForIODevice */
 		/* V the device's semaphore, once io complete, put back on ready queue */
-		semAdd = &(semaphores[(lineNumber - LINENUMOFFSET) * DEVPERINT + device]);
+		semAdd = &(semaphores[(lineNumber - LINENUMOFFSET) * DEVPERINT + deviceNumber]);
 		(*semAdd)++;
 		if((*semAdd) <= 0) {
 			proc = removeBlocked(semAdd);
@@ -159,5 +161,5 @@ void intHandler() {
 	}
 
 	oldInt->s_v0 = status;
-	loadState(&oldInt);
+	loadState(oldInt);
 }
