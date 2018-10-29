@@ -69,12 +69,15 @@ void scheduler() {
    * TODO: Store curProc back in Queue if unfinished
    * Otherwise release process and decrement procCount
    */
+  if(curProc != NULL) {
+    putInPool(curProc);
+  }
 
   curProc = removeFromPool();
   if(curProc != NULL) {
     /* Prepare state for next job */
     /* Put time on clock */
-    setLocalTimer(QUANTUMTIME) /* TODO: declare setLocalTimer */
+    setLocalTimer(QUANTUMTIME); /* TODO: declare setLocalTimer */
     loadState(&(curProc->p_s));
   }
 
@@ -86,13 +89,9 @@ void scheduler() {
     PANIC();
   }
 
-  waitState = getSTATUS() | INTMASKOFF;
-  setSTATUS(waitState); /* turn interrupts on */
+  waitState->s_status = getSTATUS() | INTMASKOFF;
+  setSTATUS(waitState->s_status); /* turn interrupts on */
 
   /* No ready jobs, so we WAIT for next interrupt */
   WAIT();
-}
-
-void loadState(state_t *statep) {
-  LDST(statep);
 }
