@@ -22,6 +22,8 @@
 #include "../e/pcb.e"
 #include "../e/asl.e"
 #include "../e/scheduler.e"
+#include "../e/interrupts.e"
+#include "../e/exceptions.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
 extern void test();
@@ -31,7 +33,7 @@ int procCount, softBlkCount;
 pcb_PTR curProc;
 pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
 int *psuedoClock; /* a semaphore */
-static int[MAXSEM] semaphores; /* static may be redundant here */
+static int semaphores[MAXSEM]; /* static may be redundant here */
 
 /*
  * Populate the four new areas in low memory. Allocate finite
@@ -42,6 +44,8 @@ int main() {
   int i;
   unsigned int ramtop, baseStatus;
   devregarea_t *devregarea;
+  state_PTR intNewArea, tlbMgntNewArea, pgrmTrpNewArea, sysCallNewArea;
+  pcb_PTR firstProc;
 
   /* Init semaphores to 0 */
   /* The first semaphore describes device at interrupt line 3, 1st device */
@@ -54,10 +58,10 @@ int main() {
   ramtop = (devregarea->rambase) + (devregarea->ramsize);
 
   /* Init new processor state areas */
-  state_PTR intNewArea = (state_t *) INTOLDAREA + STATESIZE;
-  state_PTR tlbMgntNewArea = (state_t *) TLBOLDAREA + STATESIZE;
-  state_PTR pgrmTrpNewArea = (state_t *) PGRMOLDAREA + STATESIZE;
-  state_PTR sysCallNewArea = (state_t *) SYSOLDAREA + STATESIZE;
+  intNewArea = (state_t *) INTOLDAREA + STATESIZE;
+  tlbMgntNewArea = (state_t *) TLBOLDAREA + STATESIZE;
+  pgrmTrpNewArea = (state_t *) PGRMOLDAREA + STATESIZE;
+  sysCallNewArea = (state_t *) SYSOLDAREA + STATESIZE;
 
   intNewArea->s_pc = (memaddr) intHandler;
   tlbMgntNewArea->s_pc = (memaddr) tlbHandler;
@@ -66,7 +70,7 @@ int main() {
 
   intNewArea->s_t9 = (memaddr) intHandler;
   tlbMgntNewArea->s_t9 = (memaddr) tlbHandler;
-  pgrmTrpNewArea->s_t9 = (memaddr) trapHandler;
+  pgrmTrpNewArea->s_t9 = (memaddr) pgrmTrapHandler;
   sysCallNewArea->s_t9 = (memaddr) sysCallHandler;
 
   /* Initialize stack pointer  */
@@ -76,11 +80,11 @@ int main() {
   sysCallNewArea->s_sp = ramtop;
 
   /* status: VM off, interrupts off, kernal-mode, and local timer on */
-  baseStatus = LOCALTIMEON & ~VMpON & ~INTpON & ~USERMODEON);
-  intNewArea->status = baseStatus;
-  tlbMgntNewArea->status = baseStatus;
-  pgrmTrpNewArea->status = baseStatus;
-  sysCallNewArea->status = baseStatus;
+  baseStatus = LOCALTIMEON & ~VMpON & ~INTpON & ~USERMODEON;
+  intNewArea->s_status = baseStatus;
+  tlbMgntNewArea->s_status = baseStatus;
+  pgrmTrpNewArea->s_status = baseStatus;
+  sysCallNewArea->s_status = baseStatus;
 
   initPCBs(); /* initialize ProcBlk Queue */
   initASL(); /* Initialize Active Semaphore List */
@@ -90,7 +94,7 @@ int main() {
   softBlkCount = 0;
   curProc = NULL;
   readyQ = mkEmptyProcQ();
-  pcb_PTR p = allocPcb();
+  firstProc = allocPcb();
 
   /*
    * Setting state for initial process:
@@ -98,12 +102,13 @@ int main() {
    *    Stack starts below reserved page
    *    Set PC to start at P2's test
    */
-  p->p_s.s_status = INTMASKOFF | INTpON | LOCALTIMEON & ~USERMODEON & ~VMpON;
-  p->p_s.s_sp = ramtop - PAGESIZE;
-  p->p_s.s_pc = (memaddr) test;
-  p->p_s.s_t9 = p->p_s.s_pc; /* For technical reasons, setting t9 to pc */
+  firstProc->p_s.s_status = (INTMASKOFF | INTpON | LOCALTIMEON) & ~USERMODEON & ~VMpON;
+  firstProc->p_s.s_sp = ramtop - PAGESIZE;
+  firstProc->p_s.s_pc = (memaddr) test;
+  firstProc->p_s.s_t9 = firstProc->p_s.s_pc; /* For technical reasons, setting t9 to pc */
 
   procCount++;
-  insertProcQ(&readyQ, p);
+  insertProcQ(&readyQ, firstProc);
   scheduler();
+  return 0; /* Will never reach, but this will remove the pointless warning */
 }

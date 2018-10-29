@@ -94,7 +94,7 @@ pcb_PTR allocPcb (void) {
  * elements of the static array of MAXPROC pcbs. This method
  * will be called only once during data structure initialization.
  */
-void initPcbs (void) {
+void initPCBs (void) {
 	static pcb_t procTable[MAXPROC];
 	int i = 0;
 

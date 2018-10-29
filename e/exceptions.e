@@ -10,7 +10,7 @@
 
 extern void sysCallHandler();
 extern void tlbHandler();
-extern void trapHandler();
+extern void pgrmTrapHandler();
 
 /***************************************************************/
 
