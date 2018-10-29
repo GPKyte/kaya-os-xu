@@ -19,6 +19,7 @@
 
 #include "../e/pcb.e"
 #include "../e/asl.e"
+#include "../e/initial.e"
 #include "../e/scheduler.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
