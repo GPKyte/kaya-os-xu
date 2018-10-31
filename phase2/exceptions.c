@@ -23,7 +23,7 @@
 #include "../e/scheduler.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
-state_t *oldSys; /* TODO: Make this local and change methods to match */
+/* state_t *oldSys;  TODO: Make this local and change methods to match */
 
 /********************** Helper methods **********************/
 /*
@@ -72,7 +72,7 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
 }
 
 /*
- * only for testing - ignore this
+ * TODO only for testing - ignore this
  */
 HIDDEN void sys2_terminateProcess() {
   avadaKedavra(outChild(curProc));
@@ -86,6 +86,7 @@ HIDDEN void sys2_terminateProcess() {
  * PARAM: exceptionType {0: TLB, 1: PgrmTrap, 2: SYS/Bp}
  */
 HIDDEN void genericExceptionTrapHandler(int exceptionType) {
+  state_t *oldSys;
   /* Check exception type and existence of a specified excep state vector */
   if(curProc->p_exceptionConfig[OLD][exceptionType] == NULL
     || curProc->p_exceptionConfig[NEW][exceptionType] == NULL) {
@@ -114,6 +115,8 @@ HIDDEN void genericExceptionTrapHandler(int exceptionType) {
  * RETURN: v0 = 0 (CHILD) on success, -1 (NOCHILD) on failure
  */
 HIDDEN void sys1_createProcess() {
+  state_t *oldSys;
+
   /* Birth new process as child of executing pcb */
   pcb_PTR child = allocPcb();
 
@@ -122,7 +125,7 @@ HIDDEN void sys1_createProcess() {
     scheduler();
   }
 
-  copyState(oldSys->s_a1, &(child->p_s));
+  copyState((state_PTR) oldSys->s_a1, &(child->p_s));
   insertChild(curProc, child);
 
   oldSys->s_v0 = CHILD;
@@ -146,12 +149,13 @@ HIDDEN void sys1_createProcess() {
  *
  * EX: void SYSCALL (TERMINATEPROCESS)
  *   Where TERMINATEPROCESS has the value of 2.
- */
-// HIDDEN void sys2_terminateProcess() {
-//   avadaKedavra(outChild(curProc));
-//   curProc = NULL;
-//   scheduler();
-// }
+ *
+HIDDEN void sys2_terminateProcess() {
+  avadaKedavra(outChild(curProc));
+  curProc = NULL;
+  scheduler();
+}
+*/
 
 /*
  * Perform V (Increase) operation on a Semaphore
@@ -161,7 +165,9 @@ HIDDEN void sys1_createProcess() {
  * PARAM: a1 = semaphore address
  */
 HIDDEN void sys3_verhogen() {
-  int *mutex = oldSys->s_a1;
+  state_t *oldSys;
+
+  int *mutex = (int *)oldSys->s_a1;
   (*mutex)--;
   if((*mutex) < 0) {
     /* Put process in line to use semaphore and move on */
@@ -169,7 +175,7 @@ HIDDEN void sys3_verhogen() {
     scheduler();
   } else {
     /* Ready to go right now */
-    loadState(&oldSys);
+    loadState(oldSys); /* TODO error resolved: compiler does not like &oldSys */
   }
 }
 
@@ -181,7 +187,9 @@ HIDDEN void sys3_verhogen() {
  * PARAM: a1 = semaphore address
  */
 HIDDEN void sys4_passeren() {
-  int *mutex = oldSys->s_a1;
+  state_t *oldSys;
+
+  int *mutex = (int *) oldSys->s_a1;
   (*mutex)++;
   if((*mutex) <= 0) {
     /* Give turn to next waiting process from semaphore */
@@ -189,7 +197,7 @@ HIDDEN void sys4_passeren() {
       insertProcQ(&readyQ, removeBlocked(mutex));
     }
   }
-  loadState(&oldSys);
+  loadState(oldSys); /* ditto */
 }
 
 /*
@@ -208,6 +216,7 @@ HIDDEN void sys4_passeren() {
  *        a3 = address of new state vector to be loaded from after exception
  */
 HIDDEN void sys5_specifyExceptionStateVector() {
+  state_t *oldSys;
   /* Check wether exception state vector is already specified (error) */
   if(curProc->p_exceptionConfig[OLD][oldSys->s_a1] != NULL
     || curProc->p_exceptionConfig[NEW][oldSys->s_a1] != NULL) {
@@ -232,6 +241,9 @@ HIDDEN void sys5_specifyExceptionStateVector() {
  * RETURN: v0 = processor time in microseconds
  */
 HIDDEN void sys6_getCPUTime() {
+  int stopTOD;
+  state_t *oldSys;
+
   int partialQuantum = stopTOD - startTOD;
   oldSys->s_v0 = partialQuantum + curProc->p_CPUTime; /* set return for LDST */
 }
@@ -267,6 +279,8 @@ HIDDEN void sys7_waitForClock() {
  *        a3 = wait for terminal read operation -> SysCall TRUE / FALSE
  */
 HIDDEN void sys8_waitForIODevice() {
+  state_t *oldSys;
+
   /* Choose appropriate semaphore */
   int lineNumber = oldSys->s_a1 - LINENUMOFFSET;
   int deviceNumber = oldSys->s_a2;
@@ -298,6 +312,9 @@ HIDDEN void sys8_waitForIODevice() {
  * PARAM: a0 = int for system call number
  */
 void sysCallHandler() {
+  state_t *oldSys;
+  int stopTOD;
+
   /* Stop counting time for curProc */
   STCK(stopTOD);
   oldSys = (state_t *) SYSOLDAREA;
