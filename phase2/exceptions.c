@@ -72,6 +72,15 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
 }
 
 /*
+ * only for testing - ignore this
+ */
+HIDDEN void sys2_terminateProcess() {
+  avadaKedavra(outChild(curProc));
+  curProc = NULL;
+  scheduler();
+}
+
+/*
  * Decides whether to kill process for exception,
  *    or to fulfill specified exception behaviour.
  * PARAM: exceptionType {0: TLB, 1: PgrmTrap, 2: SYS/Bp}
@@ -138,11 +147,11 @@ HIDDEN void sys1_createProcess() {
  * EX: void SYSCALL (TERMINATEPROCESS)
  *   Where TERMINATEPROCESS has the value of 2.
  */
-HIDDEN void sys2_terminateProcess() {
-  avadaKedavra(outChild(curProc));
-  curProc = NULL;
-  scheduler();
-}
+// HIDDEN void sys2_terminateProcess() {
+//   avadaKedavra(outChild(curProc));
+//   curProc = NULL;
+//   scheduler();
+// }
 
 /*
  * Perform V (Increase) operation on a Semaphore
