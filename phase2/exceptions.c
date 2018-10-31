@@ -75,7 +75,6 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
 HIDDEN void sys2_terminateProcess() {
   avadaKedavra(outChild(curProc));
   curProc = NULL;
-  scheduler();
 }
 
 /*
@@ -280,11 +279,6 @@ HIDDEN void sys8_waitForIODevice(int lineNumber, int deviceNumber, Bool isReadTe
 
 /***************** Start of external methods *****************/
 /*
-<<<<<<< HEAD
- * Offer ng: ISO C89 forbids mixed declarations and code
-exceptions.c:329: warning: implicit declaration of function `pgrmTrapHandler'
-255 system calls; 1-8 are privileged & the rest are passed up
-=======
  * Method called in event that a process performs an illegal
  * or undefined action. The cause will be set in the PgmTrap
  * old state vector's Cause.ExcCode
@@ -298,7 +292,6 @@ void pgrmTrapHandler() {
 
 /*
  * Offer 255 system calls; 1-8 are privileged & the rest are passed up
->>>>>>> 036a6604cab5add9017ac7f745f52f90384b8f58
  * See helper methods for description of each system call.
  *
  * PARAM: a0 = int for system call number
