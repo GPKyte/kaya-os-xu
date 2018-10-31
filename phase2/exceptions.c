@@ -266,14 +266,11 @@ HIDDEN void sys8_waitForIODevice(int lineNumber, int deviceNumber, Bool isReadTe
   semAdd = &(semaphores[(lineNumber + isReadTerm) * DEVPERINT + deviceNumber]);
 
   /* Remove curProc and place on semaphore if successful */
-  if(outProcQ(&readyQ, curProc) == NULL) {
-    PANIC();
-  }
-
   /* Replicate sys3 code for special handling */
   (*semAdd)--;
   if((*semAdd) < 0) {
     insertBlocked(semAdd, curProc);
+    curProc = NULL;
     softBlkCount++;
   } else {
     PANIC(); /* Error condition, will explore later */
