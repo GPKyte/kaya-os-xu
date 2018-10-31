@@ -54,12 +54,15 @@
 /* Bitwise masks and constants */
 /* Turn 1 and 2 On, but 3 off: 1ON | 2ON & ~3ON */
 #define VMpON		(1 << 25)
-#define INTpON	(1 << 2)
+#define INTpON		(1 << 2)
 #define INTMASKOFF	(255 << 8) /* Not masking means interrupts on */
 #define USERMODEON	(1 << 3)
 #define LOCALTIMEON	(1 << 27)
 
-#define INTPENDMASK (255 << 8) /* Cause register */
+ /* Cause register */
+#define NOCAUSE		~(124)
+#define RESERVEDINSTERR (10 << 2)
+#define INTPENDMASK 	(255 << 8)
 
 /* vectors number and type */
 #define VECTSNUM	4
@@ -72,7 +75,7 @@
 
 
 /* device interrupts */
-#define LINENUMOFFSET		3
+#define LINENUMOFFSET	3
 #define DISKINT		3
 #define TAPEINT		4
 #define NETWINT		5

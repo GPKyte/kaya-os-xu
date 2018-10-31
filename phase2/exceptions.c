@@ -63,7 +63,7 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
     /* if NOT a device sema4: sema4++ */
   } else {
     /* Unexpected behavior */
-    error();
+    PANIC();
   }
 
   /* Adjust procCount */
@@ -76,13 +76,13 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
  *    or to fulfill specified exception behaviour.
  * PARAM: exceptionType {0: TLB, 1: PgrmTrap, 2: SYS/Bp}
  */
-HIDDEN genericExceptionTrapHandler(int exceptionType) {
+HIDDEN void genericExceptionTrapHandler(int exceptionType) {
   /* Check exception type and existence of a specified excep state vector */
   if(curProc->p_exceptionConfig[OLD][exceptionType] == NULL
     || curProc->p_exceptionConfig[NEW][exceptionType] == NULL) {
     /* Default, exception state not specified */
     sys2_terminateProcess();
-    return;
+    scheduler();
   }
 
   /*
@@ -109,14 +109,14 @@ HIDDEN void sys1_createProcess() {
   pcb_PTR child = allocPcb();
 
   if(child == NULL) {
-    oldSys.s_v0 = NOCHILD;
-    return;
+    oldSys->s_v0 = NOCHILD;
+    scheduler();
   }
 
-  copyState(oldSys.s_a1, &(child.p_s));
+  copyState(oldSys->s_a1, &(child->p_s));
   insertChild(curProc, child);
 
-  oldSys.s_v0 = CHILD;
+  oldSys->s_v0 = CHILD;
   insertProcQ(&readyQ, child); /* insert child to the readyQ */
   /* Return control to calling process */
   loadState(oldSys);
@@ -140,7 +140,7 @@ HIDDEN void sys1_createProcess() {
  */
 HIDDEN void sys2_terminateProcess() {
   avadaKedavra(outChild(curProc));
-  curProc == NULL;
+  curProc = NULL;
   scheduler();
 }
 
@@ -152,7 +152,7 @@ HIDDEN void sys2_terminateProcess() {
  * PARAM: a1 = semaphore address
  */
 HIDDEN void sys3_verhogen() {
-  int mutex = oldSys->s_a1;
+  int *mutex = oldSys->s_a1;
   (*mutex)--;
   if((*mutex) < 0) {
     /* Put process in line to use semaphore and move on */
@@ -200,16 +200,16 @@ HIDDEN void sys4_passeren() {
  */
 HIDDEN void sys5_specifyExceptionStateVector() {
   /* Check wether exception state vector is already specified (error) */
-  if(curProc->p_exceptionConfig[OLD][oldSys.s_a1] != NULL
-    || curProc->p_exceptionConfig[NEW][oldSys.s_a1] != NULL) {
+  if(curProc->p_exceptionConfig[OLD][oldSys->s_a1] != NULL
+    || curProc->p_exceptionConfig[NEW][oldSys->s_a1] != NULL) {
     /* Error, exception state already specified */
     sys2_terminateProcess();
-    return;
+    scheduler();
   }
 
   /* Specify old and new state vectors */
-  curProc->p_exceptionConfig[OLD][oldSys.s_a1] = (state_t *) oldSys.s_a2;
-  curProc->p_exceptionConfig[NEW][oldSys.s_a1] = (state_t *) oldSys.s_a3;
+  curProc->p_exceptionConfig[OLD][oldSys->s_a1] = (state_t *) oldSys->s_a2;
+  curProc->p_exceptionConfig[NEW][oldSys->s_a1] = (state_t *) oldSys->s_a3;
 
   /* Return control to process (LDST) */
   loadState(oldSys);
@@ -224,7 +224,7 @@ HIDDEN void sys5_specifyExceptionStateVector() {
  */
 HIDDEN void sys6_getCPUTime() {
   int partialQuantum = stopTOD - startTOD;
-  oldSys.s_v0 = partialQuantum + curProc->p_CPUTime; /* set return for LDST */
+  oldSys->s_v0 = partialQuantum + curProc->p_CPUTime; /* set return for LDST */
 }
 
 /*
@@ -259,14 +259,14 @@ HIDDEN void sys7_waitForClock() {
  */
 HIDDEN void sys8_waitForIODevice() {
   /* Choose appropriate semaphore */
-  int lineNumber = oldSys.s_a1 - LINENUMBEROFFSET;
-  int deviceNumber = oldSys.s_a2;
-  Bool isReadTerminal = oldSys.s_a3;
+  int lineNumber = oldSys->s_a1 - LINENUMOFFSET;
+  int deviceNumber = oldSys->s_a2;
+  Bool isReadTerminal = oldSys->s_a3;
 
   int* semAdd = &(semaphores[(lineNumber + isReadTerminal) * DEVPERINT + deviceNumber]);
 
   /* Remove curProc and place on semaphore if successful */
-  if(outProcQ(curProc) == NULL) {
+  if(outProcQ(&readyQ, curProc) == NULL) {
     PANIC();
   }
 
@@ -291,18 +291,19 @@ HIDDEN void sys8_waitForIODevice() {
 void sysCallHandler() {
   /* Stop counting time for curProc */
   STCK(stopTOD);
-  oldSys = (state_t *) ROMPAGESTART + 6 * STATESIZE;
+  oldSys = (state_t *) SYSOLDAREA;
   /* Increment PC regardless of whether process lives after this call */
-  oldSys.s_pc = oldSys.s_pc + 4;
+  oldSys->s_pc = oldSys->s_pc + 4;
   /* Check for reserved instruction error pre-emptively for less code */
-  Bool isUserMode = (oldSys.s_status & USERMODEON);
-  if(isUserMode && oldSys.s_a0 <= 8 && oldSys.s_a0 > 0) {
-    /* Set Reserved Instruction in Cause register and kill process */
-    sys2_terminateProcess();
-    return;
+  Bool isUserMode = (oldSys->s_status & USERMODEON);
+  if(isUserMode && oldSys->s_a0 <= 8 && oldSys->s_a0 > 0) {
+    /* Set Reserved Instruction in Cause register and handle as PROG TRAP */
+    oldSys->s_cause = (oldSys->s_cause & NOCAUSE) | RESERVEDINSTERR;
+    copyState(oldSys, (state_t *) PGRMOLDAREA);
+    pgrmTrapHandler();
   }
   /* Let a0 register decide SysCall type and execute appropriate method */
-  switch (oldSys.s_a0) {
+  switch (oldSys->s_a0) {
     case 1:
       sys1_createProcess(); /* Keeps control */
       break;
