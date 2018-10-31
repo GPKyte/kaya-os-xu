@@ -375,19 +375,6 @@ void sysCallHandler() {
 }
 
 /*
- * Method called in event that a process performs an illegal
- * or undefined action. The cause will be set in the PgmTrap
- * old state vector's Cause.ExcCode
- *
- * Either passes up the offending process or terminates it (sys2) per
- * the existence of a specified exception state vector (sys5)
- */
-void pgrmTrapHandler() {
-  oldSys = (state_t *) PGRMOLDAREA;
-  genericExceptionTrapHandler(PROGTRAP);
-}
-
-/*
  * Called when TLB Management Exception occurs,
  * i.e. when virtual -> physical mem address translation fails for
  * any of the following reasons:
