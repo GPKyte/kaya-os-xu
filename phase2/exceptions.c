@@ -306,9 +306,27 @@ HIDDEN void sys8_waitForIODevice() {
 
 /***************** Start of external methods *****************/
 /*
+<<<<<<< HEAD
  * Offer ng: ISO C89 forbids mixed declarations and code
 exceptions.c:329: warning: implicit declaration of function `pgrmTrapHandler'
 255 system calls; 1-8 are privileged & the rest are passed up
+=======
+ * Method called in event that a process performs an illegal
+ * or undefined action. The cause will be set in the PgmTrap
+ * old state vector's Cause.ExcCode
+ *
+ * Either passes up the offending process or terminates it (sys2) per
+ * the existence of a specified exception state vector (sys5)
+ */
+void pgrmTrapHandler() {
+  state_t *oldSys;
+  oldSys = (state_t *) PGRMOLDAREA;
+  genericExceptionTrapHandler(PROGTRAP);
+}
+
+/*
+ * Offer 255 system calls; 1-8 are privileged & the rest are passed up
+>>>>>>> 036a6604cab5add9017ac7f745f52f90384b8f58
  * See helper methods for description of each system call.
  *
  * PARAM: a0 = int for system call number
@@ -316,6 +334,7 @@ exceptions.c:329: warning: implicit declaration of function `pgrmTrapHandler'
 void sysCallHandler() {
   state_t *oldSys;
   int stopTOD;
+  Bool isUserMode;
 
   /* Stop counting time for curProc */
   STCK(stopTOD);
@@ -323,7 +342,7 @@ void sysCallHandler() {
   /* Increment PC regardless of whether process lives after this call */
   oldSys->s_pc = oldSys->s_pc + 4;
   /* Check for reserved instruction error pre-emptively for less code */
-  Bool isUserMode = (oldSys->s_status & USERMODEON);
+  isUserMode = (oldSys->s_status & USERMODEON);
   if(isUserMode && oldSys->s_a0 <= 8 && oldSys->s_a0 > 0) {
     /* Set Reserved Instruction in Cause register and handle as PROG TRAP */
     oldSys->s_cause = (oldSys->s_cause & NOCAUSE) | RESERVEDINSTERR;
@@ -364,19 +383,6 @@ void sysCallHandler() {
 }
 
 /*
- * Method called in event that a process performs an illegal
- * or undefined action. The cause will be set in the PgmTrap
- * old state vector's Cause.ExcCode
- *
- * Either passes up the offending process or terminates it (sys2) per
- * the existence of a specified exception state vector (sys5)
- */
-void pgrmTrapHandler() {
-  oldSys = (state_t *) PGRMOLDAREA;
-  genericExceptionTrapHandler(PROGTRAP);
-}
-
-/*
  * Called when TLB Management Exception occurs,
  * i.e. when virtual -> physical mem address translation fails for
  * any of the following reasons:
@@ -386,6 +392,7 @@ void pgrmTrapHandler() {
  * the existence of a specified exception state vector (sys5)
  */
 void tlbHandler() {
+  state_t *oldSys;
   oldSys = (state_t *) TLBOLDAREA;
   genericExceptionTrapHandler(TLBTRAP);
 }
