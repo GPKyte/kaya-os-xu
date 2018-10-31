@@ -306,7 +306,9 @@ HIDDEN void sys8_waitForIODevice() {
 
 /***************** Start of external methods *****************/
 /*
- * Offer 255 system calls; 1-8 are privileged & the rest are passed up
+ * Offer ng: ISO C89 forbids mixed declarations and code
+exceptions.c:329: warning: implicit declaration of function `pgrmTrapHandler'
+255 system calls; 1-8 are privileged & the rest are passed up
  * See helper methods for description of each system call.
  *
  * PARAM: a0 = int for system call number
