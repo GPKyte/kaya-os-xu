@@ -306,6 +306,19 @@ HIDDEN void sys8_waitForIODevice() {
 
 /***************** Start of external methods *****************/
 /*
+ * Method called in event that a process performs an illegal
+ * or undefined action. The cause will be set in the PgmTrap
+ * old state vector's Cause.ExcCode
+ *
+ * Either passes up the offending process or terminates it (sys2) per
+ * the existence of a specified exception state vector (sys5)
+ */
+void pgrmTrapHandler() {
+  oldSys = (state_t *) PGRMOLDAREA;
+  genericExceptionTrapHandler(PROGTRAP);
+}
+
+/*
  * Offer 255 system calls; 1-8 are privileged & the rest are passed up
  * See helper methods for description of each system call.
  *
@@ -359,19 +372,6 @@ void sysCallHandler() {
       break;
   }
 
-}
-
-/*
- * Method called in event that a process performs an illegal
- * or undefined action. The cause will be set in the PgmTrap
- * old state vector's Cause.ExcCode
- *
- * Either passes up the offending process or terminates it (sys2) per
- * the existence of a specified exception state vector (sys5)
- */
-void pgrmTrapHandler() {
-  oldSys = (state_t *) PGRMOLDAREA;
-  genericExceptionTrapHandler(PROGTRAP);
 }
 
 /*
