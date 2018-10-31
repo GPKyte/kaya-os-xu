@@ -55,6 +55,10 @@ void loadState(state_t *statep) {
   LDST(statep);
 }
 
+void setLocalTimer(unsigned int quantumTime) {
+  setTIMER(quantumTime);
+}
+
 /*
 * Mutator method that decides the currently running process
 * and manages the associated queues and meta data.
@@ -77,7 +81,7 @@ void scheduler() {
   if(curProc != NULL) {
     /* Prepare state for next job */
     /* Put time on clock */
-    setLocalTimer(QUANTUMTIME); /* TODO: declare setLocalTimer */
+    setLocalTimer(QUANTUMTIME); /* TODO: rechecl setLocalTimer */
     loadState(&(curProc->p_s));
   }
 
