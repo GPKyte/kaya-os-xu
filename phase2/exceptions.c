@@ -160,9 +160,6 @@ HIDDEN void sys3_verhogen(int *mutex) {
     /* Put process in line to use semaphore and move on */
     insertBlocked(mutex, curProc);
     scheduler();
-  } else {
-    /* Ready to go right now */
-    loadState(oldSys); /* TODO error resolved: compiler does not like &oldSys */
   }
 }
 
@@ -181,7 +178,6 @@ HIDDEN void sys4_passeren(int *mutex) {
       insertProcQ(&readyQ, removeBlocked(mutex));
     }
   }
-  loadState(oldSys); /* ditto */
 }
 
 /*
@@ -324,36 +320,29 @@ void sysCallHandler() {
     case 1:
       oldSys->v0 = sys1_createProcess(oldSys->s_a1); /* Keeps control */
       loadState(oldSys);
-      break;
     case 2:
       sys2_terminateProcess(); /* Change control */
       scheduler();
-      break;
     case 3:
       sys3_verhogen(oldSys->s_a1); /* ? control */
-      break;
+      loadState(oldSys);
     case 4:
       sys4_passeren(oldSys->s_a1); /* ? control */
-      break;
+      loadState(oldSys);
     case 5:
       sys5_specifyExceptionStateVector(oldSys->s_a1, oldSys->s_a2, oldSys->s_a3);
       loadState(oldSys);
-      break;
     case 6:
       oldSys->s_v0 = sys6_getCPUTime(); /* Keeps control */
       loadState(oldSys);
-      break;
     case 7:
       sys7_waitForClock(); /* Change control */
       scheduler();
-      break;
     case 8:
       sys8_waitForIODevice(oldSys->s_a1, oldSys->s_a2, oldSys->s_a3); /* ? control */
       scheduler();
-      break;
     default: /* >= 9 */
       genericExceptionTrapHandler(SYSTRAP, oldSys); /* Changes control */
-      break;
   }
 }
 
