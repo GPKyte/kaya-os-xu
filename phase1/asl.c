@@ -209,7 +209,7 @@ void initASL (void) {
 	int i;
 	static semd_t semdTable[MAXSEM + 2]; /* +2 for dummy nodes */
 
-	semdFree_h = mkEmptySemdList(); /* Init semdFree list */
+	semdFree_h = NULL; /* Init semdFree list */
 
 	for(i=0; i < MAXSEM; i++) {
 		freeSemd(&(semdTable[i]));

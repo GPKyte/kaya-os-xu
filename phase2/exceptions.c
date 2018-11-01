@@ -38,6 +38,18 @@ HIDDEN void copyState(state_PTR orig, state_PTR dest) {
   }
 }
 
+HIDDEN void blockCurProc(int *semAdd) {
+  /* Handle timer stuff */
+  unsigned int stopTOD;
+  STCK(stopTOD);
+  curProc->p_CPUTime += stopTOD - startTOD;
+
+  /* Block on sema4 */
+  insertBlocked(semAdd, curProc);
+  curProc = NULL;
+  softBlkCount++;
+}
+
 /*
  * Mutator method to recursively kill the given pcb_PTR and all of its
  * progeny. Leaves parent and siblings unaffected. Removes from any Queue/semd_t
@@ -58,7 +70,7 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
 
   } else if(outBlocked(p) == p) {
 
-    if(&semaphores <= p->semAdd && p->semAdd <= &(semaphores[MAXSEM - 1]))
+    if(&(semaphores[0]) <= p->p_semAdd && p->p_semAdd <= &(semaphores[MAXSEM - 1]))
       softBlkCount--; /* P blocked on device sema4; sema4++ in intHandler */
     else
       *(p->p_semAdd)++; /* P blocked on NON device sema4 */
@@ -113,7 +125,7 @@ HIDDEN void genericExceptionTrapHandler(int exceptionType, state_PTR oldState) {
  * PARAM: a1 = physical address of processor state area
  * RETURN: v0 = 0 (CHILD) on success, -1 (NOCHILD) on failure
  */
-HIDDEN void sys1_createProcess(state_PTR birthState) {
+HIDDEN int sys1_createProcess(state_PTR birthState) {
   /* Birth new process as child of executing pcb */
   pcb_PTR child = allocPcb();
 
@@ -219,8 +231,8 @@ HIDDEN void sys5_specifyExceptionStateVector(int stateType, state_PTR oldState, 
  *    Where the mnemonic constant GETCPUTIME has the value of 6.
  * RETURN: v0 = processor time in microseconds
  */
-HIDDEN void sys6_getCPUTime() {
-  int stopTOD; partialQuantum;
+HIDDEN unsigned int sys6_getCPUTime() {
+  int stopTOD, partialQuantum;
   STCK(stopTOD);
   partialQuantum = stopTOD - startTOD;
 
@@ -271,18 +283,6 @@ HIDDEN void sys8_waitForIODevice(int lineNumber, int deviceNumber, Bool isReadTe
   }
 }
 
-HIDDEN blockCurProc(int *semAdd) {
-  /* Handle timer stuff */
-  unsigned int stopTOD;
-  STCK(stopTOD);
-  curProc->p_CPUTime += stopTOD - startTOD;
-
-  /* Block on sema4 */
-  insertBlocked(semAdd, curProc);
-  curProc = NULL;
-  softBlkCount++;
-}
-
 /***************** Start of external methods *****************/
 /*
  * Method called in event that a process performs an illegal
@@ -293,7 +293,7 @@ HIDDEN blockCurProc(int *semAdd) {
  * the existence of a specified exception state vector (sys5)
  */
 void pgrmTrapHandler() {
-  genericExceptionTrapHandler(PROGTRAP, (state_t *) PGRMOLDAREA);
+  genericExceptionTrapHandler(PROGTRAP, (state_PTR) PGRMOLDAREA);
 }
 
 /*
@@ -306,34 +306,36 @@ void sysCallHandler() {
   state_t *oldSys;
   Bool isUserMode;
 
-  oldSys = (state_t *) SYSOLDAREA;
+  oldSys = (state_PTR) SYSOLDAREA;
   /* Increment PC regardless of whether process lives after this call */
   oldSys->s_pc = oldSys->s_pc + 4;
   /* Check for reserved instruction error pre-emptively for less code */
   isUserMode = (oldSys->s_status & USERMODEON) > 0;
   if(isUserMode && oldSys->s_a0 <= 8 && oldSys->s_a0 > 0) {
     /* Set Reserved Instruction in Cause register and handle as PROG TRAP */
-    copyState(oldSys, (state_t *) PGRMOLDAREA);
-    ((state_t *) PGRMOLDAREA)->s_cause = (oldSys->s_cause & NOCAUSE) | RESERVEDINSTERR;
+    copyState(oldSys, (state_PTR) PGRMOLDAREA);
+    ((state_PTR) PGRMOLDAREA)->s_cause = (oldSys->s_cause & NOCAUSE) | RESERVEDINSTERR;
     pgrmTrapHandler();
   }
 
   /* Let a0 register decide SysCall type and execute appropriate method */
   switch (oldSys->s_a0) {
     case 1:
-      oldSys->v0 = sys1_createProcess(oldSys->s_a1); /* Keeps control */
+      oldSys->s_v0 = sys1_createProcess((state_PTR) oldSys->s_a1); /* Keeps control */
       loadState(oldSys);
     case 2:
       sys2_terminateProcess(); /* Change control */
       scheduler();
     case 3:
-      sys3_verhogen(oldSys->s_a1); /* ? control */
+      sys3_verhogen((int *) oldSys->s_a1); /* ? control */
       loadState(oldSys);
     case 4:
-      sys4_passeren(oldSys->s_a1); /* ? control */
+      sys4_passeren((int *) oldSys->s_a1); /* ? control */
       loadState(oldSys);
     case 5:
-      sys5_specifyExceptionStateVector(oldSys->s_a1, oldSys->s_a2, oldSys->s_a3);
+      sys5_specifyExceptionStateVector(oldSys->s_a1,
+				(state_PTR) oldSys->s_a2,
+				(state_PTR) oldSys->s_a3);
       loadState(oldSys);
     case 6:
       oldSys->s_v0 = sys6_getCPUTime(); /* Keeps control */
@@ -359,5 +361,5 @@ void sysCallHandler() {
  * the existence of a specified exception state vector (sys5)
  */
 void tlbHandler() {
-  genericExceptionTrapHandler(TLBTRAP, (state_t *) TLBOLDAREA);
+  genericExceptionTrapHandler(TLBTRAP, (state_PTR) TLBOLDAREA);
 }
