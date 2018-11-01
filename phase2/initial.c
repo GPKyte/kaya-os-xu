@@ -33,7 +33,8 @@ int procCount, softBlkCount;
 pcb_PTR curProc;
 pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
 int *psuedoClock; /* a semaphore */
-int semaphores[MAXSEM]; /* static may be redundant here */
+int semaphores[MAXSEM];
+
 
 /*
  * Populate the four new areas in low memory. Allocate finite

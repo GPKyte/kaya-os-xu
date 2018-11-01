@@ -47,7 +47,6 @@ HIDDEN void blockCurProc(int *semAdd) {
   /* Block on sema4 */
   insertBlocked(semAdd, curProc);
   curProc = NULL;
-  softBlkCount++;
 }
 
 /*
@@ -158,7 +157,6 @@ HIDDEN int sys1_createProcess(state_PTR birthState) {
 HIDDEN void sys2_terminateProcess() {
   avadaKedavra(outChild(curProc));
   curProc = NULL;
-  scheduler();
 }
 */
 
@@ -170,28 +168,28 @@ HIDDEN void sys2_terminateProcess() {
  * PARAM: a1 = semaphore address
  */
 HIDDEN void sys3_verhogen(int *mutex) {
-  (*mutex)--;
-  if((*mutex) < 0) {
-    /* Put process in line to use semaphore and move on */
-    insertBlocked(mutex, curProc);
-    scheduler();
-  }
-}
-
-/*
- * Perform P (Test) operation on a Semaphore
- *
- * EX: void SYSCALL (PASSEREN, int *semaddr)
- *    Where the mnemonic constant PASSEREN has the value of 4.
- * PARAM: a1 = semaphore address
- */
-HIDDEN void sys4_passeren(int *mutex) {
   (*mutex)++;
   if((*mutex) <= 0) {
     /* Give turn to next waiting process from semaphore */
     if(headBlocked(mutex)) {
       insertProcQ(&readyQ, removeBlocked(mutex));
     }
+  }
+}
+
+/*
+ * Perform P (Wait/Test) operation on a Semaphore
+ *
+ * EX: void SYSCALL (PASSEREN, int *semaddr)
+ *    Where the mnemonic constant PASSEREN has the value of 4.
+ * PARAM: a1 = semaphore address
+ */
+HIDDEN void sys4_passeren(int *mutex) {
+  (*mutex)--;
+  if((*mutex) < 0) {
+    /* Put process in line to use semaphore and move on */
+    blockCurProc(mutex);
+    scheduler();
   }
 }
 
@@ -276,10 +274,11 @@ HIDDEN void sys8_waitForIODevice(int lineNumber, int deviceNumber, Bool isReadTe
   semAdd = &(semaphores[(lineNumber + isReadTerm) * DEVPERINT + deviceNumber]);
 
   /* Remove curProc and place on semaphore if successful */
-  /* Replicate sys3 code for special handling */
+  /* Replicate sys4 code for special handling */
   (*semAdd)--;
   if((*semAdd) < 0) {
     blockCurProc(semAdd);
+    softBlkCount++;
   }
 }
 
