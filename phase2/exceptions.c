@@ -221,11 +221,11 @@ HIDDEN void sys5_specifyExceptionStateVector(int stateType, state_PTR oldState, 
  * RETURN: v0 = processor time in microseconds
  */
 HIDDEN void sys6_getCPUTime() {
-  int stopTOD;
-  state_t *oldSys;
+  int stopTOD; partialQuantum;
+  STCK(stopTOD);
+  partialQuantum = stopTOD - startTOD;
 
-  int partialQuantum = stopTOD - startTOD;
-  oldSys->s_v0 = partialQuantum + curProc->p_CPUTime; /* set return for LDST */
+  return partialQuantum + curProc->p_CPUTime;
 }
 
 /*
@@ -268,14 +268,21 @@ HIDDEN void sys8_waitForIODevice(int lineNumber, int deviceNumber, Bool isReadTe
   /* Replicate sys3 code for special handling */
   (*semAdd)--;
   if((*semAdd) < 0) {
-    insertBlocked(semAdd, curProc);
-    curProc = NULL;
-    softBlkCount++;
-  } else {
-    PANIC(); /* Error condition, will explore later */
+    blockCurProc(semAdd);
   }
 }
 
+HIDDEN blockCurProc(int *semAdd) {
+  /* Handle timer stuff */
+  unsigned int stopTOD;
+  STCK(stopTOD);
+  curProc->p_CPUTime += stopTOD - startTOD;
+
+  /* Block on sema4 */
+  insertBlocked(semAdd, curProc);
+  curProc = NULL;
+  softBlkCount++;
+}
 
 /***************** Start of external methods *****************/
 /*
@@ -298,11 +305,8 @@ void pgrmTrapHandler() {
  */
 void sysCallHandler() {
   state_t *oldSys;
-  int stopTOD;
   Bool isUserMode;
 
-  /* Stop counting time for curProc */
-  STCK(stopTOD);
   oldSys = (state_t *) SYSOLDAREA;
   /* Increment PC regardless of whether process lives after this call */
   oldSys->s_pc = oldSys->s_pc + 4;
