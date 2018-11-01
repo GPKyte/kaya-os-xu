@@ -55,12 +55,15 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
    * semaphore will get V'd by the interrupt handler */
   if(outProcQ(&readyQ, p) == p) {
     /* Know p was on Ready Queue, do nothing more */
+
   } else if(outBlocked(p) == p) {
-    /* TODO: make test to decide if was blocked on device sema4 */
-    /* if p is a device sema4: soft block-- & leave sema4++ to intHandler */
-    /* if NOT a device sema4: sema4++ */
+
+    if(&semaphores <= p->semAdd && p->semAdd <= &(semaphores[MAXSEM - 1]))
+      softBlkCount--; /* P blocked on device sema4; sema4++ in intHandler */
+    else
+      *(p->p_semAdd)++; /* P blocked on NON device sema4 */
+
   } else {
-    /* Unexpected behavior */
     PANIC();
   }
 
