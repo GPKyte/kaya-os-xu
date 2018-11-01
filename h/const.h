@@ -60,8 +60,8 @@
 #define LOCALTIMEON	(1 << 27)
 
  /* Cause register */
-#define NOCAUSE		~(124)
-#define RESERVEDINSTERR (10 << 2)
+#define NOCAUSE		~(124) /* 0b1111100 */
+#define RESERVEDINSTERR (10 << 2) /* 0b0101000 */
 #define INTPENDMASK 	(255 << 8)
 
 /* vectors number and type */

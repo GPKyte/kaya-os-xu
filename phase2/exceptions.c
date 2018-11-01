@@ -47,6 +47,7 @@ HIDDEN void blockCurProc(int *semAdd) {
   /* Block on sema4 */
   insertBlocked(semAdd, curProc);
   curProc = NULL;
+  scheduler();
 }
 
 /*
@@ -89,6 +90,7 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
 HIDDEN void sys2_terminateProcess() {
   avadaKedavra(outChild(curProc));
   curProc = NULL;
+  scheduler();
 }
 
 /*
@@ -161,7 +163,7 @@ HIDDEN void sys2_terminateProcess() {
 */
 
 /*
- * Perform V (Increase) operation on a Semaphore
+ * Perform V (Signal/Increase) operation on a Semaphore
  *
  * EX: void SYSCALL (VERHOGEN, int *semaddr)
  *    Where the mnemonic constant VERHOGEN has the value of 3.
@@ -189,7 +191,6 @@ HIDDEN void sys4_passeren(int *mutex) {
   if((*mutex) < 0) {
     /* Put process in line to use semaphore and move on */
     blockCurProc(mutex);
-    scheduler();
   }
 }
 
@@ -247,12 +248,10 @@ HIDDEN unsigned int sys6_getCPUTime() {
  */
 HIDDEN void sys7_waitForClock() {
   /* Select and P the psuedo-clock timer */
-  (*psuedoClock)++;
-  if((*psuedoClock) <= 0) {
-    if(headBlocked(psuedoClock)) {
-      insertProcQ(&readyQ, removeBlocked(psuedoClock));
-      softBlkCount--;
-    }
+  (*psuedoClock)--;
+  if((*psuedoClock) < 0) {
+    softBlkCount++;
+    blockCurProc(psuedoClock);
   }
 }
 
@@ -277,8 +276,8 @@ HIDDEN void sys8_waitForIODevice(int lineNumber, int deviceNumber, Bool isReadTe
   /* Replicate sys4 code for special handling */
   (*semAdd)--;
   if((*semAdd) < 0) {
-    blockCurProc(semAdd);
     softBlkCount++;
+    blockCurProc(semAdd);
   }
 }
 
@@ -324,13 +323,12 @@ void sysCallHandler() {
       loadState(oldSys);
     case 2:
       sys2_terminateProcess(); /* Change control */
-      scheduler();
     case 3:
       sys3_verhogen((int *) oldSys->s_a1); /* ? control */
       loadState(oldSys);
     case 4:
       sys4_passeren((int *) oldSys->s_a1); /* ? control */
-      loadState(oldSys);
+      loadState(oldSys); /* If not blocked during P: continue process */
     case 5:
       sys5_specifyExceptionStateVector(oldSys->s_a1,
 				(state_PTR) oldSys->s_a2,
@@ -341,10 +339,8 @@ void sysCallHandler() {
       loadState(oldSys);
     case 7:
       sys7_waitForClock(); /* Change control */
-      scheduler();
     case 8:
       sys8_waitForIODevice(oldSys->s_a1, oldSys->s_a2, oldSys->s_a3); /* ? control */
-      scheduler();
     default: /* >= 9 */
       genericExceptionTrapHandler(SYSTRAP, oldSys); /* Changes control */
   }
