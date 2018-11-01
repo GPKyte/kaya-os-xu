@@ -311,13 +311,14 @@ void sysCallHandler() {
   /* Increment PC regardless of whether process lives after this call */
   oldSys->s_pc = oldSys->s_pc + 4;
   /* Check for reserved instruction error pre-emptively for less code */
-  isUserMode = (oldSys->s_status & USERMODEON);
+  isUserMode = (oldSys->s_status & USERMODEON) > 0;
   if(isUserMode && oldSys->s_a0 <= 8 && oldSys->s_a0 > 0) {
     /* Set Reserved Instruction in Cause register and handle as PROG TRAP */
-    oldSys->s_cause = (oldSys->s_cause & NOCAUSE) | RESERVEDINSTERR;
     copyState(oldSys, (state_t *) PGRMOLDAREA);
+    ((state_t *) PGRMOLDAREA)->s_cause = (oldSys->s_cause & NOCAUSE) | RESERVEDINSTERR;
     pgrmTrapHandler();
   }
+
   /* Let a0 register decide SysCall type and execute appropriate method */
   switch (oldSys->s_a0) {
     case 1:
@@ -348,6 +349,7 @@ void sysCallHandler() {
       break;
     case 8:
       sys8_waitForIODevice(oldSys->s_a1, oldSys->s_a2, oldSys->s_a3); /* ? control */
+      scheduler();
       break;
     default: /* >= 9 */
       genericExceptionTrapHandler(SYSTRAP, oldSys); /* Changes control */
