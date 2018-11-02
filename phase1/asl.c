@@ -201,24 +201,24 @@ pcb_PTR headBlocked (int *semAdd) {
 
 /*
  * initASL: - a method used to initialize the semdFree list to contain
- *		all the elements of the static array of MAXSEM semaphores.
+ *		all the elements of the static array of MAXSEMS semaphores.
  *
  * This method will be only called once during data structure initialization.
  */
 void initASL (void) {
 	int i;
-	static semd_t semdTable[MAXSEM + 2]; /* +2 for dummy nodes */
+	static semd_t semdTable[MAXSEMS + 2]; /* +2 for dummy nodes */
 
 	semdFree_h = mkEmptySemdList(); /* Init semdFree list */
 
-	for(i=0; i < MAXSEM; i++) {
+	for(i=0; i < MAXSEMS; i++) {
 		freeSemd(&(semdTable[i]));
 	}
 
 	/* Set ASL dummy nodes */
-	semdTable[MAXSEM].s_semAdd = 0;
-	semd_h = &(semdTable[MAXSEM]);
-	semdTable[MAXSEM + 1].s_semAdd = MAXINT;
-	semd_h->s_next = &(semdTable[MAXSEM + 1]);
+	semdTable[MAXSEMS].s_semAdd = 0;
+	semd_h = &(semdTable[MAXSEMS]);
+	semdTable[MAXSEMS + 1].s_semAdd = MAXINT;
+	semd_h->s_next = &(semdTable[MAXSEMS + 1]);
 	semd_h->s_next->s_next = NULL;
 }

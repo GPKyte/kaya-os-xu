@@ -58,7 +58,7 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
 
   } else if(outBlocked(p) == p) {
 
-    if(&semaphores <= p->semAdd && p->semAdd <= &(semaphores[MAXSEM - 1]))
+    if(&semaphores <= p->semAdd && p->semAdd <= &(semaphores[MAXSEMS - 1]))
       softBlkCount--; /* P blocked on device sema4; sema4++ in intHandler */
     else
       *(p->p_semAdd)++; /* P blocked on NON device sema4 */
@@ -163,7 +163,7 @@ HIDDEN void sys3_verhogen(int *mutex) {
     /* Put process in line to use semaphore and move on */
     insertBlocked(mutex, curProc);
     scheduler();
-  }
+  } /* Else continue to loadState from caller */
 }
 
 /*
@@ -180,7 +180,7 @@ HIDDEN void sys4_passeren(int *mutex) {
     if(headBlocked(mutex)) {
       insertProcQ(&readyQ, removeBlocked(mutex));
     }
-  }
+  } /* Continue to loadState from caller */
 }
 
 /*
