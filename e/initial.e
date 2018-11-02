@@ -16,7 +16,7 @@ extern pcb_PTR curProc;
 extern pcb_PTR readyQ;
 
 extern int *psuedoClock;
-extern int semaphores[MAXSEM];
+extern int semaphores[MAXSEMS];
 
 /***************************************************************/
 

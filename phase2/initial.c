@@ -50,10 +50,10 @@ int main() {
 
   /* Init semaphores to 0 */
   /* The first semaphore describes device at interrupt line 3, 1st device */
-  for(i = 0; i < MAXSEM; i++) {
+  for(i = 0; i < MAXSEMS; i++) {
     semaphores[i] = 0;
   }
-  psuedoClock = &(semaphores[MAXSEM - 1]);
+  psuedoClock = &(semaphores[MAXSEMS - 1]);
 
   devregarea = (devregarea_t *) RAMBASEADDR; /* ROM defined hardware info */
   ramtop = (devregarea->rambase) + (devregarea->ramsize);

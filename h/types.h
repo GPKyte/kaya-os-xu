@@ -107,7 +107,7 @@ typedef struct pcb_t {
 } pcb_t, *pcb_PTR;
 
 /* We use 49 sem's; 32normal + 2*8terminal (r/w) + 1timer */
-#define MAXSEM 49
+#define MAXSEMS 49
 typedef struct semd_t {
 /* semaphore descriptor type */
 	struct semd_t	*s_next;		/* next element on the ASL */
