@@ -66,7 +66,7 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
   /* If terminating a blocked process, do NOT adjust semaphore. Because the
    * semaphore will get V'd by the interrupt handler */
   if(outProcQ(&readyQ, p) == p) {
-    /* Know p was on Ready Queue, do nothing more */
+    /* Know p was on Ready Queue, do nothing else */
 
   } else if(outBlocked(p) == p) {
 

@@ -131,17 +131,18 @@ void intHandler() {
 		scheduler();
 
 	} else if (lineNumber == 2) { /* Handle Interval Timer */
-		/* TODO: Set interval timer INTERVALTMR = INTERVALTIME; */
+		/* Release all jobs from psuedoClock */
+		(*psuedoClock)++;
+		if((*psuedoClock) < 0) {
 
-		/* V the psuedoClock */
-		(*psuedoClock)--;
-		if((*psuedoClock) <= 0) {
-			insertBlocked(psuedoClock, curProc);
-			softBlkCount++;
+			while(headBlocked(psuedoClock)) {
+	      insertProcQ(&readyQ, removeBlocked(psuedoClock));
+				softBlkCount--;
+	    }
+
+			*psuedoClock = 0;
+			LDIT(INTERVALTIME);
 			scheduler();
-
-		} else {
-			loadState(oldInt);
 		}
 
 	} else { /* lineNumber >= 3; Handle I/O device interrupt */
