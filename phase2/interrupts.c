@@ -55,14 +55,15 @@ HIDDEN device_t* findDevice(int lineNum, int deviceNum) {
  */
 HIDDEN Bool isReadTerm(int lineNum, device_t *dev) {
 	/* Check writeStatus because write priortized over read */
-	unsigned int *writeStatus;
+	unsigned int transmStatusMask = 0x0F;
 
-	writeStatus = (unsigned int *) ((unsigned int) dev + DEVREGLEN * RECVSTATUS);
-	if((lineNum != TERMINT) || ((*writeStatus) != ACK)) {
+	if((lineNum != TERMINT) /* Wrong line, not even a terminal */
 		return FALSE;
-	}
-	/* Thus, lineNum == TERMINT && readStatus != ACK, i.e. isReadTerm */
-	return TRUE;
+
+	if((dev->t_transm_status & transmStatusMask) != READY)) /* Write, not read */
+		return FALSE;
+
+	return TRUE; /* lineNum == TERMINT && readStatus != READY, i.e. isReadTerm */
 }
 
 /* Select device number */
@@ -105,18 +106,16 @@ HIDDEN int findLineIndex(unsigned int causeRegister) {
 
 HIDDEN unsigned int handleTerminal(device_t *device) {
 	/* handle writes then reads */
+	unsigned int transmitStatusMask = 0x0F;
 	unsigned int status;
-	unsigned int *writeStatus;
-	unsigned int *readStatus;
 
-	writeStatus = (unsigned int *) ((unsigned int) device + DEVREGLEN * RECVSTATUS);
-	readStatus = (unsigned int *) ((unsigned int) device + DEVREGLEN * TRANSTATUS);
-	if(*writeStatus != ACK) {
-		status = *writeStatus;
-		*writeStatus = ACK;
+	if((device->t_transm_status & transmitStatusMask) != READY) {
+		status = device->t_transm_status;
+		device->t_transm_command = ACK;
+
 	} else {
-		status = *readStatus;
-		*readStatus = ACK;
+		status = device->t_recv_status;
+		device->t_recv_command = ACK;
 	}
 
 	return status;
@@ -124,11 +123,13 @@ HIDDEN unsigned int handleTerminal(device_t *device) {
 
 HIDDEN int ack(int lineNumber, device_t* device) {
 	unsigned int status;
+
 	if(lineNumber == TERMINT) {
 		status = handleTerminal(device);
+
 	} else {
 		status = device->d_status;
-		device->d_status = ACK;
+		device->d_command = ACK;
 	}
 
 	return status;
@@ -138,7 +139,6 @@ HIDDEN int ack(int lineNumber, device_t* device) {
 void intHandler() {
 	state_t *oldInt;
 	device_t *device;
-	pcb_PTR proc;
 	int *semAdd;
 	int lineNumber, deviceNumber;
 	Bool isReadTerm;
@@ -153,7 +153,7 @@ void intHandler() {
 		PANIC();
 
 	} else if (lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
-		/* Timing stuff maybe? */
+		/* Timing stuff maybe? Switch to next process */
 		scheduler();
 
 	} else if (lineNumber == 2) { /* Handle Interval Timer */
@@ -168,13 +168,12 @@ void intHandler() {
 
 			*psuedoClock = 0;
 			LDIT(INTERVALTIME);
-			scheduler();
+			scheduler(); /* TODO: Re-Consider policy for turn-over */
 		}
 
 	} else { /* lineNumber >= 3; Handle I/O device interrupt */
 		/* Handle external device interrupts */
 		deviceNumber = findDeviceIndex(lineNumber);
-
 		device = findDevice(lineNumber, deviceNumber);
 		isReadTerm = isReadTerm(lineNumber, device);
 		status = ack(lineNumber, device);
@@ -184,8 +183,7 @@ void intHandler() {
 		semAdd = findSem(lineNumber, deviceNumber, isReadTerm);
 		(*semAdd)++;
 		if((*semAdd) <= 0) {
-			proc = removeBlocked(semAdd);
-			insertProcQ(&readyQ, proc);
+			insertProcQ(&readyQ, removeBlocked(semAdd));
 			softBlkCount--;
 		}
 	}
