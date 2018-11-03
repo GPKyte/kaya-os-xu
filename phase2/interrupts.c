@@ -57,10 +57,10 @@ HIDDEN Bool isReadTerm(int lineNum, device_t *dev) {
 	/* Check writeStatus because write priortized over read */
 	unsigned int transmStatusMask = 0x0F;
 
-	if((lineNum != TERMINT) /* Wrong line, not even a terminal */
+	if(lineNum != TERMINT) /* Wrong line, not even a terminal */
 		return FALSE;
 
-	if((dev->t_transm_status & transmStatusMask) != READY)) /* Write, not read */
+	if((dev->t_transm_status & transmStatusMask) != READY) /* Write, not read */
 		return FALSE;
 
 	return TRUE; /* lineNum == TERMINT && readStatus != READY, i.e. isReadTerm */
@@ -141,7 +141,7 @@ void intHandler() {
 	device_t *device;
 	int *semAdd;
 	int lineNumber, deviceNumber;
-	Bool isReadTerm;
+	Bool isRead;
 	unsigned int status;
 	unsigned int stopTOD;
 
@@ -162,9 +162,9 @@ void intHandler() {
 		if((*psuedoClock) < 0) {
 
 			while(headBlocked(psuedoClock)) {
-	      insertProcQ(&readyQ, removeBlocked(psuedoClock));
+				insertProcQ(&readyQ, removeBlocked(psuedoClock));
 				softBlkCount--;
-	    }
+			}
 
 			*psuedoClock = 0;
 			LDIT(INTERVALTIME);
@@ -175,12 +175,12 @@ void intHandler() {
 		/* Handle external device interrupts */
 		deviceNumber = findDeviceIndex(lineNumber);
 		device = findDevice(lineNumber, deviceNumber);
-		isReadTerm = isReadTerm(lineNumber, device);
+		isRead = isReadTerm(lineNumber, device);
 		status = ack(lineNumber, device);
 
 		/* Be aware that I/O int can occur BEFORE sys8_waitForIODevice */
 		/* V the device's semaphore, once io complete, put back on ready queue */
-		semAdd = findSem(lineNumber, deviceNumber, isReadTerm);
+		semAdd = findSem(lineNumber, deviceNumber, isRead);
 		(*semAdd)++;
 		if((*semAdd) <= 0) {
 			insertProcQ(&readyQ, removeBlocked(semAdd));
