@@ -39,13 +39,41 @@
 #include "/usr/local/include/umps2/umps/libumps.e"
 
 /*********************** Helper Methods **********************/
+/*
+ * findDevice - Calculate address of device given interrupt line and device num
+ */
+HIDDEN device_t* findDevice(int lineNum, int deviceNum) {
+	device_t *devRegArray = ((devregarea_t *) RAMBASEADDR)->devreg;
+	return &(devRegArray[(lineNum - LINENUMOFFSET) * DEVPERINT + deviceNum]);
+}
+
+/*
+ * isReadTerm - Decides whether interrupting device is a terminal
+ * and whether it should be treated as a read (TRUE) or write (FALSE) terminal
+ * Note: Dependent on pre-ACKnowledged status of term device,
+ *       We assume either read or write active, but check for improper lineNum
+ */
+HIDDEN Bool isReadTerm(int lineNum, device_t *dev) {
+	/* Check writeStatus because write priortized over read */
+	unsigned int *writeStatus;
+
+	writeStatus = (unsigned int *) ((unsigned int) dev + DEVREGLEN * RECVSTATUS);
+	if((lineNum != TERMINT) || ((*writeStatus) != ACK)) {
+		return FALSE;
+	}
+	/* Thus, lineNum == TERMINT && readStatus != ACK, i.e. isReadTerm */
+	return TRUE;
+}
+
 /* Select device number */
 HIDDEN int findDeviceIndex(int intLine) {
 	int deviceIndex;
-	int deviceMask;
+	int deviceMask = 1; /* Traveling bit to select device */
+
 	devregarea_t * devregarea = (devregarea_t *) RAMBASEADDR;
 	unsigned int deviceBits = devregarea->interrupt_dev[intLine - LINENUMOFFSET];
 
+	/* Find active bit */
 	for(deviceIndex = 0; deviceIndex < DEVPERINT; deviceIndex++) {
 		deviceMask = 1 << deviceIndex;
 
@@ -75,7 +103,7 @@ HIDDEN int findLineIndex(unsigned int causeRegister) {
 	return lineIndex;
 }
 
-HIDDEN unsigned int handleTerminal(int terminal, device_t *device) {
+HIDDEN unsigned int handleTerminal(device_t *device) {
 	/* handle writes then reads */
 	unsigned int status;
 	unsigned int *writeStatus;
@@ -94,17 +122,13 @@ HIDDEN unsigned int handleTerminal(int terminal, device_t *device) {
 	return status;
 }
 
-HIDDEN int ack(int lineNumber, int deviceNumber) {
+HIDDEN int ack(int lineNumber, device_t* device) {
 	unsigned int status;
-	device_t *device;
-	device_t *devRegArray = ((devregarea_t *) RAMBASEADDR)->devreg;
-
-	device = &(devRegArray[(lineNumber - LINENUMOFFSET) * 8 + deviceNumber]);
 	if(lineNumber == TERMINT) {
-		status = handleTerminal(deviceNumber, device);
+		status = handleTerminal(device);
 	} else {
 		status = device->d_status;
-		device->d_status = 1;
+		device->d_status = ACK;
 	}
 
 	return status;
@@ -113,9 +137,11 @@ HIDDEN int ack(int lineNumber, int deviceNumber) {
 /********************** External Methods *********************/
 void intHandler() {
 	state_t *oldInt;
+	device_t *device;
 	pcb_PTR proc;
 	int *semAdd;
 	int lineNumber, deviceNumber;
+	Bool isReadTerm;
 	unsigned int status;
 	unsigned int stopTOD;
 
@@ -148,11 +174,14 @@ void intHandler() {
 	} else { /* lineNumber >= 3; Handle I/O device interrupt */
 		/* Handle external device interrupts */
 		deviceNumber = findDeviceIndex(lineNumber);
-		status = ack(lineNumber, deviceNumber);
+
+		device = findDevice(lineNumber, deviceNumber);
+		isReadTerm = isReadTerm(lineNumber, device);
+		status = ack(lineNumber, device);
 
 		/* Be aware that I/O int can occur BEFORE sys8_waitForIODevice */
 		/* V the device's semaphore, once io complete, put back on ready queue */
-		semAdd = &(semaphores[(lineNumber - LINENUMOFFSET) * DEVPERINT + deviceNumber]);
+		semAdd = findSem(lineNumber, deviceNumber, isReadTerm);
 		(*semAdd)++;
 		if((*semAdd) <= 0) {
 			proc = removeBlocked(semAdd);
@@ -162,5 +191,6 @@ void intHandler() {
 	}
 
 	oldInt->s_v0 = status;
+	/* TODO: Handle timing stuff */
 	loadState(oldInt);
 }

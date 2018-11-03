@@ -33,8 +33,20 @@ int procCount, softBlkCount;
 pcb_PTR curProc;
 pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
 int *psuedoClock; /* a semaphore */
-int semaphores[MAXSEM];
+int semaphores[MAXSEMS];
 
+/*
+ * findSem - Calculates address of device semaphore
+ * This excludes the psuedoClock and non-device semaphores
+ * PARAM: int lineNum is the device type, correlates with the interrupt lineNum
+ *        int deviceNum is the index of a device within a type group
+ *        Bool isReadTerm is FALSE for writeT & non-terminals, TRUE for readT
+ * RETURN: int* calculated address of device semaphore
+ */
+int* findSem(int lineNum, int deviceNum, Bool isReadTerm) {
+	int semGroup = (lineNum - LINENUMOFFSET) + isReadTerm;
+	return &(semaphores[semGroup * DEVPERINT + deviceNum]);
+}
 
 /*
  * Populate the four new areas in low memory. Allocate finite

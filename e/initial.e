@@ -18,6 +18,8 @@ extern pcb_PTR readyQ;
 extern int *psuedoClock;
 extern int semaphores[MAXSEMS];
 
+extern int* findSem(int lineNum, int deviceNum, Bool isReadTerm);
+
 /***************************************************************/
 
 #endif
