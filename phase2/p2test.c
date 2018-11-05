@@ -111,6 +111,12 @@ memaddr *p5MemLocation = 0;		/* To cause a p5 trap */
 void	p2(),p3(),p4(),p5(),p5a(),p5b(),p6(),p7(),p7a(),p5prog(),p5mm();
 void	p5sys(),p8root(),child1(),child2(),p8leaf();
 
+/* debugging */
+debugT(int a, int b) {
+	int i;
+	i = a + b;
+	i++;
+}
 
 /* a procedure to print on terminal 0 */
 void print(char *msg) {
@@ -118,14 +124,16 @@ void print(char *msg) {
 	char * s = msg;
 	devregtr * base = (devregtr *) (TERM0ADDR);
 	devregtr status;
-	
+
+	debugT(127, 0);
 	SYSCALL(PASSERN, (int)&term_mut, 0, 0);				/* P(term_mut) */
 	while (*s != EOS) {
-		*(base + 3) = PRINTCHR | (((devregtr) *s) << BYTELEN);
-		status = SYSCALL(WAITIO, TERMINT, 0, 0);	
+		*(base + 3) = PRINTCHR | (((devregtr) *s) << BYTELEN); /* Order of Ops, IO before SYS8 */
+		status = SYSCALL(WAITIO, TERMINT, 0, 0);
+		debugT(132, status & TERMSTATMASK);
 		if ((status & TERMSTATMASK) != RECVD)
 			PANIC();
-		s++;	
+		s++;
 	}
 	SYSCALL(VERHOGEN, (int)&term_mut, 0, 0);				/* V(term_mut) */
 }

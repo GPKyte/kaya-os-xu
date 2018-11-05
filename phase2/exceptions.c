@@ -70,7 +70,7 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
 
   } else if(outBlocked(p) == p) {
 
-    if(&(semaphores[0]) <= p->p_semAdd && p->p_semAdd <= &(semaphores[MAXSEM - 1]))
+    if(&(semaphores[0]) <= p->p_semAdd && p->p_semAdd <= &(semaphores[MAXSEMS - 1]))
       softBlkCount--; /* P blocked on device sema4; sema4++ in intHandler */
     else
       *(p->p_semAdd)++; /* P blocked on NON device sema4 */
