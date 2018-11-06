@@ -44,7 +44,6 @@ typedef struct {
 	device_t devreg[DEVINTNUM * DEVPERINT];
 } devregarea_t;
 
-#define STATESIZE 0x8c
 #define STATEREGNUM	31
 typedef struct state_t {
 	unsigned int	s_asid;

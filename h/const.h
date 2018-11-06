@@ -13,10 +13,14 @@
 #define PTEMAGICNO		0x2A
 
 #define ROMPAGESTART	0x20000000	 /* ROM Reserved Page */
-#define INTOLDAREA		ROMPAGESTART
-#define TLBOLDAREA		ROMPAGESTART + 2 * STATESIZE
-#define PGRMOLDAREA		ROMPAGESTART + 4 * STATESIZE
-#define SYSOLDAREA		ROMPAGESTART + 6 * STATESIZE
+#define INTOLDAREA	0x20000000
+#define INTNEWAREA	0x2000008c
+#define TLBOLDAREA	0x20000118
+#define TLBNEWAREA	0x200001a4
+#define PGRMOLDAREA	0x20000230
+#define PGRMNEWAREA	0x200002bc
+#define SYSOLDAREA	0x20000348
+#define SYSNEWAREA	0x200003d4
 
 /* timer, timescale, TOD-LO and other bus regs */
 #define RAMBASEADDR   0x10000000
@@ -55,6 +59,7 @@
 /* Turn 1 and 2 On, but 3 off: 1ON | 2ON & ~3ON */
 #define VMpON		(1 << 25)
 #define INTpON		(1 << 2)
+#define INTcON		(1)
 #define INTMASKOFF	(255 << 8) /* Not masking means interrupts on */
 #define USERMODEON	(1 << 3)
 #define LOCALTIMEON	(1 << 27)

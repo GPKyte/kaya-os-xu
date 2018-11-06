@@ -154,6 +154,7 @@ void intHandler() {
 
 	} else if (lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
 		/* Timing stuff maybe? Switch to next process */
+		putInPool(curProc);
 		scheduler();
 
 	} else if (lineNumber == 2) { /* Handle Interval Timer */
@@ -162,7 +163,7 @@ void intHandler() {
 		if((*psuedoClock) < 0) {
 
 			while(headBlocked(psuedoClock)) {
-				insertProcQ(&readyQ, removeBlocked(psuedoClock));
+				putInPool(removeBlocked(psuedoClock));
 				softBlkCount--;
 			}
 
@@ -183,7 +184,7 @@ void intHandler() {
 		semAdd = findSem(lineNumber, deviceNumber, isRead);
 		(*semAdd)++;
 		if((*semAdd) <= 0) {
-			insertProcQ(&readyQ, removeBlocked(semAdd));
+			putInPool(removeBlocked(semAdd));
 			softBlkCount--;
 		}
 	}

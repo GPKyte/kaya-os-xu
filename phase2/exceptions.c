@@ -23,6 +23,12 @@
 #include "../e/scheduler.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
+void debugB(int a, int b) {
+  int i;
+  i = a+b;
+  i++;
+}
+
 /********************** Helper methods **********************/
 /*
  * A utility to copy over states
@@ -105,7 +111,6 @@ HIDDEN void genericExceptionTrapHandler(int exceptionType, state_PTR oldState) {
     || curProc->p_exceptionConfig[NEW][exceptionType] == NULL) {
     /* Default, exception state not specified */
     sys2_terminateProcess();
-    scheduler();
   }
 
   /*
@@ -136,7 +141,8 @@ HIDDEN int sys1_createProcess(state_PTR birthState) {
   copyState(birthState, &(child->p_s));
   insertChild(curProc, child);
 
-  insertProcQ(&readyQ, child); /* insert child to the readyQ */
+  putInPool(child); /* insert child to the readyQ */
+  procCount++;
   return CHILD;
 }
 
@@ -171,10 +177,11 @@ HIDDEN void sys2_terminateProcess() {
  */
 HIDDEN void sys3_verhogen(int *mutex) {
   (*mutex)++;
+  debugB(181, (int) mutex);
   if((*mutex) <= 0) {
     /* Give turn to next waiting process from semaphore */
     if(headBlocked(mutex)) {
-      insertProcQ(&readyQ, removeBlocked(mutex));
+      putInPool(removeBlocked(mutex));
     }
   }
 }
@@ -301,7 +308,7 @@ void pgrmTrapHandler() {
  * PARAM: a0 = int for system call number
  */
 void sysCallHandler() {
-  state_t *oldSys;
+  state_PTR oldSys;
   Bool isUserMode;
 
   oldSys = (state_PTR) SYSOLDAREA;
@@ -309,8 +316,10 @@ void sysCallHandler() {
   oldSys->s_pc = oldSys->s_pc + 4;
   /* Check for reserved instruction error pre-emptively for less code */
   isUserMode = (oldSys->s_status & USERMODEON) > 0;
+  debugB(320, oldSys);
   if(isUserMode && oldSys->s_a0 <= 8 && oldSys->s_a0 > 0) {
     /* Set Reserved Instruction in Cause register and handle as PROG TRAP */
+    debugB(322, (int) isUserMode);
     copyState(oldSys, (state_PTR) PGRMOLDAREA);
     ((state_PTR) PGRMOLDAREA)->s_cause = (oldSys->s_cause & NOCAUSE) | RESERVEDINSTERR;
     pgrmTrapHandler();
@@ -324,6 +333,7 @@ void sysCallHandler() {
     case 2:
       sys2_terminateProcess(); /* Change control */
     case 3:
+      debugB(336, (int) oldSys);
       sys3_verhogen((int *) oldSys->s_a1); /* ? control */
       loadState(oldSys);
     case 4:

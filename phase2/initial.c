@@ -35,6 +35,12 @@ pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
 int *psuedoClock; /* a semaphore */
 int semaphores[MAXSEMS];
 
+void debug(int a, int b) {
+ int i;
+ i = a+b;
+ i++;
+}
+
 /*
  * findSem - Calculates address of device semaphore
  * This excludes the psuedoClock and non-device semaphores
@@ -71,10 +77,11 @@ int main() {
   ramtop = (devregarea->rambase) + (devregarea->ramsize);
 
   /* Init new processor state areas */
-  intNewArea = (state_t *) INTOLDAREA + STATESIZE;
-  tlbMgntNewArea = (state_t *) TLBOLDAREA + STATESIZE;
-  pgrmTrpNewArea = (state_t *) PGRMOLDAREA + STATESIZE;
-  sysCallNewArea = (state_t *) SYSOLDAREA + STATESIZE;
+  intNewArea = (state_t *) INTNEWAREA;
+  debug(25, (int) intNewArea);
+  tlbMgntNewArea = (state_t *) TLBNEWAREA;
+  pgrmTrpNewArea = (state_t *) PGRMNEWAREA;
+  sysCallNewArea = (state_t *) SYSNEWAREA;
 
   intNewArea->s_pc = (memaddr) intHandler;
   tlbMgntNewArea->s_pc = (memaddr) tlbHandler;
@@ -116,12 +123,13 @@ int main() {
    *    Set PC to start at P2's test
    */
   firstProc->p_s.s_status = (INTMASKOFF | INTpON | LOCALTIMEON) & ~USERMODEON & ~VMpON;
+  debug(125, (int) firstProc->p_s.s_status); 
   firstProc->p_s.s_sp = ramtop - PAGESIZE;
   firstProc->p_s.s_pc = (memaddr) test;
   firstProc->p_s.s_t9 = firstProc->p_s.s_pc; /* For technical reasons, setting t9 to pc */
 
   procCount++;
-  insertProcQ(&readyQ, firstProc);
+  putInPool(firstProc);
   scheduler();
   return 0; /* Will never reach, but this will remove the pointless warning */
 }

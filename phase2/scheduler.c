@@ -47,7 +47,7 @@ HIDDEN pcb_PTR removeFromPool() {
  * Put process in a ready state
  * PARAM: pointer to PCB to be returned to pool
  */
-HIDDEN void putInPool(pcb_PTR p) {
+void putInPool(pcb_PTR p) {
   insertProcQ(&readyQ, p);
 }
 /******************** External methods ***********************/
@@ -71,18 +71,14 @@ void loadState(state_t *statep) {
 */
 void scheduler() {
   state_t *waitState;
-  /*
-   * TODO: Store curProc back in Queue if unfinished
-   * Otherwise release process and decrement procCount
-   */
-  if(curProc != NULL) {
-    putInPool(curProc);
-  }
+
+  debugA(75, (int) waitState);
 
   curProc = removeFromPool();
   if(curProc != NULL) {
     /* Prepare state for next job */
     /* Put time on clock */
+    debugA(81, (int) waitState);
     setTIMER(QUANTUMTIME);
     loadState(&(curProc->p_s));
   }
@@ -95,7 +91,8 @@ void scheduler() {
     PANIC();
   }
 
-  waitState->s_status = getSTATUS() | INTMASKOFF;
+  waitState->s_status = getSTATUS() | INTMASKOFF | INTcON;
+
   setSTATUS(waitState->s_status); /* turn interrupts on */
 
   /* No ready jobs, so we WAIT for next interrupt */
