@@ -97,7 +97,7 @@ HIDDEN int findLineIndex(unsigned int causeRegister) {
 	int numOfIntLines = 8;
 	unsigned int lineMask = 1;
 	unsigned int intLineBits = (causeRegister & INTPENDMASK) >> 8;
-	
+
 	for(lineIndex = 0; lineIndex < numOfIntLines; lineIndex++) {
 		lineMask = 1 << lineIndex;
 
@@ -200,9 +200,9 @@ void intHandler() {
 	}
 
 	if(waiting) {
-		waiting == FALSE;
+		waiting = FALSE;
 		scheduler();
 	}
-	
+
 	loadState(oldInt);
 }

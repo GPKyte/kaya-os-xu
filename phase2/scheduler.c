@@ -96,8 +96,8 @@ void scheduler() {
 
   waitState.s_status = (getSTATUS() | INTMASKOFF | INTcON | INTpON) & ~LOCALTIMEON;
   debugA(100, (int) waitState.s_status);
-  setSTATUS(waitState.s_status); /* turn interrupts on */
-  /* No ready jobs, so we WAIT for next interrupt */
   waiting = TRUE;
+  /* No ready jobs, so we WAIT for next interrupt */
+  setSTATUS(waitState.s_status); /* turn interrupts on */
   WAIT();
 }
