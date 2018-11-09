@@ -7,6 +7,12 @@
  *
  ****************************************************************************/
 
+#define EXCEP	0
+#define INIT	1
+#define INTER	2
+#define SCHED	3
+#define TEST	4
+
 /* Hardware & software constants */
 #define PAGESIZE		4096	/* page size in bytes */
 #define WORDLEN			4		/* word size in bytes */

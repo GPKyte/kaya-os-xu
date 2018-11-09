@@ -82,7 +82,7 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
       *(p->p_semAdd)++; /* P blocked on NON device sema4 */
 
   } else {
-    PANIC();
+    fuckIt(EXCEP);
   }
 
   /* Adjust procCount */
@@ -107,8 +107,8 @@ HIDDEN void sys2_terminateProcess() {
  */
 HIDDEN void genericExceptionTrapHandler(int exceptionType, state_PTR oldState) {
   /* Check exception type and existence of a specified excep state vector */
-  if(curProc->p_exceptionConfig[OLD][exceptionType] == NULL
-    || curProc->p_exceptionConfig[NEW][exceptionType] == NULL) {
+  debugB(110, (int) (curProc));
+  if(curProc->p_exceptionConfig[OLD][exceptionType] == NULL) {
     /* Default, exception state not specified */
     sys2_terminateProcess();
   }
@@ -177,7 +177,6 @@ HIDDEN void sys2_terminateProcess() {
  */
 HIDDEN void sys3_verhogen(int *mutex) {
   (*mutex)++;
-  debugB(181, (int) mutex);
   if((*mutex) <= 0) {
     /* Give turn to next waiting process from semaphore */
     if(headBlocked(mutex)) {
@@ -275,9 +274,7 @@ HIDDEN void sys7_waitForClock() {
  */
 HIDDEN void sys8_waitForIODevice(int lineNumber, int deviceNumber, Bool isReadTerm) {
   /* Choose appropriate semaphore */
-  int* semAdd;
-  lineNumber -= LINENUMOFFSET;
-  semAdd = &(semaphores[(lineNumber + isReadTerm) * DEVPERINT + deviceNumber]);
+  int *semAdd = findSem(lineNumber, deviceNumber, isReadTerm);
 
   /* Remove curProc and place on semaphore if successful */
   /* Replicate sys4 code for special handling */
@@ -285,6 +282,8 @@ HIDDEN void sys8_waitForIODevice(int lineNumber, int deviceNumber, Bool isReadTe
   if((*semAdd) < 0) {
     softBlkCount++;
     blockCurProc(semAdd);
+  } else {
+    fuckIt(EXCEP);
   }
 }
 
@@ -333,7 +332,6 @@ void sysCallHandler() {
     case 2:
       sys2_terminateProcess(); /* Change control */
     case 3:
-      debugB(336, (int) oldSys);
       sys3_verhogen((int *) oldSys->s_a1); /* ? control */
       loadState(oldSys);
     case 4:

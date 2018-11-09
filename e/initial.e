@@ -8,6 +8,7 @@
 *  Written by Ploy Sithisakulrat and Gavin Kyte
 ****************************************************************/
 
+extern Bool waiting;
 extern cpu_t startTOD;
 extern int procCount;
 extern int softBlkCount;

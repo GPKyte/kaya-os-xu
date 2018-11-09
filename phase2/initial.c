@@ -28,6 +28,7 @@
 
 extern void test();
 
+Bool waiting;
 cpu_t startTOD;
 int procCount, softBlkCount;
 pcb_PTR curProc;
@@ -78,7 +79,6 @@ int main() {
 
   /* Init new processor state areas */
   intNewArea = (state_t *) INTNEWAREA;
-  debug(25, (int) intNewArea);
   tlbMgntNewArea = (state_t *) TLBNEWAREA;
   pgrmTrpNewArea = (state_t *) PGRMNEWAREA;
   sysCallNewArea = (state_t *) SYSNEWAREA;
@@ -128,8 +128,10 @@ int main() {
   firstProc->p_s.s_pc = (memaddr) test;
   firstProc->p_s.s_t9 = firstProc->p_s.s_pc; /* For technical reasons, setting t9 to pc */
 
+  waiting = FALSE;
   procCount++;
   putInPool(firstProc);
+  LDIT(INTERVALTIME);
   scheduler();
   return 0; /* Will never reach, but this will remove the pointless warning */
 }

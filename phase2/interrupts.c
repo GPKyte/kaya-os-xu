@@ -39,6 +39,11 @@
 #include "/usr/local/include/umps2/umps/libumps.e"
 
 /*********************** Helper Methods **********************/
+void debugI(int line, int somePtr) {
+  int i = line + somePtr;
+  i++;
+}
+
 /*
  * findDevice - Calculate address of device given interrupt line and device num
  */
@@ -92,7 +97,7 @@ HIDDEN int findLineIndex(unsigned int causeRegister) {
 	int numOfIntLines = 8;
 	unsigned int lineMask = 1;
 	unsigned int intLineBits = (causeRegister & INTPENDMASK) >> 8;
-
+	
 	for(lineIndex = 0; lineIndex < numOfIntLines; lineIndex++) {
 		lineMask = 1 << lineIndex;
 
@@ -137,6 +142,7 @@ HIDDEN int ack(int lineNumber, device_t* device) {
 
 /********************** External Methods *********************/
 void intHandler() {
+	pcb_PTR p;
 	state_t *oldInt;
 	device_t *device;
 	int *semAdd;
@@ -148,29 +154,32 @@ void intHandler() {
 	STCK(stopTOD);
 	oldInt = (state_t *) INTOLDAREA;
 	lineNumber = findLineIndex(oldInt->s_cause);
+	debugI(156, lineNumber);
 
 	if(lineNumber == 0) { /* Handle inter-processor interrupt (not now) */
-		PANIC();
+		fuckIt(INTER);
 
 	} else if (lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
 		/* Timing stuff maybe? Switch to next process */
+		debugI(162, (int)  curProc);
 		putInPool(curProc);
 		scheduler();
 
 	} else if (lineNumber == 2) { /* Handle Interval Timer */
 		/* Release all jobs from psuedoClock */
 		(*psuedoClock)++;
-		if((*psuedoClock) < 0) {
+		while((*psuedoClock) < 0) {
+			debugI(164, oldInt->s_cause);
 
 			while(headBlocked(psuedoClock)) {
+				debugI(166, *psuedoClock);
 				putInPool(removeBlocked(psuedoClock));
-				softBlkCount--;
+				softBlkCount;
 			}
 
-			*psuedoClock = 0;
-			LDIT(INTERVALTIME);
-			scheduler(); /* TODO: Re-Consider policy for turn-over */
+			(*psuedoClock)++;
 		}
+		LDIT(INTERVALTIME);
 
 	} else { /* lineNumber >= 3; Handle I/O device interrupt */
 		/* Handle external device interrupts */
@@ -184,12 +193,16 @@ void intHandler() {
 		semAdd = findSem(lineNumber, deviceNumber, isRead);
 		(*semAdd)++;
 		if((*semAdd) <= 0) {
-			putInPool(removeBlocked(semAdd));
+			putInPool(p = removeBlocked(semAdd));
 			softBlkCount--;
+			p->p_s.s_v0 = status;
 		}
 	}
 
-	oldInt->s_v0 = status;
-	/* TODO: Handle timing stuff */
+	if(waiting) {
+		waiting == FALSE;
+		scheduler();
+	}
+	
 	loadState(oldInt);
 }

@@ -10,6 +10,7 @@
 
 extern void putInPool(pcb_PTR p);
 extern void loadState(state_t *state);
+extern void fuckIt(int fileOrigin);
 extern void scheduler();
 
 /***************************************************************/

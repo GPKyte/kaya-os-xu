@@ -48,7 +48,8 @@ HIDDEN pcb_PTR removeFromPool() {
  * PARAM: pointer to PCB to be returned to pool
  */
 void putInPool(pcb_PTR p) {
-  insertProcQ(&readyQ, p);
+  if(p != NULL)
+    insertProcQ(&readyQ, p);
 }
 /******************** External methods ***********************/
 
@@ -61,6 +62,11 @@ void loadState(state_t *statep) {
   LDST(statep);
 }
 
+void fuckIt(int i) {
+  i++;
+  PANIC();
+}
+
 /*
 * Mutator method that decides the currently running process
 * and manages the associated queues and meta data.
@@ -70,15 +76,12 @@ void loadState(state_t *statep) {
 *   jobs, system will HALT, PANIC, or WAIT appropriately
 */
 void scheduler() {
-  state_t *waitState;
-
-  debugA(75, (int) waitState);
+  state_t waitState;
 
   curProc = removeFromPool();
   if(curProc != NULL) {
     /* Prepare state for next job */
     /* Put time on clock */
-    debugA(81, (int) waitState);
     setTIMER(QUANTUMTIME);
     loadState(&(curProc->p_s));
   }
@@ -88,13 +91,13 @@ void scheduler() {
   } /* thus, procCount is positive */
 
   if(softBlkCount == 0) { /* Detected deadlock so PANIC */
-    PANIC();
+    fuckIt(SCHED);
   }
 
-  waitState->s_status = getSTATUS() | INTMASKOFF | INTcON;
-
-  setSTATUS(waitState->s_status); /* turn interrupts on */
-
+  waitState.s_status = (getSTATUS() | INTMASKOFF | INTcON | INTpON) & ~LOCALTIMEON;
+  debugA(100, (int) waitState.s_status);
+  setSTATUS(waitState.s_status); /* turn interrupts on */
   /* No ready jobs, so we WAIT for next interrupt */
+  waiting = TRUE;
   WAIT();
 }
