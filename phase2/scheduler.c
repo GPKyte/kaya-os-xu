@@ -83,6 +83,7 @@ void scheduler() {
   if(curProc != NULL) {
     /* Prepare state for next job */
     /* Put time on clock */
+    debugA(86, (int) curProc->p_s.s_status);
     setTIMER(QUANTUMTIME);
     loadState(&(curProc->p_s));
   }
@@ -95,7 +96,8 @@ void scheduler() {
     fuckIt(SCHED);
   }
 
-  waitState.s_status = (getSTATUS() | INTMASKOFF | INTcON | INTpON) & ~LOCALTIMEON;
+  waitState.s_status = (getSTATUS() | INTMASKOFF | INTcON);
+  setTIMER((int) MAXINT);
   debugA(100, (int) waitState.s_status);
   waiting = TRUE;
   /* No ready jobs, so we WAIT for next interrupt */

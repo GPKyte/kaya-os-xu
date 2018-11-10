@@ -174,7 +174,7 @@ void intHandler() {
 			while(headBlocked(psuedoClock)) {
 				debugI(166, *psuedoClock);
 				putInPool(removeBlocked(psuedoClock));
-				softBlkCount;
+				softBlkCount--;
 			}
 
 			(*psuedoClock)++;
@@ -199,10 +199,9 @@ void intHandler() {
 		}
 	}
 
-	debugI(200, semAdd);
-	debugI(201, p == readyQ);
-	debugI(202, waiting);
-	if(waiting) {
+	debugI(202, p == readyQ);
+	debugI(203, waiting);
+	if(waiting || curProc == NULL) {
 		waiting = FALSE;
 		scheduler();
 	}
