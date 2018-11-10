@@ -51,7 +51,8 @@ void debug(int a, int b) {
  * RETURN: int* calculated address of device semaphore
  */
 int* findSem(int lineNum, int deviceNum, Bool isReadTerm) {
-	int semGroup = (lineNum - LINENUMOFFSET) + isReadTerm;
+	int termOffset = (isReadTerm) ? 1 : 0;
+	int semGroup = (lineNum - LINENUMOFFSET) + termOffset;
 	return &(semaphores[semGroup * DEVPERINT + deviceNum]);
 }
 

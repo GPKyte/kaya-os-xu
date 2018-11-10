@@ -63,7 +63,8 @@ void loadState(state_t *statep) {
 }
 
 void fuckIt(int i) {
-  i++;
+  int a = i;
+  a++;
   PANIC();
 }
 

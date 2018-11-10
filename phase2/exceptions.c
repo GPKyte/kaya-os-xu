@@ -312,10 +312,10 @@ void sysCallHandler() {
 
   oldSys = (state_PTR) SYSOLDAREA;
   /* Increment PC regardless of whether process lives after this call */
-  oldSys->s_pc = oldSys->s_pc + 4;
+  oldSys->s_pc = curProc->p_s.s_pc = oldSys->s_pc + 4;
   /* Check for reserved instruction error pre-emptively for less code */
   isUserMode = (oldSys->s_status & USERMODEON) > 0;
-  debugB(320, oldSys);
+  debugB(320, (int) oldSys->s_a0);
   if(isUserMode && oldSys->s_a0 <= 8 && oldSys->s_a0 > 0) {
     /* Set Reserved Instruction in Cause register and handle as PROG TRAP */
     debugB(322, (int) isUserMode);

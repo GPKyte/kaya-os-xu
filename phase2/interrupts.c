@@ -199,6 +199,9 @@ void intHandler() {
 		}
 	}
 
+	debugI(200, semAdd);
+	debugI(201, p == readyQ);
+	debugI(202, waiting);
 	if(waiting) {
 		waiting = FALSE;
 		scheduler();

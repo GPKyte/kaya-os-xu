@@ -128,9 +128,9 @@ void print(char *msg) {
 
 	debugT(127, 0);
 	SYSCALL(PASSERN, (int)&term_mut, 0, 0);				/* P(term_mut) */
-	debugT(129, (int) base);
 	while (*s != EOS) {
-		*(base + 3) = PRINTCHR | (((devregtr) *s) << BYTELEN); /* Order of Ops, IO before SYS8 */
+		*(base + 3) = PRINTCHR | (((devregtr) *s) << BYTELEN);
+		debugT(130, status);
 		status = SYSCALL(WAITIO, TERMINT, 0, 0);
 		debugT(132, status & TERMSTATMASK);
 		if ((status & TERMSTATMASK) != RECVD)
