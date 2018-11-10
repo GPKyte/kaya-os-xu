@@ -180,6 +180,9 @@ void intHandler() {
 			(*psuedoClock)++;
 		}
 		LDIT(INTERVALTIME);
+        /* Trying something new here, may not be right,i TODO: review later */
+        putInPool(curProc);
+        scheduler();
 
 	} else { /* lineNumber >= 3; Handle I/O device interrupt */
 		/* Handle external device interrupts */

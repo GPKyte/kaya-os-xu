@@ -126,13 +126,10 @@ void print(char *msg) {
 	devregtr * base = (devregtr *) (TERM0ADDR);
 	devregtr status;
 
-	debugT(127, 0);
 	SYSCALL(PASSERN, (int)&term_mut, 0, 0);				/* P(term_mut) */
 	while (*s != EOS) {
 		*(base + 3) = PRINTCHR | (((devregtr) *s) << BYTELEN);
-		debugT(130, status);
 		status = SYSCALL(WAITIO, TERMINT, 0, 0);
-		debugT(132, status & TERMSTATMASK);
 		if ((status & TERMSTATMASK) != RECVD)
 			fuckIt(TEST);
 		s++;
@@ -308,25 +305,31 @@ void p2() {
 	print("p2 v's successfully\n");
 
 	/* test of SYS6 */
-
 	STCK(now1);				/* time of day   */
+    debugT(312, now1);
 	cpu_t1 = SYSCALL(GETCPUTIME, 0, 0, 0);			/* CPU time used */
 
 	/* delay for several milliseconds */
 	for (i=1; i < LOOPNUM; i++)
 		;
+    debugT(315, now2);
 
 	cpu_t2 = SYSCALL(GETCPUTIME, 0, 0, 0);			/* CPU time used */
 	STCK(now2);				/* time of day  */
+    debugT(320, now2);
 
 	if (((now2 - now1) >= (cpu_t2 - cpu_t1)) &&
-			((cpu_t2 - cpu_t1) >= (MINLOOPTIME / (* ((cpu_t *)TIMESCALEADDR)))))
+			((cpu_t2 - cpu_t1) >= (MINLOOPTIME / (* ((cpu_t *)TIMESCALEADDR))))) {
+        debugT(324, now2-now1);
 		print("p2 is OK\n");
+    }
 	else  {
 		if ((now2 - now1) < (cpu_t2 - cpu_t1))
-			print ("error: more cpu time than real time\n");
+            {debugT(328, 0);
+			print ("error: more cpu time than real time\n");}
 		if ((cpu_t2 - cpu_t1) < (MINLOOPTIME / (* ((cpu_t *)TIMESCALEADDR))))
-			print ("error: not enough cpu time went by\n");
+            {debugT(331, 0);
+			print ("error: not enough cpu time went by\n");}
 		print("p2 blew it!\n");
 	}
 
