@@ -162,7 +162,12 @@ void intHandler() {
 	} else if (lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
 		/* Timing stuff maybe? Switch to next process */
 		debugI(162, (int)  curProc);
+		STCK(stopTOD);
+		curProc->p_CPUTime += stopTOD - startTOD;
+
+        curProc->p_s.s_pc = oldInt->s_pc + 4; /* Set pc for reentry */
 		putInPool(curProc);
+		curProc = NULL;
 		scheduler();
 
 	} else if (lineNumber == 2) { /* Handle Interval Timer */
