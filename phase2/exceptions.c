@@ -67,6 +67,7 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
     avadaKedavra(removeChild(p));
   }
 
+	debugB(70, (int) p->semAdd);
   /* bottom-up: dealing with each individual PCB */
   /* TODO: If semaphore value negative, increment the semaphore? */
   /* If terminating a blocked process, do NOT adjust semaphore. Because the
@@ -78,10 +79,12 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
 
     if(&(semaphores[0]) <= p->p_semAdd && p->p_semAdd <= &(semaphores[MAXSEMS - 1]))
       softBlkCount--; /* P blocked on device sema4; sema4++ in intHandler */
-    else
-      *(p->p_semAdd)++; /* P blocked on NON device sema4 */
 
-  }
+		else {
+      debugB(82, (int) *(p->p_semAdd));
+      *(p->p_semAdd)++; /* P blocked on NON device sema4 */
+		}
+  } /* else it was the curProc which is already handled before fxn */
 
   /* Adjust procCount */
   freePcb(p);
