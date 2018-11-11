@@ -215,7 +215,7 @@ void intHandler() {
 	}
 
 	if(stopTOD - startTOD < QUANTUMTIME)
-		setTIMER(QUANTUMTIME - (stopTOD - startTOD)) /* Give back stolen time if remainder > 0 */
+		setTIMER(QUANTUMTIME - (stopTOD - startTOD)); /* Return stolen time if remainder > 0 */
 
 	loadState(oldInt);
 }

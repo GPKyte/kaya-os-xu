@@ -81,8 +81,6 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
     else
       *(p->p_semAdd)++; /* P blocked on NON device sema4 */
 
-  } else {
-    fuckIt(EXCEP);
   }
 
   /* Adjust procCount */
