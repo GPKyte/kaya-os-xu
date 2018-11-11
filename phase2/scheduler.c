@@ -84,6 +84,7 @@ void scheduler() {
     /* Prepare state for next job */
     /* Put time on clock */
     debugA(86, (int) curProc->p_s.s_status);
+    STCK(startTOD);
     setTIMER(QUANTUMTIME);
     loadState(&(curProc->p_s));
   }

@@ -40,8 +40,8 @@
 
 /*********************** Helper Methods **********************/
 void debugI(int line, int somePtr) {
-  int i = line + somePtr;
-  i++;
+	int i = line + somePtr;
+	i++;
 }
 
 /*
@@ -161,11 +161,11 @@ void intHandler() {
 
 	} else if (lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
 		/* Timing stuff maybe? Switch to next process */
-		debugI(162, (int)  curProc);
-		STCK(stopTOD);
-		curProc->p_CPUTime += stopTOD - startTOD;
+		debugI(164, stopTOD - startTOD);
+		curProc->p_CPUTime += stopTOD - startTOD; /* Should be more or less a QUANTUMTIME */
+		curProc->p_s.s_pc = oldInt->s_pc + 4; /* Set pc for reentry */
 
-        curProc->p_s.s_pc = oldInt->s_pc + 4; /* Set pc for reentry */
+
 		putInPool(curProc);
 		curProc = NULL;
 		scheduler();
@@ -174,10 +174,10 @@ void intHandler() {
 		/* Release all jobs from psuedoClock */
 		(*psuedoClock)++;
 		while((*psuedoClock) < 0) {
-			debugI(164, oldInt->s_cause);
+			debugI(176, oldInt->s_cause);
 
 			while(headBlocked(psuedoClock)) {
-				debugI(166, *psuedoClock);
+				debugI(179, *psuedoClock);
 				putInPool(removeBlocked(psuedoClock));
 				softBlkCount--;
 			}
@@ -185,9 +185,9 @@ void intHandler() {
 			(*psuedoClock)++;
 		}
 		LDIT(INTERVALTIME);
-        /* Trying something new here, may not be right,i TODO: review later */
-        putInPool(curProc);
-        scheduler();
+		/* Trying something new here, may not be right, TODO: review later */
+		putInPool(curProc);
+		scheduler();
 
 	} else { /* lineNumber >= 3; Handle I/O device interrupt */
 		/* Handle external device interrupts */
@@ -207,12 +207,15 @@ void intHandler() {
 		}
 	}
 
-	debugI(202, p == readyQ);
-	debugI(203, waiting);
 	if(waiting || curProc == NULL) {
+		/* Came back from waiting state, get next job; don't return to WAIT */
+		debugI(211, waiting);
 		waiting = FALSE;
 		scheduler();
 	}
+
+	if(stopTOD - startTOD < QUANTUMTIME)
+		setTIMER(QUANTUMTIME - (stopTOD - startTOD)) /* Give back stolen time if remainder > 0 */
 
 	loadState(oldInt);
 }
