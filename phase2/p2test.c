@@ -306,30 +306,23 @@ void p2() {
 
 	/* test of SYS6 */
 	STCK(now1);				/* time of day   */
-    debugT(312, now1);
 	cpu_t1 = SYSCALL(GETCPUTIME, 0, 0, 0);			/* CPU time used */
 
 	/* delay for several milliseconds */
 	for (i=1; i < LOOPNUM; i++)
 		;
-    debugT(315, now2);
 
 	cpu_t2 = SYSCALL(GETCPUTIME, 0, 0, 0);			/* CPU time used */
 	STCK(now2);				/* time of day  */
-    debugT(320, now2);
 
 	if (((now2 - now1) >= (cpu_t2 - cpu_t1)) &&
-			((cpu_t2 - cpu_t1) >= (MINLOOPTIME / (* ((cpu_t *)TIMESCALEADDR))))) {
-        debugT(324, now2-now1);
+			((cpu_t2 - cpu_t1) >= (MINLOOPTIME / (* ((cpu_t *)TIMESCALEADDR)))))
 		print("p2 is OK\n");
-    }
-	else  {
+	else	{
 		if ((now2 - now1) < (cpu_t2 - cpu_t1))
-            {debugT(328, 0);
-			print ("error: more cpu time than real time\n");}
+			print ("error: more cpu time than real time\n");
 		if ((cpu_t2 - cpu_t1) < (MINLOOPTIME / (* ((cpu_t *)TIMESCALEADDR))))
-            {debugT(331, 0);
-			print ("error: not enough cpu time went by\n");}
+			print ("error: not enough cpu time went by\n");
 		print("p2 blew it!\n");
 	}
 
@@ -356,9 +349,11 @@ void p3() {
 
 	/* loop until we are delayed at least half of clock V interval */
 	while (time2-time1 < (CLOCKINTERVAL >> 1) )  {
+		debugT(357, CLOCKINTERVAL >> 1);
 		STCK(time1);			/* time of day     */
 		SYSCALL(WAITCLOCK, 0, 0, 0);
 		STCK(time2);			/* new time of day */
+		debugT(361, time2-time1);
 	}
 
 	print("p3 - WAITCLOCK OK\n");
