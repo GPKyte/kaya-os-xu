@@ -149,7 +149,9 @@ void intHandler() {
 	int lineNumber, deviceNumber;
 	Bool isRead;
 	unsigned int status;
-	unsigned int stopTOD;
+	cpu_t stopTOD;
+    cpu_t endOfInterrupt;
+    cpu_t tmpTOD;
 
 	STCK(stopTOD);
 	oldInt = (state_t *) INTOLDAREA;
@@ -173,21 +175,22 @@ void intHandler() {
 	} else if (lineNumber == 2) { /* Handle Interval Timer */
 		/* Release all jobs from psuedoClock */
 		(*psuedoClock)++;
-		while((*psuedoClock) < 0) {
-			debugI(176, oldInt->s_cause);
+		if((*psuedoClock) <= 0) {
 
-			while(headBlocked(psuedoClock)) {
-				debugI(179, *psuedoClock);
-				putInPool(removeBlocked(psuedoClock));
+			while(headBlocked(psuedoClock) != NULL) {
+                STCK(tmpTOD);
+
+                putInPool(p = removeBlocked(psuedoClock));
 				softBlkCount--;
+
+                STCK(endOfInterrupt);
+				debugI(187, p == NULL);
+                p->p_CPUTime += (tmpTOD - endOfInterrupt); /* Account for time spent */
 			}
 
-			(*psuedoClock)++;
 		}
+        (*psuedoClock) = 0;
 		LDIT(INTERVALTIME);
-		/* Trying something new here, may not be right, TODO: review later */
-		putInPool(curProc);
-		scheduler();
 
 	} else { /* lineNumber >= 3; Handle I/O device interrupt */
 		/* Handle external device interrupts */
@@ -204,12 +207,15 @@ void intHandler() {
 			putInPool(p = removeBlocked(semAdd));
 			softBlkCount--;
 			p->p_s.s_v0 = status;
+
+            STCK(endOfInterrupt);
+            p->p_CPUTime += (stopTOD - endOfInterrupt); /* Account for time spent */
 		}
 	}
 
+    /* General non-accounted time space belongs to OS, not any process */
 	if(waiting || curProc == NULL) {
 		/* Came back from waiting state, get next job; don't return to WAIT */
-		debugI(211, waiting);
 		waiting = FALSE;
 		scheduler();
 	}

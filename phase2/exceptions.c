@@ -46,7 +46,7 @@ HIDDEN void copyState(state_PTR orig, state_PTR dest) {
 
 HIDDEN void blockCurProc(int *semAdd) {
   /* Handle timer stuff */
-  unsigned int stopTOD;
+  cpu_t stopTOD;
   STCK(stopTOD);
   curProc->p_CPUTime += stopTOD - startTOD;
 
@@ -106,6 +106,9 @@ HIDDEN void sys2_terminateProcess() {
 HIDDEN void genericExceptionTrapHandler(int exceptionType, state_PTR oldState) {
   /* Check exception type and existence of a specified excep state vector */
   debugB(110, (int) (curProc));
+  if(curProc == NULL)
+	  fuckIt(EXCEP); /* NULL ptr exception loop inbound */
+
   if(curProc->p_exceptionConfig[OLD][exceptionType] == NULL) {
     /* Default, exception state not specified */
     sys2_terminateProcess();
