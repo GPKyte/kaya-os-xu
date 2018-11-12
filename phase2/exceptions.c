@@ -67,25 +67,28 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
     avadaKedavra(removeChild(p));
   }
 
-	debugB(70, (int) p->semAdd);
+	debugB(70, (int) p->p_semAdd);
   /* bottom-up: dealing with each individual PCB */
   /* TODO: If semaphore value negative, increment the semaphore? */
   /* If terminating a blocked process, do NOT adjust semaphore. Because the
    * semaphore will get V'd by the interrupt handler */
-  if(outProcQ(&readyQ, p) == p) {
+  if(outProcQ(&readyQ, p) != NULL) {
     /* Know p was on Ready Queue, do nothing else */
 
-  } else if(outBlocked(p) == p) {
+  } else if(outBlocked(p) != NULL) {
+	debugB(79, p);
+    if(&(semaphores[0]) <= p->p_semAdd && p->p_semAdd <= &(semaphores[MAXSEMS - 1])) {
+        debugB(81, p);
+		softBlkCount--; /* P blocked on device sema4; sema4++ in intHandler */
 
-    if(&(semaphores[0]) <= p->p_semAdd && p->p_semAdd <= &(semaphores[MAXSEMS - 1]))
-      softBlkCount--; /* P blocked on device sema4; sema4++ in intHandler */
-
-		else {
+	} else {
       debugB(82, (int) *(p->p_semAdd));
-      *(p->p_semAdd)++; /* P blocked on NON device sema4 */
-		}
+      *(p->p_semAdd) += 1; /* P blocked on NON device sema4 */
+	  debugB(87, (int) p->p_semAdd);
+	}
   } /* else it was the curProc which is already handled before fxn */
 
+  debugB(89, p);
   /* Adjust procCount */
   freePcb(p);
   procCount--;
