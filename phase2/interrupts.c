@@ -165,9 +165,8 @@ void intHandler() {
 		/* Timing stuff maybe? Switch to next process */
 		debugI(164, stopTOD - startTOD);
 		curProc->p_CPUTime += stopTOD - startTOD; /* Should be more or less a QUANTUMTIME */
-		curProc->p_s.s_pc = oldInt->s_pc + 4; /* Set pc for reentry */
 
-
+		copyState(oldInt, &(curProc->p_s)); /* Save off context for reentry */
 		putInPool(curProc);
 		curProc = NULL;
 		scheduler();

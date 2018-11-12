@@ -33,7 +33,7 @@ void debugB(int a, int b) {
 /*
  * A utility to copy over states
  */
-HIDDEN void copyState(state_PTR orig, state_PTR dest) {
+void copyState(state_PTR orig, state_PTR dest) {
   int i;
   dest->s_asid = orig->s_asid;
   dest->s_cause = orig->s_cause;
