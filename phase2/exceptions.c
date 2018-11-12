@@ -244,8 +244,8 @@ HIDDEN void sys5_specifyExceptionStateVector(int stateType, state_PTR oldState, 
  *    Where the mnemonic constant GETCPUTIME has the value of 6.
  * RETURN: v0 = processor time in microseconds
  */
-HIDDEN unsigned int sys6_getCPUTime() {
-  int stopTOD, partialQuantum;
+HIDDEN cpu_t sys6_getCPUTime() {
+  cpu_t stopTOD, partialQuantum;
   STCK(stopTOD);
   partialQuantum = stopTOD - startTOD;
 
