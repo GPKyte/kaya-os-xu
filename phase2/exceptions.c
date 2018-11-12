@@ -98,7 +98,8 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
  * TODO only for testing - ignore this
  */
 HIDDEN void sys2_terminateProcess() {
-  avadaKedavra(outChild(curProc));
+  outChild(curProc);
+  avadaKedavra(curProc);
   curProc = NULL;
   scheduler();
 }
