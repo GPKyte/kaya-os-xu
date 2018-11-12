@@ -150,8 +150,8 @@ void intHandler() {
 	Bool isRead;
 	unsigned int status;
 	cpu_t stopTOD;
-    cpu_t endOfInterrupt;
-    cpu_t tmpTOD;
+	cpu_t endOfInterrupt;
+	cpu_t tmpTOD;
 
 	STCK(stopTOD);
 	oldInt = (state_t *) INTOLDAREA;
@@ -178,18 +178,18 @@ void intHandler() {
 		if((*psuedoClock) <= 0) {
 
 			while(headBlocked(psuedoClock) != NULL) {
-                STCK(tmpTOD);
+				STCK(tmpTOD);
 
-                putInPool(p = removeBlocked(psuedoClock));
+				putInPool(p = removeBlocked(psuedoClock));
 				softBlkCount--;
 
-                STCK(endOfInterrupt);
+				STCK(endOfInterrupt);
 				debugI(187, p == NULL);
-                p->p_CPUTime += (tmpTOD - endOfInterrupt); /* Account for time spent */
+				p->p_CPUTime += (tmpTOD - endOfInterrupt); /* Account for time spent */
 			}
 
 		}
-        (*psuedoClock) = 0;
+		(*psuedoClock) = 0;
 		LDIT(INTERVALTIME);
 
 	} else { /* lineNumber >= 3; Handle I/O device interrupt */
@@ -208,12 +208,12 @@ void intHandler() {
 			softBlkCount--;
 			p->p_s.s_v0 = status;
 
-            STCK(endOfInterrupt);
-            p->p_CPUTime += (stopTOD - endOfInterrupt); /* Account for time spent */
+			STCK(endOfInterrupt);
+			p->p_CPUTime += (stopTOD - endOfInterrupt); /* Account for time spent */
 		}
 	}
 
-    /* General non-accounted time space belongs to OS, not any process */
+	/* General non-accounted time space belongs to OS, not any process */
 	if(waiting || curProc == NULL) {
 		/* Came back from waiting state, get next job; don't return to WAIT */
 		waiting = FALSE;
