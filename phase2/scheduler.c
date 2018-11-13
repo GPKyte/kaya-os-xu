@@ -43,22 +43,26 @@ void putInPool(pcb_PTR p) {
 }
 /*************************** External methods *****************************/
 /*
- * TODO: make multiple entry points to context switching fxns
- * An abstraction of LDST() to aid in debugging and encapsulation
+ * loadState - An abstraction of LDST() to improve context info and encapsulation
  */
 void loadState(state_t* statep) {
-	STCK(startTOD); /* Also captures loading time, is there a better way? */
+	STCK(startTOD);
 	LDST(statep);
 }
 
-void fuckIt(int i) {
+/*
+ * fuckIt - A wrapper function to provide a psuedo status code
+ *   to the PANIC() operation.
+ * PARAM: file location as defined in const
+ */
+void fuckIt(int location) {
 	int a = i;
 	a++;
 	PANIC();
 }
 
 /*
-* Mutator method that decides the currently running process
+* scheduler - Mutator method that decides the currently running process
 * and manages the associated queues and meta data.
 *
 * Pre: Any context switch
@@ -67,7 +71,6 @@ void fuckIt(int i) {
 */
 void scheduler() {
 	state_t waitState;
-
 	curProc = removeFromPool();
 
 	if(curProc != NULL) {
@@ -84,8 +87,8 @@ void scheduler() {
 	if(softBlkCount == 0) /* Detected deadlock so PANIC */
 		fuckIt(SCHED);
 
-	waitState.s_status = (getSTATUS() | INTMASKOFF | INTcON);
 	waiting = TRUE;
+	waitState.s_status = (getSTATUS() | INTMASKOFF | INTcON);
 	setTIMER((int) MAXINT);
 
 	/* No ready jobs, so we WAIT for next interrupt */
