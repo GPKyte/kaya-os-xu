@@ -48,7 +48,7 @@ void debugI(int line, int somePtr) {
  * findDevice - Calculate address of device given interrupt line and device num
  */
 HIDDEN device_t* findDevice(int lineNum, int deviceNum) {
-	device_t *devRegArray = ((devregarea_t *) RAMBASEADDR)->devreg;
+	device_t* devRegArray = ((devregarea_t*) RAMBASEADDR)->devreg;
 	return &(devRegArray[(lineNum - LINENUMOFFSET) * DEVPERINT + deviceNum]);
 }
 
@@ -58,7 +58,7 @@ HIDDEN device_t* findDevice(int lineNum, int deviceNum) {
  * Note: Dependent on pre-ACKnowledged status of term device,
  *       We assume either read or write active, but check for improper lineNum
  */
-HIDDEN Bool isReadTerm(int lineNum, device_t *dev) {
+HIDDEN Bool isReadTerm(int lineNum, device_t* dev) {
 	/* Check writeStatus because write priortized over read */
 	unsigned int transmStatusMask = 0x0F;
 
@@ -76,7 +76,7 @@ HIDDEN int findDeviceIndex(int intLine) {
 	int deviceIndex;
 	int deviceMask = 1; /* Traveling bit to select device */
 
-	devregarea_t * devregarea = (devregarea_t *) RAMBASEADDR;
+	devregarea_t* devregarea = (devregarea_t*) RAMBASEADDR;
 	unsigned int deviceBits = devregarea->interrupt_dev[intLine - LINENUMOFFSET];
 
 	/* Find active bit */
@@ -109,7 +109,7 @@ HIDDEN int findLineIndex(unsigned int causeRegister) {
 	return lineIndex;
 }
 
-HIDDEN unsigned int handleTerminal(device_t *device) {
+HIDDEN unsigned int handleTerminal(device_t* device) {
 	/* handle writes then reads */
 	unsigned int transmitStatusMask = 0x0F;
 	unsigned int status;
@@ -143,9 +143,9 @@ HIDDEN int ack(int lineNumber, device_t* device) {
 /********************** External Methods *********************/
 void intHandler() {
 	pcb_PTR p;
-	state_t *oldInt;
-	device_t *device;
-	int *semAdd;
+	state_t* oldInt;
+	device_t* device;
+	int* semAdd;
 	int lineNumber, deviceNumber;
 	Bool isRead;
 	unsigned int status;
@@ -154,26 +154,27 @@ void intHandler() {
 	cpu_t tmpTOD;
 
 	STCK(stopTOD);
-	oldInt = (state_t *) INTOLDAREA;
+	oldInt = (state_t*) INTOLDAREA;
 	lineNumber = findLineIndex(oldInt->s_cause);
 	debugI(156, lineNumber);
 
 	if(lineNumber == 0) { /* Handle inter-processor interrupt (not now) */
 		fuckIt(INTER);
 
-	} else if (lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
+	} else if(lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
 		/* Timing stuff maybe? Switch to next process */
 		debugI(164, stopTOD - startTOD);
-		curProc->p_CPUTime += stopTOD - startTOD; /* Should be more or less a QUANTUMTIME */
+		curProc->p_CPUTime += stopTOD - startTOD; /* More or less a QUANTUMTIME */
 		copyState(oldInt, &(curProc->p_s)); /* Save off context for reentry */
 
 		putInPool(curProc);
 		curProc = NULL;
 		scheduler();
 
-	} else if (lineNumber == 2) { /* Handle Interval Timer */
+	} else if(lineNumber == 2) { /* Handle Interval Timer */
 		/* Release all jobs from psuedoClock */
 		(*psuedoClock)++;
+
 		if((*psuedoClock) <= 0) {
 
 			while(headBlocked(psuedoClock) != NULL) {
@@ -186,8 +187,8 @@ void intHandler() {
 				debugI(187, p == NULL);
 				p->p_CPUTime += (tmpTOD - endOfInterrupt); /* Account for time spent */
 			}
-
 		}
+
 		(*psuedoClock) = 0;
 		LDIT(INTERVALTIME);
 
@@ -202,6 +203,7 @@ void intHandler() {
 		/* V the device's semaphore, once io complete, put back on ready queue */
 		semAdd = findSem(lineNumber, deviceNumber, isRead);
 		(*semAdd)++;
+
 		if((*semAdd) <= 0) {
 			putInPool(p = removeBlocked(semAdd));
 			softBlkCount--;
@@ -219,8 +221,8 @@ void intHandler() {
 		scheduler();
 	}
 
-	if(stopTOD - startTOD < QUANTUMTIME)
-		setTIMER(QUANTUMTIME - (stopTOD - startTOD)); /* Return stolen time if remainder > 0 */
+	if(stopTOD - startTOD < QUANTUMTIME) /* Return stolen time if remainder > 0 */
+		setTIMER(QUANTUMTIME - (stopTOD - startTOD));
 
 	loadState(oldInt);
 }
