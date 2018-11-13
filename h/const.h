@@ -7,6 +7,7 @@
  *
  ****************************************************************************/
 
+/* File location descriptors for PANIC psuedo status code */
 #define EXCEP	0
 #define INIT	1
 #define INTER	2
@@ -53,13 +54,13 @@
 #define OFF		0
 #define OLD		0
 #define NEW		1
-#define CHILD		0;
-#define NOCHILD	-1;
+#define CHILD		0
+#define NOCHILD	-1
 #define HIDDEN		static
 #define Bool		int
 #define EOS		'\0'
-#define NULL ((void *)0xFFFFFFFF)
-#define MAXINT ((void *)0x7FFFFFFF)
+#define NULL ((void *) 0xFFFFFFFF)
+#define MAXINT ((unsigned int) 0x7FFFFFFF)
 
 /* Bitwise masks and constants */
 /* Turn 1 and 2 On, but 3 off: 1ON | 2ON & ~3ON */
@@ -72,8 +73,10 @@
 
  /* Cause register */
 #define NOCAUSE		~(124) /* 0b1111100 */
-#define RESERVEDINSTERR (10 << 2) /* 0b0101000 */
+#define RESERVEDINSTERR (10 << 2) /* 0b101000 */
 #define INTPENDMASK 	(255 << 8)
+
+#define TRANSMITSTATUSMASK 0x0F /* For Term Read Status */
 
 /* vectors number and type */
 #define VECTSNUM	4
@@ -83,7 +86,6 @@
 #define SYSTRAP		2
 
 #define TRAPTYPES	3
-
 
 /* device interrupts */
 #define LINENUMOFFSET	3
@@ -108,7 +110,6 @@
 #define TRANSTATUS		2
 #define TRANCOMMAND		3
 
-
 /* device common STATUS codes */
 #define UNINSTALLED	0
 #define READY		1
@@ -128,6 +129,5 @@
 #define STCK(T) ((T) = ((* ((cpu_t *) TODLOADDR)) / (* ((cpu_t *) TIMESCALEADDR))))
 /* Sets count-down timer, used for giving a process a QUANTUMTIME to execute */
 #define LDIT(T)	((* ((cpu_t *) INTERVALTMR)) = (T) * (* ((cpu_t *) TIMESCALEADDR)))
-
 
 #endif

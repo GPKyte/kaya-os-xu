@@ -1,7 +1,7 @@
 /*************************INTERRUPTS.C***********************
  *
  * This module handles the interrupts generated from I/O
- * devices when previously intitaited I/O requests finish
+ * devices when previously initiated I/O requests finish
  * or when the Local or Interval Timers transition
  * from 0x0000.0000 -> 0xFFFF.FFFF
  *
@@ -54,12 +54,10 @@ HIDDEN device_t* findDevice(int lineNum, int deviceNum) {
  */
 HIDDEN Bool isReadTerm(int lineNum, device_t* dev) {
 	/* Check writeStatus because write priortized over read */
-	unsigned int transmStatusMask = 0x0F;
-
 	if(lineNum != TERMINT) /* Wrong line, not even a terminal */
 		return FALSE;
 
-	if((dev->t_transm_status & transmStatusMask) != READY) /* Write, not read */
+	if((dev->t_transm_status & TRANSMITSTATUSMASK) != READY) /* Write, not read */
 		return FALSE;
 
 	return TRUE; /* lineNum == TERMINT && readStatus != READY, i.e. isReadTerm */
@@ -105,10 +103,9 @@ HIDDEN int findLineIndex(unsigned int causeRegister) {
 
 HIDDEN unsigned int handleTerminal(device_t* device) {
 	/* handle writes then reads */
-	unsigned int transmitStatusMask = 0x0F;
 	unsigned int status;
 
-	if((device->t_transm_status & transmitStatusMask) != READY) {
+	if((device->t_transm_status & TRANSMITSTATUSMASK) != READY) {
 		status = device->t_transm_status;
 		device->t_transm_command = ACK;
 
@@ -155,7 +152,6 @@ void intHandler() {
 		fuckIt(INTER);
 
 	} else if(lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
-		/* Timing stuff maybe? Switch to next process */
 		curProc->p_CPUTime += stopTOD - startTOD; /* More or less a QUANTUMTIME */
 		copyState(oldInt, &(curProc->p_s)); /* Save off context for reentry */
 
@@ -184,13 +180,17 @@ void intHandler() {
 		LDIT(INTERVALTIME);
 
 	} else { /* lineNumber >= 3; Handle I/O device interrupt */
-		/* Handle external device interrupts */
+		/*
+		 * Be aware that I/O int can occur BEFORE sys8_waitForIODevice
+		 * We do not explicitly handle this case, because it is not of concern in phase 2
+		 */
+
+		/* Get device meta data */
 		deviceNumber = findDeviceIndex(lineNumber);
 		device = findDevice(lineNumber, deviceNumber);
 		isRead = isReadTerm(lineNumber, device);
 		status = ack(lineNumber, device);
 
-		/* Be aware that I/O int can occur BEFORE sys8_waitForIODevice */
 		/* V the device's semaphore, once io complete, put back on ready queue */
 		semAdd = findSem(lineNumber, deviceNumber, isRead);
 		(*semAdd)++;
