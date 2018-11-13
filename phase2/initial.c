@@ -25,15 +25,15 @@
 #include "../e/exceptions.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
-extern void test();
+extern void test(); /* To link OS's 1st process to test file location */
 
-Bool waiting;
-cpu_t startTOD;
 int procCount, softBlkCount;
 int semaphores[MAXSEMS];
+int *psuedoClock; /* a semaphore */
+Bool waiting;
+cpu_t startTOD;
 pcb_PTR curProc;
 pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
-int *psuedoClock; /* a semaphore */
 
 /*
  * findSem - Calculates address of device semaphore
@@ -55,76 +55,79 @@ int* findSem(int lineNum, int deviceNum, Bool isReadTerm) {
  * Only runs once. Scheduler takes control after this method
  */
 int main() {
-  int i;
-  unsigned int ramtop, baseStatus;
-  devregarea_t *devregarea;
-  state_PTR intNewArea, tlbMgntNewArea, pgrmTrpNewArea, sysCallNewArea;
-  pcb_PTR firstProc;
+	int i;
+	unsigned int ramtop, baseStatus;
+	devregarea_t* devregarea;
+	state_PTR intNewArea, tlbMgntNewArea, pgrmTrpNewArea, sysCallNewArea;
+	pcb_PTR firstProc;
 
-  /* Init semaphores to 0 */
-  /* The first semaphore describes device at interrupt line 3, 1st device */
-  for(i = 0; i < MAXSEMS; i++) {
-    semaphores[i] = 0;
-  }
-  psuedoClock = &(semaphores[MAXSEMS - 1]);
+	/* Init semaphores to 0 */
+	/* The first semaphore describes device at interrupt line 3, 1st device */
+	for(i = 0; i < MAXSEMS; i++) {
+		semaphores[i] = 0;
+	}
 
-  devregarea = (devregarea_t *) RAMBASEADDR; /* ROM defined hardware info */
-  ramtop = (devregarea->rambase) + (devregarea->ramsize);
+	psuedoClock = &(semaphores[MAXSEMS - 1]);
 
-  /* Init new processor state areas */
-  intNewArea = (state_t *) INTNEWAREA;
-  tlbMgntNewArea = (state_t *) TLBNEWAREA;
-  pgrmTrpNewArea = (state_t *) PGRMNEWAREA;
-  sysCallNewArea = (state_t *) SYSNEWAREA;
+	devregarea = (devregarea_t*) RAMBASEADDR;  /* ROM defined hardware info */
+	ramtop = (devregarea->rambase) + (devregarea->ramsize);
 
-  intNewArea->s_pc = (memaddr) intHandler;
-  tlbMgntNewArea->s_pc = (memaddr) tlbHandler;
-  pgrmTrpNewArea->s_pc = (memaddr) pgrmTrapHandler;
-  sysCallNewArea->s_pc = (memaddr) sysCallHandler;
+	/* Init new processor state areas */
+	intNewArea = (state_t*) INTNEWAREA;
+	tlbMgntNewArea = (state_t*) TLBNEWAREA;
+	pgrmTrpNewArea = (state_t*) PGRMNEWAREA;
+	sysCallNewArea = (state_t*) SYSNEWAREA;
 
-  intNewArea->s_t9 = (memaddr) intHandler;
-  tlbMgntNewArea->s_t9 = (memaddr) tlbHandler;
-  pgrmTrpNewArea->s_t9 = (memaddr) pgrmTrapHandler;
-  sysCallNewArea->s_t9 = (memaddr) sysCallHandler;
+	intNewArea->s_pc = (memaddr) intHandler;
+	tlbMgntNewArea->s_pc = (memaddr) tlbHandler;
+	pgrmTrpNewArea->s_pc = (memaddr) pgrmTrapHandler;
+	sysCallNewArea->s_pc = (memaddr) sysCallHandler;
 
-  /* Initialize stack pointer  */
-  intNewArea->s_sp = ramtop;
-  tlbMgntNewArea->s_sp = ramtop;
-  pgrmTrpNewArea->s_sp = ramtop;
-  sysCallNewArea->s_sp = ramtop;
+	intNewArea->s_t9 = (memaddr) intHandler;
+	tlbMgntNewArea->s_t9 = (memaddr) tlbHandler;
+	pgrmTrpNewArea->s_t9 = (memaddr) pgrmTrapHandler;
+	sysCallNewArea->s_t9 = (memaddr) sysCallHandler;
 
-  /* status: VM off, interrupts off, kernal-mode, and local timer on */
-  baseStatus = LOCALTIMEON & ~VMpON & ~INTpON & ~USERMODEON;
-  intNewArea->s_status = baseStatus;
-  tlbMgntNewArea->s_status = baseStatus;
-  pgrmTrpNewArea->s_status = baseStatus;
-  sysCallNewArea->s_status = baseStatus;
+	/* Initialize stack pointer  */
+	intNewArea->s_sp = ramtop;
+	tlbMgntNewArea->s_sp = ramtop;
+	pgrmTrpNewArea->s_sp = ramtop;
+	sysCallNewArea->s_sp = ramtop;
 
-  initPCBs(); /* initialize ProcBlk Queue */
-  initASL(); /* Initialize Active Semaphore List */
+	/* status: VM off, interrupts off, kernal-mode, and local timer on */
+	baseStatus = LOCALTIMEON & ~VMpON & ~INTpON & ~USERMODEON;
+	intNewArea->s_status = baseStatus;
+	tlbMgntNewArea->s_status = baseStatus;
+	pgrmTrpNewArea->s_status = baseStatus;
+	sysCallNewArea->s_status = baseStatus;
 
-  /* initialize Phase 2 global variables */
-  procCount = 0;
-  softBlkCount = 0;
-  curProc = NULL;
-  readyQ = mkEmptyProcQ();
-  firstProc = allocPcb();
+	initPCBs(); /* initialize ProcBlk Queue */
+	initASL(); /* Initialize Active Semaphore List */
 
-  /*
-   * Setting state for initial process:
-   *    VM off, interrupts on, local timer on, user mode off
-   *    Stack starts below reserved page
-   *    Set PC to start at P2's test
-   */
-  firstProc->p_s.s_status = (INTMASKOFF | INTpON | LOCALTIMEON) & ~USERMODEON & ~VMpON;
-  firstProc->p_s.s_sp = ramtop - PAGESIZE;
-  firstProc->p_s.s_pc = (memaddr) test;
-  firstProc->p_s.s_t9 = firstProc->p_s.s_pc; /* For technical reasons, setting t9 to pc */
+	/* initialize Phase 2 global variables */
+	procCount = 0;
+	softBlkCount = 0;
+	curProc = NULL;
+	readyQ = mkEmptyProcQ();
+	firstProc = allocPcb();
 
-  waiting = FALSE;
-  procCount++;
-  putInPool(firstProc);
-  LDIT(INTERVALTIME);
-  scheduler();
-  return 0; /* Will never reach, but this will remove the pointless warning */
+	/*
+	 * Setting state for initial process:
+	 *    VM off, interrupts on, local timer on, user mode off
+	 *    Stack starts below reserved page
+	 *    Set PC to start at P2's test
+	 */
+	firstProc->p_s.s_status = (INTMASKOFF | INTpON | LOCALTIMEON) & ~USERMODEON &
+		~VMpON;
+	firstProc->p_s.s_sp = ramtop - PAGESIZE;
+	firstProc->p_s.s_pc = (memaddr) test;
+	firstProc->p_s.s_t9 =
+		firstProc->p_s.s_pc; /* For technical reasons, setting t9 to pc */
+
+	waiting = FALSE;
+	procCount++;
+	putInPool(firstProc);
+	LDIT(INTERVALTIME);
+	scheduler();
+	return 0; /* Will never reach, but this will remove the pointless warning */
 }
