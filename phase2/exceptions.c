@@ -24,7 +24,25 @@
 #include "../e/scheduler.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
-/********************** Helper methods **********************/
+/************************* Prototypes ************************/
+void copyState(state_PTR orig, state_PTR dest);
+void pgrmTrapHandler();
+void tlbHandler();
+void sysCallHandler();
+
+HIDDEN void avadaKedavra(pcb_PTR p);
+HIDDEN void blockCurProc(int* semAdd);
+HIDDEN void genericExceptionTrapHandler(int exceptionType, state_PTR oldState);
+HIDDEN int sys1_createProcess(state_PTR birthState);
+HIDDEN void sys2_terminateProcess();
+HIDDEN void sys3_verhogen(int* mutex);
+HIDDEN void sys4_passeren(int* mutex);
+HIDDEN void sys5_specExceptionState(int type, state_PTR old, state_PTR new);
+HIDDEN cpu_t sys6_getCPUTime();
+HIDDEN void sys7_waitForClock();
+HIDDEN void sys8_waitForIODevice(int lineNum, int deviceNum, Bool isReadTerm);
+
+/********************* External Methods *********************/
 /*
  * copyState - A utility method to deep copy states from orig to dest
  */
@@ -41,21 +59,94 @@ void copyState(state_PTR orig, state_PTR dest) {
 }
 
 /*
- * blockCurProc - Track the current process's cpu time and block it
- *   on the given semaphore before scheduling the next job.
+ * Method called in event that a process performs an illegal
+ * or undefined action. The cause will be set in the PgmTrap
+ * old state vector's Cause.ExcCode
+ *
+ * Either passes up the offending process or terminates it (sys2) per
+ * the existence of a specified exception state vector (sys5)
  */
-HIDDEN void blockCurProc(int* semAdd) {
-	/* Handle timer stuff */
-	cpu_t stopTOD;
-	STCK(stopTOD);
-	curProc->p_CPUTime += stopTOD - startTOD;
-
-	/* Block on sema4 */
-	insertBlocked(semAdd, curProc);
-	curProc = NULL;
-	scheduler();
+void pgrmTrapHandler() {
+	genericExceptionTrapHandler(PROGTRAP, (state_PTR) PGRMOLDAREA);
 }
 
+/*
+ * Called when TLB Management Exception occurs,
+ * i.e. when virtual -> physical mem address translation fails for
+ * any of the following reasons:
+ *    TLB-Modification, TLB-Invalid, Bad-PgTbl, or PTE-MISS
+ *
+ * Either passes up the offending process or terminates it (sys2) per
+ * the existence of a specified exception state vector (sys5)
+ */
+void tlbHandler() {
+	genericExceptionTrapHandler(TLBTRAP, (state_PTR) TLBOLDAREA);
+}
+
+/*
+ * Offer 255 system calls; 1-8 are privileged & the rest are passed up
+ * See helper methods for description of each system call.
+ *
+ * PARAM: a0 = int for system call number
+ */
+void sysCallHandler() {
+	state_PTR oldSys;
+	Bool userModeOn;
+	oldSys = (state_PTR) SYSOLDAREA;
+
+	/* Increment PC regardless of whether process lives after this call */
+	oldSys->s_pc = oldSys->s_pc + 4;
+	copyState(oldSys, &(curProc->p_s)); /* Set re-entry context */
+
+	/* Check for reserved instruction error pre-emptively for less code */
+	userModeOn = (oldSys->s_status & USERMODEON) > 0;
+	if(userModeOn && oldSys->s_a0 <= 8 && oldSys->s_a0 > 0) {
+		/* Set Reserved Instruction in Cause register and handle as PROG TRAP */
+		copyState(oldSys, (state_PTR) PGRMOLDAREA);
+		((state_PTR) PGRMOLDAREA)->s_cause =
+			(oldSys->s_cause & NOCAUSE) | RESERVEDINSTERR;
+		pgrmTrapHandler();
+	}
+
+	/* Let a0 register decide SysCall type and execute appropriate method */
+	switch(oldSys->s_a0) {
+		case 1:
+			oldSys->s_v0 = sys1_createProcess((state_PTR) oldSys->s_a1); /* Keeps control */
+			loadState(oldSys);
+
+		case 2:
+			sys2_terminateProcess();
+
+		case 3:
+			sys3_verhogen((int*) oldSys->s_a1);
+			loadState(oldSys);
+
+		case 4:
+			sys4_passeren((int*) oldSys->s_a1);
+			loadState(oldSys); /* If not blocked during P: continue process */
+
+		case 5:
+			sys5_specExceptionState(oldSys->s_a1,
+				(state_PTR) oldSys->s_a2,
+				(state_PTR) oldSys->s_a3);
+			loadState(oldSys);
+
+		case 6:
+			oldSys->s_v0 = sys6_getCPUTime();
+			loadState(oldSys);
+
+		case 7:
+			sys7_waitForClock();
+
+		case 8:
+			sys8_waitForIODevice(oldSys->s_a1, oldSys->s_a2, oldSys->s_a3);
+
+		default: /* SYSCALL for unhandled method >= 9 */
+			genericExceptionTrapHandler(SYSTRAP, oldSys);
+	}
+}
+
+/********************** Helper methods **********************/
 /*
  * avadaKedavra - Mutator method to recursively kill the given pcb_PTR
  * and all of its progeny. Leaves parent and siblings unaffected.
@@ -91,6 +182,22 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
 	/* Adjust procCount */
 	freePcb(p);
 	procCount--;
+}
+
+/*
+ * blockCurProc - Track the current process's cpu time and block it
+ *   on the given semaphore before scheduling the next job.
+ */
+HIDDEN void blockCurProc(int* semAdd) {
+	/* Handle timer stuff */
+	cpu_t stopTOD;
+	STCK(stopTOD);
+	curProc->p_CPUTime += stopTOD - startTOD;
+
+	/* Block on sema4 */
+	insertBlocked(semAdd, curProc);
+	curProc = NULL;
+	scheduler();
 }
 
 /*
@@ -278,94 +385,5 @@ HIDDEN void sys8_waitForIODevice(int lineNum, int deviceNum, Bool isReadTerm) {
 
 	} else {
 		fuckIt(EXCEP); /* Unhandled niche case that doesn't appear in testing */
-	}
-}
-
-/***************** Start of external methods *****************/
-/*
- * Method called in event that a process performs an illegal
- * or undefined action. The cause will be set in the PgmTrap
- * old state vector's Cause.ExcCode
- *
- * Either passes up the offending process or terminates it (sys2) per
- * the existence of a specified exception state vector (sys5)
- */
-void pgrmTrapHandler() {
-	genericExceptionTrapHandler(PROGTRAP, (state_PTR) PGRMOLDAREA);
-}
-
-/*
- * Called when TLB Management Exception occurs,
- * i.e. when virtual -> physical mem address translation fails for
- * any of the following reasons:
- *    TLB-Modification, TLB-Invalid, Bad-PgTbl, or PTE-MISS
- *
- * Either passes up the offending process or terminates it (sys2) per
- * the existence of a specified exception state vector (sys5)
- */
-void tlbHandler() {
-	genericExceptionTrapHandler(TLBTRAP, (state_PTR) TLBOLDAREA);
-}
-
-/*
- * Offer 255 system calls; 1-8 are privileged & the rest are passed up
- * See helper methods for description of each system call.
- *
- * PARAM: a0 = int for system call number
- */
-void sysCallHandler() {
-	state_PTR oldSys;
-	Bool userModeOn;
-	oldSys = (state_PTR) SYSOLDAREA;
-
-	/* Increment PC regardless of whether process lives after this call */
-	oldSys->s_pc = oldSys->s_pc + 4;
-	copyState(oldSys, &(curProc->p_s)); /* Set re-entry context */
-
-	/* Check for reserved instruction error pre-emptively for less code */
-	userModeOn = (oldSys->s_status & USERMODEON) > 0;
-	if(userModeOn && oldSys->s_a0 <= 8 && oldSys->s_a0 > 0) {
-		/* Set Reserved Instruction in Cause register and handle as PROG TRAP */
-		copyState(oldSys, (state_PTR) PGRMOLDAREA);
-		((state_PTR) PGRMOLDAREA)->s_cause =
-			(oldSys->s_cause & NOCAUSE) | RESERVEDINSTERR;
-		pgrmTrapHandler();
-	}
-
-	/* Let a0 register decide SysCall type and execute appropriate method */
-	switch(oldSys->s_a0) {
-		case 1:
-			oldSys->s_v0 = sys1_createProcess((state_PTR) oldSys->s_a1); /* Keeps control */
-			loadState(oldSys);
-
-		case 2:
-			sys2_terminateProcess();
-
-		case 3:
-			sys3_verhogen((int*) oldSys->s_a1);
-			loadState(oldSys);
-
-		case 4:
-			sys4_passeren((int*) oldSys->s_a1);
-			loadState(oldSys); /* If not blocked during P: continue process */
-
-		case 5:
-			sys5_specExceptionState(oldSys->s_a1,
-				(state_PTR) oldSys->s_a2,
-				(state_PTR) oldSys->s_a3);
-			loadState(oldSys);
-
-		case 6:
-			oldSys->s_v0 = sys6_getCPUTime();
-			loadState(oldSys);
-
-		case 7:
-			sys7_waitForClock();
-
-		case 8:
-			sys8_waitForIODevice(oldSys->s_a1, oldSys->s_a2, oldSys->s_a3);
-
-		default: /* SYSCALL for unhandled method >= 9 */
-			genericExceptionTrapHandler(SYSTRAP, oldSys);
 	}
 }
