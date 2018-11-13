@@ -33,7 +33,7 @@ cpu_t startTOD;
 int procCount, softBlkCount;
 pcb_PTR curProc;
 pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
-int *psuedoClock; /* a semaphore */
+int* psuedoClock; /* a semaphore */
 int semaphores[MAXSEMS];
 
 void debug(int a, int b) {
@@ -50,7 +50,7 @@ void debug(int a, int b) {
  *        Bool isReadTerm is FALSE for writeT & non-terminals, TRUE for readT
  * RETURN: int* calculated address of device semaphore
  */
-int *findSem(int lineNum, int deviceNum, Bool isReadTerm) {
+int* findSem(int lineNum, int deviceNum, Bool isReadTerm) {
 	int termOffset = (isReadTerm) ? 1 : 0;
 	int semGroup = (lineNum - LINENUMOFFSET) + termOffset;
 	return &(semaphores[semGroup * DEVPERINT + deviceNum]);
@@ -64,7 +64,7 @@ int *findSem(int lineNum, int deviceNum, Bool isReadTerm) {
 int main() {
 	int i;
 	unsigned int ramtop, baseStatus;
-	devregarea_t *devregarea;
+	devregarea_t* devregarea;
 	state_PTR intNewArea, tlbMgntNewArea, pgrmTrpNewArea, sysCallNewArea;
 	pcb_PTR firstProc;
 
@@ -76,14 +76,14 @@ int main() {
 
 	psuedoClock = &(semaphores[MAXSEMS - 1]);
 
-	devregarea = (devregarea_t *) RAMBASEADDR; /* ROM defined hardware info */
+	devregarea = (devregarea_t*) RAMBASEADDR;  /* ROM defined hardware info */
 	ramtop = (devregarea->rambase) + (devregarea->ramsize);
 
 	/* Init new processor state areas */
-	intNewArea = (state_t *) INTNEWAREA;
-	tlbMgntNewArea = (state_t *) TLBNEWAREA;
-	pgrmTrpNewArea = (state_t *) PGRMNEWAREA;
-	sysCallNewArea = (state_t *) SYSNEWAREA;
+	intNewArea = (state_t*) INTNEWAREA;
+	tlbMgntNewArea = (state_t*) TLBNEWAREA;
+	pgrmTrpNewArea = (state_t*) PGRMNEWAREA;
+	sysCallNewArea = (state_t*) SYSNEWAREA;
 
 	intNewArea->s_pc = (memaddr) intHandler;
 	tlbMgntNewArea->s_pc = (memaddr) tlbHandler;

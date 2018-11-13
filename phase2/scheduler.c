@@ -39,8 +39,8 @@ HIDDEN void debugA(int a, int b) {
  * RETURN: pcb_PTR to ready process for execution
  */
 HIDDEN pcb_PTR removeFromPool() {
-  /* In Round-Robin style, grab next process */
-  return removeProcQ(&readyQ);
+	/* In Round-Robin style, grab next process */
+	return removeProcQ(&readyQ);
 }
 
 /*
@@ -48,8 +48,8 @@ HIDDEN pcb_PTR removeFromPool() {
  * PARAM: pointer to PCB to be returned to pool
  */
 void putInPool(pcb_PTR p) {
-  if(p != NULL)
-    insertProcQ(&readyQ, p);
+	if(p != NULL)
+		insertProcQ(&readyQ, p);
 }
 /******************** External methods ***********************/
 
@@ -57,15 +57,15 @@ void putInPool(pcb_PTR p) {
  * TODO: make multiple entry points to context switching fxns
  * An abstraction of LDST() to aid in debugging and encapsulation
  */
-void loadState(state_t *statep) {
-  STCK(startTOD); /* Also captures loading time, is there a better way? */
-  LDST(statep);
+void loadState(state_t* statep) {
+	STCK(startTOD); /* Also captures loading time, is there a better way? */
+	LDST(statep);
 }
 
 void fuckIt(int i) {
-  int a = i;
-  a++;
-  PANIC();
+	int a = i;
+	a++;
+	PANIC();
 }
 
 /*
@@ -77,31 +77,31 @@ void fuckIt(int i) {
 *   jobs, system will HALT, PANIC, or WAIT appropriately
 */
 void scheduler() {
-  state_t waitState;
+	state_t waitState;
 
-  curProc = removeFromPool();
-  if(curProc != NULL) {
-    /* Prepare state for next job */
-    /* Put time on clock */
-    debugA(86, (int) curProc->p_s.s_status);
-    STCK(startTOD);
-    setTIMER(QUANTUMTIME);
-    loadState(&(curProc->p_s));
-  }
+	curProc = removeFromPool();
 
-  if(procCount == 0) { /* Finished all jobs so HALT system */
-    HALT();
-  } /* thus, procCount is positive */
+	if(curProc != NULL) {
+		/* Prepare state for next job */
+		/* Put time on clock */
+		debugA(86, (int) curProc->p_s.s_status);
+		STCK(startTOD);
+		setTIMER(QUANTUMTIME);
+		loadState(&(curProc->p_s));
+	}
 
-  if(softBlkCount == 0) { /* Detected deadlock so PANIC */
-    fuckIt(SCHED);
-  }
+	if(procCount == 0) /* Finished all jobs so HALT system */
+		HALT();
 
-  waitState.s_status = (getSTATUS() | INTMASKOFF | INTcON);
-  setTIMER((int) MAXINT);
-  debugA(100, (int) waitState.s_status);
-  waiting = TRUE;
-  /* No ready jobs, so we WAIT for next interrupt */
-  setSTATUS(waitState.s_status); /* turn interrupts on */
-  WAIT();
+	if(softBlkCount == 0) /* Detected deadlock so PANIC */
+		fuckIt(SCHED);
+
+	waitState.s_status = (getSTATUS() | INTMASKOFF | INTcON);
+	setTIMER((int) MAXINT);
+	debugA(100, (int) waitState.s_status);
+	waiting = TRUE;
+
+	/* No ready jobs, so we WAIT for next interrupt */
+	setSTATUS(waitState.s_status); /* turn interrupts on */
+	WAIT();
 }
