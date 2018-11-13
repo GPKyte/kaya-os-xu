@@ -46,6 +46,19 @@ HIDDEN unsigned int handleTerminal(device_t* device);
 HIDDEN Bool isReadTerm(int lineNum, device_t* dev);
 
 /********************** External Methods *********************/
+/*
+ * intHandler - the entry point method to respond to device
+ *   interrupts. This executes atomically in kernal mode
+ *
+ * Note on timing: if time spent here is the "fault" of a
+ *   process, attribute only that much to it. Things like the
+ *   psuedo clock tick are hardware/system initiated, so only
+ *   the time spent releasing a blocked job is saved, not the
+ *   clock tick handling.
+ *
+ * RETURN: v0 of the waiting process will have status update
+ *   or a new process will be scheduled to execute
+ */
 void intHandler() {
 	Bool isRead;
 	pcb_PTR p;
@@ -101,7 +114,7 @@ void intHandler() {
 		/* Get device meta data */
 		deviceNumber = findDeviceIndex(lineNumber);
 		device = findDevice(lineNumber, deviceNumber);
-		isRead = isReadTerm(lineNumber, device);
+		isRead = isReadTerm(lineNumber, device); /* Can refactor to avoid call */
 		status = ack(lineNumber, device);
 
 		/* V the device's semaphore, once io complete, put back on ready queue */
@@ -133,7 +146,14 @@ void intHandler() {
 }
 
 /*********************** Helper Methods **********************/
-HIDDEN int ack(int lineNumber, device_t* device) {
+/*
+ * ack - Mutator and accessor that retrieves the status of
+ *   interrupting device and then ACKknowledges them
+ *
+ * PARAM: line of interrupt (to handleTerminal), and PTR to device
+ * RETURN: unaltered status of interrupt from device
+ */
+HIDDEN unsigned int ack(int lineNumber, device_t* device) {
 	unsigned int status;
 
 	if(lineNumber == TERMINT) {
@@ -155,7 +175,13 @@ HIDDEN device_t* findDevice(int lineNum, int deviceNum) {
 	return &(devRegArray[(lineNum - LINENUMOFFSET) * DEVPERINT + deviceNum]);
 }
 
-/* Select device number */
+/*
+ * findDeviceIndex - Select device number from interrupt line group
+ *   by investigating the interrupt bit map found in low order memory
+ *
+ * PARAM: line of perceived interrupt
+ * RETURN: index of 'on' bit of interrupting line, i.e. the device index
+ */
 HIDDEN int findDeviceIndex(int intLine) {
 	int deviceIndex;
 	int deviceMask = 1; /* Traveling bit to select device */
@@ -175,7 +201,13 @@ HIDDEN int findDeviceIndex(int intLine) {
 	return deviceIndex;
 }
 
-/* Determine line number of highest priority interrupt */
+/*
+ * findLineIndex - Accesses the interrupt line info in Cause register
+ *   to determine the line number of the highest priority interrupt
+ *
+ * PARAM: causeRegister, e.g. the one found in INTOLDAREA
+ * RETURN: an int {0..7} representing the first interrupting device group
+ */
 HIDDEN int findLineIndex(unsigned int causeRegister) {
 	int lineIndex;
 	int numOfIntLines = 8;
@@ -193,6 +225,14 @@ HIDDEN int findLineIndex(unsigned int causeRegister) {
 	return lineIndex;
 }
 
+/*
+ * handleTerminal - mutator method that given an actively interrupting
+ *   terminal, will determine its status (to be returned to caller),
+ *   and ACKnowlege the interrupt whether it be read or write.
+ *
+ * PARAM: PTR to interrupting terminal device
+ * RETURN: status of interrupt (write/transm prioritized over read/recv)
+ */
 HIDDEN unsigned int handleTerminal(device_t* device) {
 	/* handle writes then reads */
 	unsigned int status;
@@ -214,14 +254,17 @@ HIDDEN unsigned int handleTerminal(device_t* device) {
  * and whether it should be treated as a read (TRUE) or write (FALSE) terminal
  * Note: Dependent on pre-ACKnowledged status of term device,
  *       We assume either read or write active, but check for improper lineNum
+ *
+ * PARAM: line of interrupt, PTR to interrupting terminal device
+ * RETURN: TRUE (isReadTerminal), FALSE (isWriteTerminal or wrong line)
  */
 HIDDEN Bool isReadTerm(int lineNum, device_t* dev) {
 	/* Check writeStatus because write priortized over read */
 	if(lineNum != TERMINT) /* Wrong line, not even a terminal */
 		return FALSE;
 
-	if((dev->t_transm_status & TRANSMITSTATUSMASK) != READY) /* Write, not read */
-		return FALSE;
+	if((dev->t_transm_status & TRANSMITSTATUSMASK) != READY)
+		return FALSE; /* is write term, not read */
 
 	return TRUE; /* lineNum == TERMINT && readStatus != READY, i.e. isReadTerm */
 }
