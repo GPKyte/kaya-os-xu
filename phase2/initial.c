@@ -1,5 +1,4 @@
-/*************************************************************
- * Initial.c
+/*************************INITIAL.C****************************
  *
  * Start Kaya OS:
  *    Define states of the 4 "New" state vectors
@@ -31,16 +30,10 @@ extern void test();
 Bool waiting;
 cpu_t startTOD;
 int procCount, softBlkCount;
+int semaphores[MAXSEMS];
 pcb_PTR curProc;
 pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
 int *psuedoClock; /* a semaphore */
-int semaphores[MAXSEMS];
-
-void debug(int a, int b) {
- int i;
- i = a+b;
- i++;
-}
 
 /*
  * findSem - Calculates address of device semaphore
@@ -124,7 +117,6 @@ int main() {
    *    Set PC to start at P2's test
    */
   firstProc->p_s.s_status = (INTMASKOFF | INTpON | LOCALTIMEON) & ~USERMODEON & ~VMpON;
-  debug(125, (int) firstProc->p_s.s_status); 
   firstProc->p_s.s_sp = ramtop - PAGESIZE;
   firstProc->p_s.s_pc = (memaddr) test;
   firstProc->p_s.s_t9 = firstProc->p_s.s_pc; /* For technical reasons, setting t9 to pc */

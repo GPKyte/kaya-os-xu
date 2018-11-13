@@ -1,5 +1,4 @@
-/**************************************************************
- * Scheduler.c
+/***********************SCHEDULER.C***************************
  *
  * Decides the next process to run for Kaya OS
  * Pre-emptive, no starvation, favors long-jobs
@@ -24,16 +23,7 @@
 #include "../e/initial.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
-HIDDEN void debugA(int a, int b) {
-	int i;
-	i = a + b;
-	i++;
-}
-
-/* Time slice value in microseconds */
-
 /********************* Helper methods ***********************/
-/* TODO: Decide if put/remove methods are public */
 /*
  * Select next process to be scheduled as curProc
  * RETURN: pcb_PTR to ready process for execution
@@ -51,8 +41,7 @@ void putInPool(pcb_PTR p) {
   if(p != NULL)
     insertProcQ(&readyQ, p);
 }
-/******************** External methods ***********************/
-
+/*************************** External methods *****************************/
 /*
  * TODO: make multiple entry points to context switching fxns
  * An abstraction of LDST() to aid in debugging and encapsulation
@@ -83,7 +72,6 @@ void scheduler() {
   if(curProc != NULL) {
     /* Prepare state for next job */
     /* Put time on clock */
-    debugA(86, (int) curProc->p_s.s_status);
     STCK(startTOD);
     setTIMER(QUANTUMTIME);
     loadState(&(curProc->p_s));
@@ -99,7 +87,6 @@ void scheduler() {
 
   waitState.s_status = (getSTATUS() | INTMASKOFF | INTcON);
   setTIMER((int) MAXINT);
-  debugA(100, (int) waitState.s_status);
   waiting = TRUE;
   /* No ready jobs, so we WAIT for next interrupt */
   setSTATUS(waitState.s_status); /* turn interrupts on */

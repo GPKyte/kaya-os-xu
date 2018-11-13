@@ -1,5 +1,4 @@
-/*************************************************************
- * Interrupts.c
+/*************************INTERRUPTS.C***********************
  *
  * This module handles the interrupts generated from I/O
  * devices when previously intitaited I/O requests finish
@@ -39,11 +38,6 @@
 #include "/usr/local/include/umps2/umps/libumps.e"
 
 /*********************** Helper Methods **********************/
-void debugI(int line, int somePtr) {
-	int i = line + somePtr;
-	i++;
-}
-
 /*
  * findDevice - Calculate address of device given interrupt line and device num
  */
@@ -156,14 +150,12 @@ void intHandler() {
 	STCK(stopTOD);
 	oldInt = (state_t *) INTOLDAREA;
 	lineNumber = findLineIndex(oldInt->s_cause);
-	debugI(156, lineNumber);
 
 	if(lineNumber == 0) { /* Handle inter-processor interrupt (not now) */
 		fuckIt(INTER);
 
 	} else if (lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
 		/* Timing stuff maybe? Switch to next process */
-		debugI(164, stopTOD - startTOD);
 		curProc->p_CPUTime += stopTOD - startTOD; /* Should be more or less a QUANTUMTIME */
 		copyState(oldInt, &(curProc->p_s)); /* Save off context for reentry */
 
@@ -183,7 +175,6 @@ void intHandler() {
 				softBlkCount--;
 
 				STCK(endOfInterrupt);
-				debugI(187, p == NULL);
 				p->p_CPUTime += (tmpTOD - endOfInterrupt); /* Account for time spent */
 			}
 

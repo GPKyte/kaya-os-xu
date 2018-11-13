@@ -1,5 +1,4 @@
-/*************************************************************
- * Exceptions.c
+/**********************EXCEPTIONS.C**************************
  *
  * Covers three types of exceptions:
  *    1) Program Traps
@@ -22,12 +21,6 @@
 #include "../e/initial.e"
 #include "../e/scheduler.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
-
-void debugB(int a, int b) {
-  int i;
-  i = a+b;
-  i++;
-}
 
 /********************** Helper methods **********************/
 /*
@@ -67,7 +60,6 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
     avadaKedavra(removeChild(p));
   }
 
-	debugB(70, (int) p->p_semAdd);
   /* bottom-up: dealing with each individual PCB */
   /* TODO: If semaphore value negative, increment the semaphore? */
   /* If terminating a blocked process, do NOT adjust semaphore. Because the
@@ -76,19 +68,14 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
     /* Know p was on Ready Queue, do nothing else */
 
   } else if(outBlocked(p) != NULL) {
-	debugB(79, p);
     if(&(semaphores[0]) <= p->p_semAdd && p->p_semAdd <= &(semaphores[MAXSEMS - 1])) {
-        debugB(81, p);
-		softBlkCount--; /* P blocked on device sema4; sema4++ in intHandler */
+		    softBlkCount--; /* P blocked on device sema4; sema4++ in intHandler */
 
 	} else {
-      debugB(82, (int) *(p->p_semAdd));
-      *(p->p_semAdd) += 1; /* P blocked on NON device sema4 */
-	  debugB(87, (int) p->p_semAdd);
+      (*(p->p_semAdd))++; /* P blocked on NON device sema4 */
 	}
   } /* else it was the curProc which is already handled before fxn */
 
-  debugB(89, p);
   /* Adjust procCount */
   freePcb(p);
   procCount--;
@@ -112,7 +99,6 @@ HIDDEN void sys2_terminateProcess() {
  */
 HIDDEN void genericExceptionTrapHandler(int exceptionType, state_PTR oldState) {
   /* Check exception type and existence of a specified excep state vector */
-  debugB(110, (int) (curProc));
   if(curProc == NULL)
 	  fuckIt(EXCEP); /* NULL ptr exception loop inbound */
 
@@ -202,10 +188,9 @@ HIDDEN void sys3_verhogen(int *mutex) {
  */
 HIDDEN void sys4_passeren(int *mutex) {
   (*mutex)--;
-  if((*mutex) < 0) {
+  if((*mutex) < 0)
     /* Put process in line to use semaphore and move on */
     blockCurProc(mutex);
-  }
 }
 
 /*
@@ -324,10 +309,8 @@ void sysCallHandler() {
   copyState(oldSys, &(curProc->p_s));
   /* Check for reserved instruction error pre-emptively for less code */
   isUserMode = (oldSys->s_status & USERMODEON) > 0;
-  debugB(320, (int) oldSys->s_a0);
   if(isUserMode && oldSys->s_a0 <= 8 && oldSys->s_a0 > 0) {
     /* Set Reserved Instruction in Cause register and handle as PROG TRAP */
-    debugB(322, (int) isUserMode);
     copyState(oldSys, (state_PTR) PGRMOLDAREA);
     ((state_PTR) PGRMOLDAREA)->s_cause = (oldSys->s_cause & NOCAUSE) | RESERVEDINSTERR;
     pgrmTrapHandler();
