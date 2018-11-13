@@ -78,28 +78,20 @@ int main() {
 	pgrmTrpNewArea = (state_PTR) PGRMNEWAREA;
 	sysCallNewArea = (state_PTR) SYSNEWAREA;
 
-	intNewArea->s_pc = (memaddr) intHandler;
-	tlbMgntNewArea->s_pc = (memaddr) tlbHandler;
-	pgrmTrpNewArea->s_pc = (memaddr) pgrmTrapHandler;
-	sysCallNewArea->s_pc = (memaddr) sysCallHandler;
-
-	intNewArea->s_t9 = (memaddr) intHandler;
-	tlbMgntNewArea->s_t9 = (memaddr) tlbHandler;
-	pgrmTrpNewArea->s_t9 = (memaddr) pgrmTrapHandler;
-	sysCallNewArea->s_t9 = (memaddr) sysCallHandler;
+	/* Set t9 to pc for uMIPS2 reasons */
+	intNewArea->s_pc = intNewArea->s_t9 = (memaddr) intHandler;
+	tlbMgntNewArea->s_pc = tlbMgntNewArea->s_t9 = (memaddr) tlbHandler;
+	pgrmTrpNewArea->s_pc = pgrmTrpNewArea->s_t9 = (memaddr) pgrmTrapHandler;
+	sysCallNewArea->s_pc = sysCallNewArea->s_t9 = (memaddr) sysCallHandler;
 
 	/* Initialize stack pointer  */
-	intNewArea->s_sp = ramtop;
-	tlbMgntNewArea->s_sp = ramtop;
-	pgrmTrpNewArea->s_sp = ramtop;
-	sysCallNewArea->s_sp = ramtop;
+	intNewArea->s_sp = tlbMgntNewArea->s_sp =
+		pgrmTrpNewArea->s_sp = sysCallNewArea->s_sp = ramtop;
 
 	/* status: VM off, interrupts off, kernal-mode, and local timer on */
 	baseStatus = LOCALTIMEON & ~VMpON & ~INTpON & ~USERMODEON;
-	intNewArea->s_status = baseStatus;
-	tlbMgntNewArea->s_status = baseStatus;
-	pgrmTrpNewArea->s_status = baseStatus;
-	sysCallNewArea->s_status = baseStatus;
+	intNewArea->s_status = tlbMgntNewArea->s_status =
+		pgrmTrpNewArea->s_status = sysCallNewArea->s_status = baseStatus;
 
 	initPCBs(); /* initialize ProcBlk Queue */
 	initASL(); /* Initialize Active Semaphore List */
@@ -117,11 +109,9 @@ int main() {
 	 *    Stack starts below reserved page
 	 *    Set PC to start at P2's test
 	 */
-	firstP->p_s.s_status = (INTMASKOFF | INTpON | LOCALTIMEON) &
-		~USERMODEON & ~VMpON;
+	firstP->p_s.s_status = baseStatus | INTMASKOFF | INTpON;
 	firstP->p_s.s_sp = ramtop - PAGESIZE;
-	firstP->p_s.s_pc = (memaddr) test;
-	firstP->p_s.s_t9 =	firstP->p_s.s_pc; /* Set t9 to pc for uMIPS2 reasons */
+	firstP->p_s.s_pc = firstP->p_s.s_t9 = (memaddr) test;
 
 	waiting = FALSE;
 	procCount++;
