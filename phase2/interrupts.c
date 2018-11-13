@@ -13,7 +13,7 @@
  * but use the same ROM device-register space.
  * Start at managed devices at interrupt line 3
  *
- * We use a contiguous block of 48 semaphores (int's) to represent
+ * We use a contiguous block of MAXSEM semaphores (int's) for
  * all devices and a special variable for the psuedo-clock
  *
  * Note: Multiple interrupts can be active at once,
@@ -38,6 +38,7 @@
 #include "/usr/local/include/umps2/umps/libumps.e"
 
 /************************* Prototypes ************************/
+void intHandler();
 HIDDEN int ack(int lineNumber, device_t* device);
 HIDDEN device_t* findDevice(int lineNum, int deviceNum);
 HIDDEN int findDeviceIndex(int intLine);
