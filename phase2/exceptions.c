@@ -121,7 +121,7 @@ if(curProc == NULL)
 /*
  * Creates new process with given state as child of executing process
  *
- * EX: int SYSCALL (CREATEPROCESS, state_t *statep)
+ * EX: int SYSCALL (CREATEPROCESS, state_PTR statep)
  *    Where CREATEPROCESS has the value of 1.
  * PARAM: a1 = physical address of processor state area
  * RETURN: v0 = 0 (CHILD) on success, -1 (NOCHILD) on failure

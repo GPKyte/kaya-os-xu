@@ -50,14 +50,14 @@ void intHandler() {
 	Bool isRead;
 	pcb_PTR p;
 	cpu_t stopTOD, endOfInterrupt, tmpTOD;
-	state_t* oldInt;
+	state_PTR oldInt;
 	device_t* device;
 	unsigned int status;
 	int lineNumber, deviceNumber;
 	int* semAdd;
 
 	STCK(stopTOD);
-	oldInt = (state_t*) INTOLDAREA;
+	oldInt = (state_PTR) INTOLDAREA;
 	lineNumber = findLineIndex(oldInt->s_cause);
 
 	if(lineNumber == 0) { /* Handle inter-processor interrupt (not now) */

@@ -45,7 +45,7 @@ void putInPool(pcb_PTR p) {
 /*
  * loadState - An abstraction of LDST() to improve context info and encapsulation
  */
-void loadState(state_t* statep) {
+void loadState(state_PTR statep) {
 	STCK(startTOD);
 	LDST(statep);
 }

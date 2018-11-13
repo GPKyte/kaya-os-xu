@@ -59,7 +59,7 @@ int main() {
 	unsigned int ramtop, baseStatus;
 	devregarea_t* devregarea;
 	state_PTR intNewArea, tlbMgntNewArea, pgrmTrpNewArea, sysCallNewArea;
-	pcb_PTR firstProc;
+	pcb_PTR firstP;
 
 	/* Init semaphores to 0 */
 	/* The first semaphore describes device at interrupt line 3, 1st device */
@@ -73,10 +73,10 @@ int main() {
 	ramtop = (devregarea->rambase) + (devregarea->ramsize);
 
 	/* Init new processor state areas */
-	intNewArea = (state_t*) INTNEWAREA;
-	tlbMgntNewArea = (state_t*) TLBNEWAREA;
-	pgrmTrpNewArea = (state_t*) PGRMNEWAREA;
-	sysCallNewArea = (state_t*) SYSNEWAREA;
+	intNewArea = (state_PTR) INTNEWAREA;
+	tlbMgntNewArea = (state_PTR) TLBNEWAREA;
+	pgrmTrpNewArea = (state_PTR) PGRMNEWAREA;
+	sysCallNewArea = (state_PTR) SYSNEWAREA;
 
 	intNewArea->s_pc = (memaddr) intHandler;
 	tlbMgntNewArea->s_pc = (memaddr) tlbHandler;
@@ -109,7 +109,7 @@ int main() {
 	softBlkCount = 0;
 	curProc = NULL;
 	readyQ = mkEmptyProcQ();
-	firstProc = allocPcb();
+	firstP = allocPcb();
 
 	/*
 	 * Setting state for initial process:
@@ -117,16 +117,15 @@ int main() {
 	 *    Stack starts below reserved page
 	 *    Set PC to start at P2's test
 	 */
-	firstProc->p_s.s_status = (INTMASKOFF | INTpON | LOCALTIMEON) & ~USERMODEON &
-		~VMpON;
-	firstProc->p_s.s_sp = ramtop - PAGESIZE;
-	firstProc->p_s.s_pc = (memaddr) test;
-	firstProc->p_s.s_t9 =
-		firstProc->p_s.s_pc; /* For technical reasons, setting t9 to pc */
+	firstP->p_s.s_status = (INTMASKOFF | INTpON | LOCALTIMEON) &
+		~USERMODEON & ~VMpON;
+	firstP->p_s.s_sp = ramtop - PAGESIZE;
+	firstP->p_s.s_pc = (memaddr) test;
+	firstP->p_s.s_t9 =	firstP->p_s.s_pc; /* Set t9 to pc for uMIPS2 reasons */
 
 	waiting = FALSE;
 	procCount++;
-	putInPool(firstProc);
+	putInPool(firstP);
 	LDIT(INTERVALTIME);
 	scheduler();
 	return 0; /* Will never reach, but this will remove the pointless warning */
