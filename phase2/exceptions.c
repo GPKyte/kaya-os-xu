@@ -5,8 +5,10 @@
  *    2) System Calls & Breakpoints
  *    3) Table Management
  *
- * State decided by SYSOLDAREA context, this module provides
- * system services and manages TRAP and TLB Exceptions.
+ * Reference the *OLDAREA as defined in const for state context
+ * Time spent in a SYSCALL belongs to the executing job.
+ * Exceptions may return to the same process or a new process
+ *   depending on if curProc was terminated or blocked
  *
  * AUTHORS: Ploy Sithisakulrat & Gavin Kyte
  * ADVISOR/CONTRIBUTER: Michael Goldweber
@@ -24,7 +26,7 @@
 
 /********************** Helper methods **********************/
 /*
- * A utility to copy over states
+ * copyState - A utility method to deep copy states from orig to dest
  */
 void copyState(state_PTR orig, state_PTR dest) {
 	int i;
@@ -38,6 +40,10 @@ void copyState(state_PTR orig, state_PTR dest) {
 	}
 }
 
+/*
+ * blockCurProc - Track the current process's cpu time and block it
+ *   on the given semaphore before scheduling the next job.
+ */
 HIDDEN void blockCurProc(int* semAdd) {
 	/* Handle timer stuff */
 	cpu_t stopTOD;
@@ -51,8 +57,9 @@ HIDDEN void blockCurProc(int* semAdd) {
 }
 
 /*
- * Mutator method to recursively kill the given pcb_PTR and all of its
- * progeny. Leaves parent and siblings unaffected. Removes from any Queue/semd_t
+ * avadaKedavra - Mutator method to recursively kill the given pcb_PTR
+ * and all of its progeny. Leaves parent and siblings unaffected.
+ * pcb can only be executing (curProc), ready (in queue), or waiting (blocked)
  * Used for sys2 abstraction
  */
 HIDDEN void avadaKedavra(pcb_PTR p) {
@@ -80,16 +87,6 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
   /* Adjust procCount */
   freePcb(p);
   procCount--;
-}
-
-/*
- * TODO only for testing - ignore this
- */
-HIDDEN void sys2_terminateProcess() {
-	outChild(curProc);
-	avadaKedavra(curProc);
-	curProc = NULL;
-	scheduler();
 }
 
 /*
@@ -156,12 +153,13 @@ HIDDEN int sys1_createProcess(state_PTR birthState) {
  *
  * EX: void SYSCALL (TERMINATEPROCESS)
  *   Where TERMINATEPROCESS has the value of 2.
- *
-HIDDEN void sys2_terminateProcess() {
-  avadaKedavra(outChild(curProc));
-  curProc = NULL;
-}
-*/
+ */
+ HIDDEN void sys2_terminateProcess() {
+ 	outChild(curProc);
+ 	avadaKedavra(curProc);
+ 	curProc = NULL;
+ 	scheduler();
+ }
 
 /*
  * Perform V (Signal/Increase) operation on a Semaphore
@@ -212,19 +210,13 @@ HIDDEN void sys4_passeren(int* mutex) {
  *        a2 = address of old state vector to be stored in for this process
  *        a3 = address of new state vector to be loaded from after exception
  */
-HIDDEN void sys5_specifyExceptionStateVector(int stateType, state_PTR oldState,
-	state_PTR newState) {
-	/* Check wether exception state vector is already specified (error) */
-	if(curProc->p_exceptionConfig[OLD][stateType] != NULL
-		|| curProc->p_exceptionConfig[NEW][stateType] != NULL) {
-		/* Error, exception state already specified */
-		sys2_terminateProcess();
-		scheduler();
-	}
+HIDDEN void sys5_specExceptionState(int type, state_PTR old, state_PTR new) {
+	if(curProc->p_exceptionConfig[OLD][type] != NULL)
+		sys2_terminateProcess(); /* Error, exception state already specified */
 
 	/* Specify old and new state vectors */
-	curProc->p_exceptionConfig[OLD][stateType] = oldState;
-	curProc->p_exceptionConfig[NEW][stateType] = newState;
+	curProc->p_exceptionConfig[OLD][type] = old;
+	curProc->p_exceptionConfig[NEW][type] = new;
 }
 
 /*
@@ -239,7 +231,7 @@ HIDDEN cpu_t sys6_getCPUTime() {
 	STCK(stopTOD);
 	partialQuantum = stopTOD - startTOD;
 
-	return partialQuantum + curProc->p_CPUTime;
+	return curProc->p_CPUTime + partialQuantum;
 }
 
 /*
@@ -271,10 +263,9 @@ HIDDEN void sys7_waitForClock() {
  *        a2 = device number ([0..7])
  *        a3 = wait for terminal read operation -> SysCall TRUE / FALSE
  */
-HIDDEN void sys8_waitForIODevice(int lineNumber, int deviceNumber,
-	Bool isReadTerm) {
+HIDDEN void sys8_waitForIODevice(int lineNum, int deviceNum, Bool isReadTerm) {
 	/* Choose appropriate semaphore */
-	int* semAdd = findSem(lineNumber, deviceNumber, isReadTerm);
+	int* semAdd = findSem(lineNum, deviceNum, isReadTerm);
 	(*semAdd)--;
 
 	/* Remove curProc and place on semaphore if successful */
@@ -284,7 +275,7 @@ HIDDEN void sys8_waitForIODevice(int lineNumber, int deviceNumber,
 		blockCurProc(semAdd);
 
 	} else {
-		fuckIt(EXCEP);
+		fuckIt(EXCEP); /* Unhandled niche case that doesn't appear in testing */
 	}
 }
 
@@ -299,6 +290,19 @@ HIDDEN void sys8_waitForIODevice(int lineNumber, int deviceNumber,
  */
 void pgrmTrapHandler() {
 	genericExceptionTrapHandler(PROGTRAP, (state_PTR) PGRMOLDAREA);
+}
+
+/*
+ * Called when TLB Management Exception occurs,
+ * i.e. when virtual -> physical mem address translation fails for
+ * any of the following reasons:
+ *    TLB-Modification, TLB-Invalid, Bad-PgTbl, or PTE-MISS
+ *
+ * Either passes up the offending process or terminates it (sys2) per
+ * the existence of a specified exception state vector (sys5)
+ */
+void tlbHandler() {
+	genericExceptionTrapHandler(TLBTRAP, (state_PTR) TLBOLDAREA);
 }
 
 /*
@@ -333,46 +337,33 @@ void sysCallHandler() {
 			loadState(oldSys);
 
 		case 2:
-			sys2_terminateProcess(); /* Change control */
+			sys2_terminateProcess();
 
 		case 3:
-			sys3_verhogen((int*) oldSys->s_a1);  /* ? control */
+			sys3_verhogen((int*) oldSys->s_a1);
 			loadState(oldSys);
 
 		case 4:
-			sys4_passeren((int*) oldSys->s_a1);  /* ? control */
+			sys4_passeren((int*) oldSys->s_a1);
 			loadState(oldSys); /* If not blocked during P: continue process */
 
 		case 5:
-			sys5_specifyExceptionStateVector(oldSys->s_a1,
+			sys5_specExceptionState(oldSys->s_a1,
 				(state_PTR) oldSys->s_a2,
 				(state_PTR) oldSys->s_a3);
 			loadState(oldSys);
 
 		case 6:
-			oldSys->s_v0 = sys6_getCPUTime(); /* Keeps control */
+			oldSys->s_v0 = sys6_getCPUTime();
 			loadState(oldSys);
 
 		case 7:
-			sys7_waitForClock(); /* Change control */
+			sys7_waitForClock();
 
 		case 8:
-			sys8_waitForIODevice(oldSys->s_a1, oldSys->s_a2, oldSys->s_a3); /* ? control */
+			sys8_waitForIODevice(oldSys->s_a1, oldSys->s_a2, oldSys->s_a3);
 
-		default: /* >= 9 */
-			genericExceptionTrapHandler(SYSTRAP, oldSys); /* Changes control */
+		default: /* SYSCALL for unhandled method >= 9 */
+			genericExceptionTrapHandler(SYSTRAP, oldSys);
 	}
-}
-
-/*
- * Called when TLB Management Exception occurs,
- * i.e. when virtual -> physical mem address translation fails for
- * any of the following reasons:
- *    TLB-Modification, TLB-Invalid, Bad-PgTbl, or PTE-MISS
- *
- * Either passes up the offending process or terminates it (sys2) per
- * the existence of a specified exception state vector (sys5)
- */
-void tlbHandler() {
-	genericExceptionTrapHandler(TLBTRAP, (state_PTR) TLBOLDAREA);
 }
