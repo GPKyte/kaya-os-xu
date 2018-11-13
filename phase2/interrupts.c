@@ -37,30 +37,122 @@
 #include "../e/scheduler.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
+/************************* Prototypes ************************/
+HIDDEN int ack(int lineNumber, device_t* device);
+HIDDEN device_t* findDevice(int lineNum, int deviceNum);
+HIDDEN int findDeviceIndex(int intLine);
+HIDDEN int findLineIndex(unsigned int causeRegister);
+HIDDEN unsigned int handleTerminal(device_t* device);
+HIDDEN Bool isReadTerm(int lineNum, device_t* dev);
+
+/********************** External Methods *********************/
+void intHandler() {
+	Bool isRead;
+	pcb_PTR p;
+	cpu_t stopTOD, endOfInterrupt, tmpTOD;
+	state_t* oldInt;
+	device_t* device;
+	unsigned int status;
+	int lineNumber, deviceNumber;
+	int* semAdd;
+
+	STCK(stopTOD);
+	oldInt = (state_t*) INTOLDAREA;
+	lineNumber = findLineIndex(oldInt->s_cause);
+
+	if(lineNumber == 0) { /* Handle inter-processor interrupt (not now) */
+		fuckIt(INTER);
+
+	} else if(lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
+		curProc->p_CPUTime += stopTOD - startTOD; /* More or less a QUANTUMTIME */
+		copyState(oldInt, &(curProc->p_s)); /* Save off context for reentry */
+
+		putInPool(curProc);
+		curProc = NULL;
+		scheduler();
+
+	} else if(lineNumber == 2) { /* Handle Interval Timer */
+		/* Release all jobs from psuedoClock */
+		(*psuedoClock)++;
+
+		if((*psuedoClock) <= 0) {
+
+			while(headBlocked(psuedoClock) != NULL) {
+				STCK(tmpTOD);
+
+				putInPool(p = removeBlocked(psuedoClock));
+				softBlkCount--;
+
+				STCK(endOfInterrupt);
+				p->p_CPUTime += (tmpTOD - endOfInterrupt); /* Account for time spent */
+			}
+		}
+
+		(*psuedoClock) = 0;
+		LDIT(INTERVALTIME);
+
+	} else { /* lineNumber >= 3; Handle I/O device interrupt */
+		/*
+		 * Be aware that I/O int can occur BEFORE sys8_waitForIODevice
+		 * We do not explicitly handle this case,
+		 * because it is a concern in phase 2
+		 */
+
+		/* Get device meta data */
+		deviceNumber = findDeviceIndex(lineNumber);
+		device = findDevice(lineNumber, deviceNumber);
+		isRead = isReadTerm(lineNumber, device);
+		status = ack(lineNumber, device);
+
+		/* V the device's semaphore, once io complete, put back on ready queue */
+		semAdd = findSem(lineNumber, deviceNumber, isRead);
+		(*semAdd)++;
+
+		if((*semAdd) <= 0) {
+			putInPool(p = removeBlocked(semAdd));
+			softBlkCount--;
+			p->p_s.s_v0 = status;
+
+			STCK(endOfInterrupt);
+			p->p_CPUTime += (stopTOD - endOfInterrupt); /* Account for time spent */
+		}
+	}
+
+	/* General non-accounted time space belongs to OS, not any process */
+	if(waiting || curProc == NULL) {
+		/* Came back from waiting state, get next job; don't return to WAIT */
+		waiting = FALSE;
+		scheduler();
+	}
+
+	/* Return stolen time to interrupted proc if it deserves > 0 */
+	if(stopTOD - startTOD < QUANTUMTIME)
+		setTIMER(QUANTUMTIME - (stopTOD - startTOD));
+
+	loadState(oldInt);
+}
+
 /*********************** Helper Methods **********************/
+HIDDEN int ack(int lineNumber, device_t* device) {
+	unsigned int status;
+
+	if(lineNumber == TERMINT) {
+		status = handleTerminal(device);
+
+	} else {
+		status = device->d_status;
+		device->d_command = ACK;
+	}
+
+	return status;
+}
+
 /*
  * findDevice - Calculate address of device given interrupt line and device num
  */
 HIDDEN device_t* findDevice(int lineNum, int deviceNum) {
 	device_t* devRegArray = ((devregarea_t*) RAMBASEADDR)->devreg;
 	return &(devRegArray[(lineNum - LINENUMOFFSET) * DEVPERINT + deviceNum]);
-}
-
-/*
- * isReadTerm - Decides whether interrupting device is a terminal
- * and whether it should be treated as a read (TRUE) or write (FALSE) terminal
- * Note: Dependent on pre-ACKnowledged status of term device,
- *       We assume either read or write active, but check for improper lineNum
- */
-HIDDEN Bool isReadTerm(int lineNum, device_t* dev) {
-	/* Check writeStatus because write priortized over read */
-	if(lineNum != TERMINT) /* Wrong line, not even a terminal */
-		return FALSE;
-
-	if((dev->t_transm_status & TRANSMITSTATUSMASK) != READY) /* Write, not read */
-		return FALSE;
-
-	return TRUE; /* lineNum == TERMINT && readStatus != READY, i.e. isReadTerm */
 }
 
 /* Select device number */
@@ -117,103 +209,19 @@ HIDDEN unsigned int handleTerminal(device_t* device) {
 	return status;
 }
 
-HIDDEN int ack(int lineNumber, device_t* device) {
-	unsigned int status;
+/*
+ * isReadTerm - Decides whether interrupting device is a terminal
+ * and whether it should be treated as a read (TRUE) or write (FALSE) terminal
+ * Note: Dependent on pre-ACKnowledged status of term device,
+ *       We assume either read or write active, but check for improper lineNum
+ */
+HIDDEN Bool isReadTerm(int lineNum, device_t* dev) {
+	/* Check writeStatus because write priortized over read */
+	if(lineNum != TERMINT) /* Wrong line, not even a terminal */
+		return FALSE;
 
-	if(lineNumber == TERMINT) {
-		status = handleTerminal(device);
+	if((dev->t_transm_status & TRANSMITSTATUSMASK) != READY) /* Write, not read */
+		return FALSE;
 
-	} else {
-		status = device->d_status;
-		device->d_command = ACK;
-	}
-
-	return status;
-}
-
-/********************** External Methods *********************/
-void intHandler() {
-	pcb_PTR p;
-	state_t* oldInt;
-	device_t* device;
-	int* semAdd;
-	int lineNumber, deviceNumber;
-	Bool isRead;
-	unsigned int status;
-	cpu_t stopTOD;
-	cpu_t endOfInterrupt;
-	cpu_t tmpTOD;
-
-	STCK(stopTOD);
-	oldInt = (state_t*) INTOLDAREA;
-	lineNumber = findLineIndex(oldInt->s_cause);
-
-	if(lineNumber == 0) { /* Handle inter-processor interrupt (not now) */
-		fuckIt(INTER);
-
-	} else if(lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
-		curProc->p_CPUTime += stopTOD - startTOD; /* More or less a QUANTUMTIME */
-		copyState(oldInt, &(curProc->p_s)); /* Save off context for reentry */
-
-		putInPool(curProc);
-		curProc = NULL;
-		scheduler();
-
-	} else if(lineNumber == 2) { /* Handle Interval Timer */
-		/* Release all jobs from psuedoClock */
-		(*psuedoClock)++;
-
-		if((*psuedoClock) <= 0) {
-
-			while(headBlocked(psuedoClock) != NULL) {
-				STCK(tmpTOD);
-
-				putInPool(p = removeBlocked(psuedoClock));
-				softBlkCount--;
-
-				STCK(endOfInterrupt);
-				p->p_CPUTime += (tmpTOD - endOfInterrupt); /* Account for time spent */
-			}
-		}
-
-		(*psuedoClock) = 0;
-		LDIT(INTERVALTIME);
-
-	} else { /* lineNumber >= 3; Handle I/O device interrupt */
-		/*
-		 * Be aware that I/O int can occur BEFORE sys8_waitForIODevice
-		 * We do not explicitly handle this case, because it is not of concern in phase 2
-		 */
-
-		/* Get device meta data */
-		deviceNumber = findDeviceIndex(lineNumber);
-		device = findDevice(lineNumber, deviceNumber);
-		isRead = isReadTerm(lineNumber, device);
-		status = ack(lineNumber, device);
-
-		/* V the device's semaphore, once io complete, put back on ready queue */
-		semAdd = findSem(lineNumber, deviceNumber, isRead);
-		(*semAdd)++;
-
-		if((*semAdd) <= 0) {
-			putInPool(p = removeBlocked(semAdd));
-			softBlkCount--;
-			p->p_s.s_v0 = status;
-
-			STCK(endOfInterrupt);
-			p->p_CPUTime += (stopTOD - endOfInterrupt); /* Account for time spent */
-		}
-	}
-
-	/* General non-accounted time space belongs to OS, not any process */
-	if(waiting || curProc == NULL) {
-		/* Came back from waiting state, get next job; don't return to WAIT */
-		waiting = FALSE;
-		scheduler();
-	}
-
-	if(stopTOD - startTOD < QUANTUMTIME) /* Return stolen time if remainder > 0 */
-		setTIMER(QUANTUMTIME - (stopTOD - startTOD));
-
-	loadState(oldInt);
+	return TRUE; /* lineNum == TERMINT && readStatus != READY, i.e. isReadTerm */
 }
