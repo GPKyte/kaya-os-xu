@@ -63,30 +63,34 @@ HIDDEN void blockCurProc(int* semAdd) {
  * Used for sys2 abstraction
  */
 HIDDEN void avadaKedavra(pcb_PTR p) {
-	/* top-down method */
+	int* semStart, semEnd;
+	/* Top-down method, kill the children first */
 	while(!emptyChild(p)) {
 		avadaKedavra(removeChild(p));
 	}
 
-  /* bottom-up: dealing with each individual PCB */
-  /* TODO: If semaphore value negative, increment the semaphore? */
-  /* If terminating a blocked process, do NOT adjust semaphore. Because the
-   * semaphore will get V'd by the interrupt handler */
-  if(outProcQ(&readyQ, p) != NULL) {
-    /* Know p was on Ready Queue, do nothing else */
+	/* bottom-up: dealing with each individual PCB
+	 * If terminating a blocked process, do NOT adjust semaphore. Because the
+	 * semaphore will get V'd by the interrupt handler */
+	if(outProcQ(&readyQ, p) != NULL) {
+		/* Know p was on Ready Queue, do nothing else */
 
-  } else if(outBlocked(p) != NULL) {
-    if(&(semaphores[0]) <= p->p_semAdd && p->p_semAdd <= &(semaphores[MAXSEMS - 1])) {
-		    softBlkCount--; /* P blocked on device sema4; sema4++ in intHandler */
+	} else if(outBlocked(p) != NULL) {
+		semStart = &(semaphores[0]);
+		semEnd = &(semaphores[MAXSEMS - 1]);
 
-	} else {
-      (*(p->p_semAdd))++; /* P blocked on NON device sema4 */
-	}
-  } /* else it was the curProc which is already handled before fxn */
+		if(semStart <= p->p_semAdd && p->p_semAdd <= semEnd) {
+			/* P blocked on device sema4; sema4++ in intHandler */
+			softBlkCount--;
 
-  /* Adjust procCount */
-  freePcb(p);
-  procCount--;
+		} else {
+			(*(p->p_semAdd))++; /* P blocked on NON device sema4 */
+		}
+	} /* else it was the curProc which is already handled in sys2 */
+
+	/* Adjust procCount */
+	freePcb(p);
+	procCount--;
 }
 
 /*
@@ -96,14 +100,12 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
  *        pointer to state that caused exception
  */
 HIDDEN void genericExceptionTrapHandler(int exceptionType, state_PTR oldState) {
-	/* Check exception type and existence of a specified excep state vector */
-if(curProc == NULL)
+	if(curProc == NULL)
 		fuckIt(EXCEP); /* NULL ptr exception loop inbound */
 
-	if(curProc->p_exceptionConfig[OLD][exceptionType] == NULL) {
-		/* Default, exception state not specified */
-		sys2_terminateProcess();
-	}
+	/* Check exception type and existence of a specified excep state vector */
+	if(curProc->p_exceptionConfig[OLD][exceptionType] == NULL)
+		sys2_terminateProcess(); /* Default case, exception state not specified */
 
 	/*
 	 * Pass up the processor state from old area into the process blk's
@@ -144,8 +146,8 @@ HIDDEN int sys1_createProcess(state_PTR birthState) {
  * Orphan curProc from its parent and siblings
  * If a terminated process is blocked on a semaphore,
  * increment the semaphore to indicate a loss of a blocked job.
- * Else, if a terminated process is blocked on a device semaphore, the semaphore
- * should NOT be adjusted because when the I/O eventually occurs,
+ * Else, if a terminated process is blocked on a device semaphore,
+ * the semaphore should NOT be adjusted because when the I/O eventually occurs,
  * the semaphore will get V’ed by the interrupt handler.
  *
  * A ProcBlk is either the current process, sitting on the ready queue,
@@ -154,12 +156,12 @@ HIDDEN int sys1_createProcess(state_PTR birthState) {
  * EX: void SYSCALL (TERMINATEPROCESS)
  *   Where TERMINATEPROCESS has the value of 2.
  */
- HIDDEN void sys2_terminateProcess() {
- 	outChild(curProc);
- 	avadaKedavra(curProc);
- 	curProc = NULL;
- 	scheduler();
- }
+HIDDEN void sys2_terminateProcess() {
+	outChild(curProc);
+	avadaKedavra(curProc);
+	curProc = NULL;
+	scheduler();
+}
 
 /*
  * Perform V (Signal/Increase) operation on a Semaphore
