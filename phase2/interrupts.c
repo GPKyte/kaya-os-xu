@@ -35,6 +35,7 @@
 #include "../e/asl.e"
 #include "../e/initial.e"
 #include "../e/scheduler.e"
+#include "../e/exceptions.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
 /************************* Prototypes ************************/
