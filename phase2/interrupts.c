@@ -1,4 +1,4 @@
-/*************************INTERRUPTS.C***********************
+/********************** INTERRUPTS.C ************************
  *
  * This module handles the interrupts generated from I/O
  * devices when previously initiated I/O requests finish

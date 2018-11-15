@@ -1,4 +1,4 @@
-/*************************INITIAL.C****************************
+/************************ INITIAL.C ***************************
  *
  * Start Kaya OS:
  *    Define states of the 4 "New" state vectors
@@ -27,8 +27,7 @@
 
 extern void test(); /* To link OS's 1st process to test file location */
 
-int procCount, softBlkCount;
-int semaphores[MAXSEMS];
+int procCount, softBlkCount, semaphores[MAXSEMS];
 int *psuedoClock; /* a semaphore */
 Bool waiting;
 cpu_t startTOD;

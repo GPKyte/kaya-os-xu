@@ -1,4 +1,4 @@
-/***********************SCHEDULER.C***************************
+/********************** SCHEDULER.C **************************
  *
  * Decides the next process to run for Kaya OS
  * Pre-emptive, no starvation, favors long-jobs

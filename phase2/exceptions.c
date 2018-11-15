@@ -1,4 +1,4 @@
-/**********************EXCEPTIONS.C**************************
+/********************* EXCEPTIONS.C **************************
  *
  * Covers three types of exceptions:
  *    1) Program Traps
