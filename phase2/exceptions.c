@@ -208,7 +208,7 @@ HIDDEN void blockCurProc(int* semAdd) {
  */
 HIDDEN void genericExceptionTrapHandler(int exceptionType, state_PTR oldState) {
 	if(curProc == NULL)
-		fuckIt(EXCEP); /* NULL ptr exception loop inbound */
+		panic(EXCEP); /* NULL ptr exception loop inbound */
 
 	/* Check exception type and existence of a specified excep state vector */
 	if(curProc->p_exceptionConfig[OLD][exceptionType] == NULL)
@@ -384,6 +384,6 @@ HIDDEN void sys8_waitForIODevice(int lineNum, int deviceNum, Bool isReadTerm) {
 		blockCurProc(semAdd);
 
 	} else {
-		fuckIt(EXCEP); /* Unhandled niche case that doesn't appear in testing */
+		panic(EXCEP); /* Unhandled niche case that doesn't appear in testing */
 	}
 }

@@ -51,11 +51,11 @@ void loadState(state_PTR statep) {
 }
 
 /*
- * fuckIt - A wrapper function to provide a psuedo status code
+ * panic - A wrapper function to provide a psuedo status code
  *   to the PANIC() operation.
  * PARAM: file location as defined in const
  */
-void fuckIt(int location) {
+void panic(int location) {
 	int a = i;
 	a++;
 	PANIC();
@@ -85,7 +85,7 @@ void scheduler() {
 		HALT();
 
 	if(softBlkCount == 0) /* Detected deadlock so PANIC */
-		fuckIt(SCHED);
+		panic(SCHED);
 
 	waiting = TRUE;
 	waitState.s_status = (getSTATUS() | INTMASKOFF | INTcON);

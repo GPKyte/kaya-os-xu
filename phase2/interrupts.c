@@ -76,7 +76,7 @@ void intHandler() {
 	lineNumber = findLineIndex(oldInt->s_cause);
 
 	if(lineNumber == 0) { /* Handle inter-processor interrupt (not now) */
-		fuckIt(INTER);
+		panic(INTER);
 
 	} else if(lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
 		curProc->p_CPUTime += stopTOD - startTOD; /* More or less a QUANTUMTIME */
