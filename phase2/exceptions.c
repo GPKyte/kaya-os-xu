@@ -100,7 +100,7 @@ void sysCallHandler() {
 	/* Check for reserved instruction error pre-emptively for less code */
 	userModeOn = (oldSys->s_status & USERMODEON) > 0;
 	if(userModeOn && oldSys->s_a0 <= 8 && oldSys->s_a0 > 0) {
-		/* Set Reserved Instruction in Cause register and handle as PROG TRAP */
+		/* Set Reserved Instruction in Cause to handle as PROG TRAP */
 		copyState(oldSys, (state_PTR) PGRMOLDAREA);
 		((state_PTR) PGRMOLDAREA)->s_cause =
 			(oldSys->s_cause & NOCAUSE) | RESERVEDINSTERR;
@@ -110,7 +110,7 @@ void sysCallHandler() {
 	/* Let a0 register decide SysCall type and execute appropriate method */
 	switch(oldSys->s_a0) {
 		case 1:
-			oldSys->s_v0 = sys1_createProcess((state_PTR) oldSys->s_a1); /* Keeps control */
+			oldSys->s_v0 = sys1_createProcess((state_PTR) oldSys->s_a1);
 			loadState(oldSys);
 
 		case 2:
@@ -122,7 +122,7 @@ void sysCallHandler() {
 
 		case 4:
 			sys4_passeren((int*) oldSys->s_a1);
-			loadState(oldSys); /* If not blocked during P: continue process */
+			loadState(oldSys); /* If not blocked on P: continue */
 
 		case 5:
 			sys5_specExceptionState(oldSys->s_a1,
@@ -160,8 +160,8 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
 	}
 
 	/* bottom-up: dealing with each individual PCB
-	 * If terminating a blocked process, do NOT adjust semaphore. Because the
-	 * semaphore will get V'd by the interrupt handler */
+	 * If terminating a blocked process, do NOT adjust semaphore.
+	 * Because the semaphore will get V'd by the interrupt handler */
 	if(outProcQ(&deathRowLine, p) != NULL) {
 		/* Know p was on Ready Queue, do nothing else */
 
@@ -209,14 +209,15 @@ HIDDEN void innocentOrNoose(int exceptionType, state_PTR oldState) {
 	if(curProc == NULL)
 		gameOver(EXCEP); /* NULL ptr exception loop inbound */
 
-	/* Check exception type and existence of a specified excep state vector */
+	/* Check exception type and for a corresponding excep state vector */
 	if(curProc->p_exceptionConfig[OLD][exceptionType] == NULL)
-		sys2_terminateProcess(); /* Default case, exception state not specified */
+		/* Default case, nexception state not specified */
+		sys2_terminateProcess();
 
 	/*
 	 * Pass up the processor state from old area into the process blk's
-	 * Specified old area address. Then load the pcb's specified new area into
-	 * the Process block.
+	 * Specified old area address. Then load the pcb's specified
+	 * new area into the Process block.
 	 */
 	copyState(oldState, curProc->p_exceptionConfig[OLD][exceptionType]);
 	copyState(curProc->p_exceptionConfig[NEW][exceptionType], &(curProc->p_s));
@@ -320,7 +321,8 @@ HIDDEN void sys4_passeren(int* mutex) {
  */
 HIDDEN void sys5_specExceptionState(int type, state_PTR old, state_PTR new) {
 	if(curProc->p_exceptionConfig[OLD][type] != NULL)
-		sys2_terminateProcess(); /* Error, exception state already specified */
+		/* Error, exception state already specified */
+		sys2_terminateProcess();
 
 	/* Specify old and new state vectors */
 	curProc->p_exceptionConfig[OLD][type] = old;
@@ -383,6 +385,7 @@ HIDDEN void sys8_waitForIODevice(int lineNum, int deviceNum, Bool isReadTerm) {
 		blockCurProc(semAdd);
 
 	} else {
-		gameOver(EXCEP); /* Unhandled niche case that doesn't appear in testing */
+		/* Unhandled niche case that doesn't appear in testing */
+		gameOver(EXCEP);
 	}
 }

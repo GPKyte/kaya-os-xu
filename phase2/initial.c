@@ -61,14 +61,15 @@ int main() {
 	pcb_PTR firstP;
 
 	/* Init semaphores to 0 */
-	/* The first semaphore describes device at interrupt line 3, 1st device */
+	/* The first semaphore describes device at line 3, 1st device */
 	for(i = 0; i < MAXSEMS; i++) {
 		semaphores[i] = 0;
 	}
 
 	psuedoClock = &(semaphores[MAXSEMS - 1]);
 
-	devregarea = (devregarea_t*) RAMBASEADDR;  /* ROM defined hardware info */
+	/* Get ROM defined hardware info */
+	devregarea = (devregarea_t*) RAMBASEADDR;
 	ramtop = (devregarea->rambase) + (devregarea->ramsize);
 
 	/* Init new processor state areas */
@@ -117,5 +118,5 @@ int main() {
 	putInPool(firstP);
 	LDIT(INTERVALTIME);
 	nextVictim();
-	return 0; /* Will never reach, but this will remove the pointless warning */
+	return 0; /* Will never reach, but this removes the warning */
 }

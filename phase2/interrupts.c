@@ -78,9 +78,9 @@ void intHandler() {
 	if(lineNumber == 0) { /* Handle inter-processor interrupt (not now) */
 		gameOver(INTER);
 
-	} else if(lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
-		curProc->p_CPUTime += stopTOD - startTOD; /* More or less a QUANTUMTIME */
-		copyState(oldInt, &(curProc->p_s)); /* Save off context for reentry */
+	} else if(lineNumber == 1) { /* Handle Local Timer (End QUANTUMTIME) */
+		curProc->p_CPUTime += stopTOD - startTOD; /* ~ a QUANTUMTIME */
+		copyState(oldInt, &(curProc->p_s)); /* Save for reentry */
 
 		putInPool(curProc);
 		curProc = NULL;
@@ -99,7 +99,8 @@ void intHandler() {
 				softBlkCount--;
 
 				STCK(endOfInterrupt);
-				p->p_CPUTime += (tmpTOD - endOfInterrupt); /* Account for time spent */
+				/* Account for time spent */
+				p->p_CPUTime += (tmpTOD - endOfInterrupt);
 			}
 		}
 
@@ -116,10 +117,10 @@ void intHandler() {
 		/* Get device meta data */
 		deviceNumber = findDeviceIndex(lineNumber);
 		device = findDevice(lineNumber, deviceNumber);
-		isRead = isReadTerm(lineNumber, device); /* Can refactor to avoid call */
+		isRead = isReadTerm(lineNumber, device); /* Could avoid call */
 		status = ack(lineNumber, device);
 
-		/* V the device's semaphore, once io complete, put back on death row */
+		/* V the dev's sema4, once io complete, put back on death row */
 		semAdd = findSem(lineNumber, deviceNumber, isRead);
 		(*semAdd)++;
 
@@ -129,13 +130,14 @@ void intHandler() {
 			p->p_s.s_v0 = status;
 
 			STCK(endOfInterrupt);
-			p->p_CPUTime += (stopTOD - endOfInterrupt); /* Account for time spent */
+			/* Account for time spent */
+			p->p_CPUTime += (stopTOD - endOfInterrupt);
 		}
 	}
 
 	/* General non-accounted time space belongs to OS, not any process */
 	if(waiting || curProc == NULL) {
-		/* Came back from waiting state, get next job; don't return to WAIT */
+		/* Came back from waiting, get next job; don't return to WAIT */
 		waiting = FALSE;
 		nextVictim();
 	}
@@ -188,8 +190,8 @@ HIDDEN int findDeviceIndex(int intLine) {
 	int deviceIndex;
 	int deviceMask = 1; /* Traveling bit to select device */
 
-	devregarea_t* devregarea = (devregarea_t*) RAMBASEADDR;
-	unsigned int deviceBits = devregarea->interrupt_dev[intLine - LINENUMOFFSET];
+	devregarea_t* bus = (devregarea_t*) RAMBASEADDR;
+	unsigned int deviceBits = bus->interrupt_dev[intLine - LINENUMOFFSET];
 
 	/* Find active bit */
 	for(deviceIndex = 0; deviceIndex < DEVPERINT; deviceIndex++) {
@@ -268,5 +270,5 @@ HIDDEN Bool isReadTerm(int lineNum, device_t* dev) {
 	if((dev->t_transm_status & TRANSMITSTATUSMASK) != READY)
 		return FALSE; /* is write term, not read */
 
-	return TRUE; /* lineNum == TERMINT && readStatus != READY, i.e. isReadTerm */
+	return TRUE; /* lineNum == TERMINT && readStatus != READY; isReadTerm */
 }
