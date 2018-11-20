@@ -21,7 +21,7 @@ extern int procCount;
 extern int softBlkCount;
 
 extern pcb_PTR curProc;
-extern pcb_PTR readyQ;
+extern pcb_PTR deathRowLine;
 
 extern int *psuedoClock;
 extern int semaphores[MAXSEMS];

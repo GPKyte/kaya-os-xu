@@ -13,8 +13,8 @@
 
 extern void putInPool(pcb_PTR p);
 extern void loadState(state_PTR state);
-extern void panic(int fileOrigin);
-extern void scheduler();
+extern void gameOver(int fileOrigin);
+extern void nextVictim();
 
 /***************************************************************/
 
