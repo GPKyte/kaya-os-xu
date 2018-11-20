@@ -76,7 +76,7 @@ void intHandler() {
 	lineNumber = findLineIndex(oldInt->s_cause);
 
 	if(lineNumber == 0) { /* Handle inter-processor interrupt (not now) */
-		panic(INTER);
+		gameOver(INTER);
 
 	} else if(lineNumber == 1) { /* Handle Local Timer (End of QUANTUMTIME) */
 		curProc->p_CPUTime += stopTOD - startTOD; /* More or less a QUANTUMTIME */
@@ -84,7 +84,7 @@ void intHandler() {
 
 		putInPool(curProc);
 		curProc = NULL;
-		scheduler();
+		nextVictim();
 
 	} else if(lineNumber == 2) { /* Handle Interval Timer */
 		/* Release all jobs from psuedoClock */
@@ -119,7 +119,7 @@ void intHandler() {
 		isRead = isReadTerm(lineNumber, device); /* Can refactor to avoid call */
 		status = ack(lineNumber, device);
 
-		/* V the device's semaphore, once io complete, put back on ready queue */
+		/* V the device's semaphore, once io complete, put back on death row */
 		semAdd = findSem(lineNumber, deviceNumber, isRead);
 		(*semAdd)++;
 
@@ -137,7 +137,7 @@ void intHandler() {
 	if(waiting || curProc == NULL) {
 		/* Came back from waiting state, get next job; don't return to WAIT */
 		waiting = FALSE;
-		scheduler();
+		nextVictim();
 	}
 
 	/* Return stolen time to interrupted proc if it deserves > 0 */

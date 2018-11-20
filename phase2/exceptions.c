@@ -32,7 +32,7 @@ void sysCallHandler();
 
 HIDDEN void avadaKedavra(pcb_PTR p);
 HIDDEN void blockCurProc(int* semAdd);
-HIDDEN void genericExceptionTrapHandler(int exceptionType, state_PTR oldState);
+HIDDEN void innocentOrNoose(int exceptionType, state_PTR oldState);
 HIDDEN int sys1_createProcess(state_PTR birthState);
 HIDDEN void sys2_terminateProcess();
 HIDDEN void sys3_verhogen(int* mutex);
@@ -66,7 +66,7 @@ void copyState(state_PTR orig, state_PTR dest) {
  * the existence of a specified exception state vector (sys5)
  */
 void pgrmTrapHandler() {
-	genericExceptionTrapHandler(PROGTRAP, (state_PTR) PGRMOLDAREA);
+	innocentOrNoose(PROGTRAP, (state_PTR) PGRMOLDAREA);
 }
 
 /*
@@ -79,7 +79,7 @@ void pgrmTrapHandler() {
  * the existence of a specified exception state vector (sys5)
  */
 void tlbHandler() {
-	genericExceptionTrapHandler(TLBTRAP, (state_PTR) TLBOLDAREA);
+	innocentOrNoose(TLBTRAP, (state_PTR) TLBOLDAREA);
 }
 
 /*
@@ -141,7 +141,7 @@ void sysCallHandler() {
 			sys8_waitForIODevice(oldSys->s_a1, oldSys->s_a2, oldSys->s_a3);
 
 		default: /* SYSCALL for unhandled method >= 9 */
-			genericExceptionTrapHandler(SYSTRAP, oldSys);
+			innocentOrNoose(SYSTRAP, oldSys);
 	}
 }
 
@@ -162,7 +162,7 @@ HIDDEN void avadaKedavra(pcb_PTR p) {
 	/* bottom-up: dealing with each individual PCB
 	 * If terminating a blocked process, do NOT adjust semaphore. Because the
 	 * semaphore will get V'd by the interrupt handler */
-	if(outProcQ(&readyQ, p) != NULL) {
+	if(outProcQ(&deathRowLine, p) != NULL) {
 		/* Know p was on Ready Queue, do nothing else */
 
 	} else if(outBlocked(p) != NULL) {
@@ -196,7 +196,7 @@ HIDDEN void blockCurProc(int* semAdd) {
 	/* Block on sema4 */
 	insertBlocked(semAdd, curProc);
 	curProc = NULL;
-	scheduler();
+	nextVictim();
 }
 
 /*
@@ -205,9 +205,9 @@ HIDDEN void blockCurProc(int* semAdd) {
  * PARAM: exceptionType {0: TLB, 1: PgrmTrap, 2: SYS/Bp}
  *        pointer to state that caused exception
  */
-HIDDEN void genericExceptionTrapHandler(int exceptionType, state_PTR oldState) {
+HIDDEN void innocentOrNoose(int exceptionType, state_PTR oldState) {
 	if(curProc == NULL)
-		panic(EXCEP); /* NULL ptr exception loop inbound */
+		gameOver(EXCEP); /* NULL ptr exception loop inbound */
 
 	/* Check exception type and existence of a specified excep state vector */
 	if(curProc->p_exceptionConfig[OLD][exceptionType] == NULL)
@@ -241,7 +241,7 @@ HIDDEN int sys1_createProcess(state_PTR birthState) {
 	copyState(birthState, &(child->p_s));
 	insertChild(curProc, child);
 
-	putInPool(child); /* insert child to the readyQ */
+	putInPool(child); /* insert child to the deathRowLine */
 	procCount++;
 	return CHILD;
 }
@@ -256,7 +256,7 @@ HIDDEN int sys1_createProcess(state_PTR birthState) {
  * the semaphore should NOT be adjusted because when the I/O eventually occurs,
  * the semaphore will get V’ed by the interrupt handler.
  *
- * A ProcBlk is either the current process, sitting on the ready queue,
+ * A ProcBlk is either the current process, sitting on the death row,
  * blocked on a device semaphore, or blocked on a non-device semaphore.
  *
  * EX: void SYSCALL (TERMINATEPROCESS)
@@ -266,7 +266,7 @@ HIDDEN void sys2_terminateProcess() {
 	outChild(curProc);
 	avadaKedavra(curProc);
 	curProc = NULL;
-	scheduler();
+	nextVictim();
 }
 
 /*
@@ -383,6 +383,6 @@ HIDDEN void sys8_waitForIODevice(int lineNum, int deviceNum, Bool isReadTerm) {
 		blockCurProc(semAdd);
 
 	} else {
-		panic(EXCEP); /* Unhandled niche case that doesn't appear in testing */
+		gameOver(EXCEP); /* Unhandled niche case that doesn't appear in testing */
 	}
 }

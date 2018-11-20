@@ -6,7 +6,7 @@
  * Use Round-Robin selection algorithm with the "Ready Queue"
  * Decide some time-slice value for timer interrupt
  *
- * When ready queue is empty detect:
+ * When death row is empty detect:
  *    deadlock: procCount > 0 && softBlkCount == 0
  *    termination: procCount == 0
  *    waiting: procCount > 0 && softBlkCount > 0
@@ -15,6 +15,7 @@
  * ADVISOR/CONTRIBUTER: Michael Goldweber
  * DATE PUBLISHED: 10.22.2018
  *************************************************************/
+
 #include "../h/const.h"
 #include "../h/types.h"
 
@@ -30,7 +31,7 @@
  */
 HIDDEN pcb_PTR removeFromPool() {
 	/* In Round-Robin style, grab next process */
-	return removeProcQ(&readyQ);
+	return removeProcQ(&deathRowLine);
 }
 
 /*
@@ -39,7 +40,7 @@ HIDDEN pcb_PTR removeFromPool() {
  */
 void putInPool(pcb_PTR p) {
 	if(p != NULL)
-		insertProcQ(&readyQ, p);
+		insertProcQ(&deathRowLine, p);
 }
 /*************************** External methods *****************************/
 /*
@@ -51,25 +52,25 @@ void loadState(state_PTR statep) {
 }
 
 /*
- * panic - A wrapper function to provide a psuedo status code
+ * gameOver - A wrapper function to provide a psuedo status code
  *   to the PANIC() operation.
  * PARAM: file location as defined in const
  */
-void panic(int location) {
+void gameOver(int location) {
 	int a = location;
 	a++;
 	PANIC();
 }
 
 /*
-* scheduler - Mutator method that decides the currently running process
+* nextVictim - Mutator method that decides the currently running process
 * and manages the associated queues and meta data.
 *
 * Pre: Any context switch
 * Post: curProc points to next job and starts or if no available
 *   jobs, system will HALT, PANIC, or WAIT appropriately
 */
-void scheduler() {
+void nextVictim() {
 	state_t waitState;
 	curProc = removeFromPool();
 
@@ -85,7 +86,7 @@ void scheduler() {
 		HALT();
 
 	if(softBlkCount == 0) /* Detected deadlock so PANIC */
-		panic(SCHED);
+		gameOver(SCHED);
 
 	waiting = TRUE;
 	waitState.s_status = (getSTATUS() | INTMASKOFF | INTcON);

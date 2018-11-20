@@ -32,7 +32,7 @@ int *psuedoClock; /* a semaphore */
 Bool waiting;
 cpu_t startTOD;
 pcb_PTR curProc;
-pcb_PTR readyQ; /* Queue of non-blocked jobs to be executed */
+pcb_PTR deathRowLine; /* Queue of non-blocked jobs to be executed */
 
 /*
  * findSem - Calculates address of device semaphore
@@ -99,7 +99,7 @@ int main() {
 	procCount = 0;
 	softBlkCount = 0;
 	curProc = NULL;
-	readyQ = mkEmptyProcQ();
+	deathRowLine = mkEmptyProcQ();
 	firstP = allocPcb();
 
 	/*
@@ -116,6 +116,6 @@ int main() {
 	procCount++;
 	putInPool(firstP);
 	LDIT(INTERVALTIME);
-	scheduler();
+	nextVictim();
 	return 0; /* Will never reach, but this will remove the pointless warning */
 }
