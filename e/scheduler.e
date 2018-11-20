@@ -10,7 +10,7 @@
 
 extern void putInPool(pcb_PTR p);
 extern void loadState(state_PTR state);
-extern void fuckIt(int fileOrigin);
+extern void panic(int fileOrigin);
 extern void scheduler();
 
 /***************************************************************/

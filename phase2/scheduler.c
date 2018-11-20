@@ -56,7 +56,7 @@ void loadState(state_PTR statep) {
  * PARAM: file location as defined in const
  */
 void panic(int location) {
-	int a = i;
+	int a = location;
 	a++;
 	PANIC();
 }

@@ -1,7 +1,7 @@
-#ifndef INTERRUPT
-#define INTERRUPT
+#ifndef INTERRUPTS
+#define INTERRUPTS
 
-/************************** INTERRUPT.E ******************************
+/************************** INTERRUPTS.E ******************************
 *
 *  The externals declaration file for the Interrupt handler file
 *

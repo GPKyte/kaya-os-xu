@@ -53,9 +53,8 @@ void copyState(state_PTR orig, state_PTR dest) {
 	dest->s_status = orig->s_status;
 	dest->s_pc = orig->s_pc;
 
-	for(i = 0; i < STATEREGNUM; i++) {
+	for(i = 0; i < STATEREGNUM; i++)
 		dest->s_reg[i] = orig->s_reg[i];
-	}
 }
 
 /*
@@ -154,7 +153,7 @@ void sysCallHandler() {
  * Used for sys2 abstraction
  */
 HIDDEN void avadaKedavra(pcb_PTR p) {
-	int* semStart, semEnd;
+	int* semStart, *semEnd;
 	/* Top-down method, kill the children first */
 	while(!emptyChild(p)) {
 		avadaKedavra(removeChild(p));

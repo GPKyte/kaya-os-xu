@@ -155,8 +155,8 @@ void intHandler() {
  * PARAM: line of interrupt (to handleTerminal), and PTR to device
  * RETURN: unaltered status of interrupt from device
  */
-HIDDEN unsigned int ack(int lineNumber, device_t* device) {
-	unsigned int status;
+HIDDEN int ack(int lineNumber, device_t* device) {
+	int status;
 
 	if(lineNumber == TERMINT) {
 		status = handleTerminal(device);
