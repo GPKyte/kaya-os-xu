@@ -5,6 +5,13 @@
 *
 *  The externals declaration file for the Initial module.
 *
+*  Initial defines states of the 4 new state areas in lower
+*  memory and initializes the global variables and data
+*  structures for Kaya OS.
+*
+*  It creates new semaphores for peripheral devices and starts
+*  a process queue service.
+*
 *  Written by Ploy Sithisakulrat and Gavin Kyte
 ****************************************************************/
 
