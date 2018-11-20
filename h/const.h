@@ -60,7 +60,7 @@
 #define Bool		int
 #define EOS		'\0'
 #define NULL ((void *) 0xFFFFFFFF)
-#define MAXINT ((unsigned int) 0x7FFFFFFF)
+#define MAXINT ((int *) 0x7FFFFFFF)
 
 /* Bitwise masks and constants */
 /* Turn 1 and 2 On, but 3 off: 1ON | 2ON & ~3ON */
