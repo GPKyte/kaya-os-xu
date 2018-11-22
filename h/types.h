@@ -114,4 +114,22 @@ typedef struct semd_t {
 	pcb_t			*s_procQ;		/* tail pointer to a process queue */
 } semd_t, *semd_PTR;
 
+/* Generic entry in page table */
+typedef struct ptEntry_t {
+	int entryHI; /*  */
+	int entryLO; /*  */
+} ptEntry_t;
+
+/* User type page table */
+#define MAXPTENTRIES 32
+tydedef struct uPgTable_t {
+	int magicPtHeaderWord; /* Cache to ID object as PTbl and current entry # */
+	ptEntry_t entry[MAXPTENTRIES];
+} uPgTable_t, *uPgTable_PTR;
+
+#define MAXOSPTENTRIES (2 * MAXPTENTRIES)
+typedef struct osPgTable_t {
+
+} /* TODO: decide on naming */
+
 #endif
