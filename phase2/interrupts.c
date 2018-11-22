@@ -1,26 +1,27 @@
-/*************************************************************
- * Interrupts.c
+/********************** INTERRUPTS.C ************************
  *
  * This module handles the interrupts generated from I/O
- * devices when previously intitaited I/O requests finish
- * or when the Local or Interval Timers
- * transition from 0x0000.0000 -> 0xFFFF.FFFF
+ * devices when previously initiated I/O requests finish
+ * or when the Local or Interval Timers transition
+ * from 0x0000.0000 -> 0xFFFF.FFFF
  *
- * We manage 8 types of devices (interal and external), each type group can
- * have 8 devices and are ordered sequentially by type-priority.
- * The associated 4-word device registers are kept in ROM.
+ * The Cause register in the OLDINTAREA describes current ints
  *
- * There are 48 managed semaphores in total: 8 ea. for
- * disks, tapes, printers, netw cards, and read/write terminals.
- * Terminals have two semaphores for r/w, but use the same register space.
+ * There are 49 managed semaphores in total: 1 psuedo-clock
+ * & 8 ea. for disks, tapes, printers, netw cards,
+ * and read/write terminals which have two semaphores for r/w,
+ * but use the same ROM device-register space.
+ * Start at managed devices at interrupt line 3
  *
- * We use a contiguous block of 104 semaphores (int's) to represent all
- * possible devices. About half will be unused, but this design
- * will help simplify semaphore referencing related to devices.
+ * We use a contiguous block of MAXSEM semaphores (int's) for
+ * all devices and a special variable for the psuedo-clock
  *
  * Note: Multiple interrupts can be active at once,
  * we prioritize for the lower interrupt line and device #;
- * also terminal transmission (W) > terminal receiving (R)
+ * & prioritize terminal write > terminal read.
+ *
+ * Currently, we only handle one interrupt per context switch
+ * Later, it would be desireable to optimize this.
  *
  * AUTHORS: Ploy Sithisakulrat & Gavin Kyte
  * ADVISOR/CONTRIBUTER: Michael Goldweber
@@ -32,52 +33,242 @@
 
 #include "../e/pcb.e"
 #include "../e/asl.e"
+#include "../e/initial.e"
 #include "../e/scheduler.e"
+#include "../e/exceptions.e"
 #include "/usr/local/include/umps2/umps/libumps.e"
 
-/*********************** Helper Methods **********************/
-HIDDEN void ack(/* Address to interrupting device */)
+/************************* Prototypes ************************/
+void intHandler();
+HIDDEN int ack(int lineNumber, device_t* device);
+HIDDEN device_t* findDevice(int lineNum, int deviceNum);
+HIDDEN int findDeviceIndex(int intLine);
+HIDDEN int findLineIndex(unsigned int causeRegister);
+HIDDEN unsigned int handleTerminal(device_t* device);
+HIDDEN Bool isReadTerm(int lineNum, device_t* dev);
 
 /********************** External Methods *********************/
+/*
+ * intHandler - the entry point method to respond to device
+ *   interrupts. This executes atomically in kernal mode
+ *
+ * Note on timing: if time spent here is the "fault" of a
+ *   process, attribute only that much to it. Things like the
+ *   psuedo clock tick are hardware/system initiated, so only
+ *   the time spent releasing a blocked job is saved, not the
+ *   clock tick handling.
+ *
+ * RETURN: v0 of the waiting process will have status update
+ *   or a new process will be scheduled to execute
+ */
 void intHandler() {
-	devregarea_t devregarea;
-	int lineIndex; /* 0 is line 3 in deviceRegisterArea */
+	Bool isRead;
+	pcb_PTR p;
+	cpu_t stopTOD, endOfInterrupt, tmpTOD;
+	state_PTR oldInt;
+	device_t* device;
+	unsigned int status;
+	int lineNumber, deviceNumber;
+	int* semAdd;
+
+	STCK(stopTOD);
+	oldInt = (state_PTR) INTOLDAREA;
+	lineNumber = findLineIndex(oldInt->s_cause);
+
+	if(lineNumber == 0) { /* Handle inter-processor interrupt (not now) */
+		gameOver(INTER);
+
+	} else if(lineNumber == 1) { /* Handle Local Timer (End QUANTUMTIME) */
+		curProc->p_CPUTime += stopTOD - startTOD; /* ~ a QUANTUMTIME */
+		copyState(oldInt, &(curProc->p_s)); /* Save for reentry */
+
+		putInPool(curProc);
+		curProc = NULL;
+		nextVictim();
+
+	} else if(lineNumber == 2) { /* Handle Interval Timer */
+		/* Release all jobs from psuedoClock */
+		(*psuedoClock)++;
+
+		if((*psuedoClock) <= 0) {
+
+			while(headBlocked(psuedoClock) != NULL) {
+				STCK(tmpTOD);
+
+				putInPool(p = removeBlocked(psuedoClock));
+				softBlkCount--;
+
+				STCK(endOfInterrupt);
+				/* Account for time spent */
+				p->p_CPUTime += (tmpTOD - endOfInterrupt);
+			}
+		}
+
+		(*psuedoClock) = 0;
+		LDIT(INTERVALTIME);
+
+	} else { /* lineNumber >= 3; Handle I/O device interrupt */
+		/*
+		 * Be aware that I/O int can occur BEFORE sys8_waitForIODevice
+		 * We do not explicitly handle this case,
+		 * because it is a concern in phase 2
+		 */
+
+		/* Get device meta data */
+		deviceNumber = findDeviceIndex(lineNumber);
+		device = findDevice(lineNumber, deviceNumber);
+		isRead = isReadTerm(lineNumber, device); /* Could avoid call */
+		status = ack(lineNumber, device);
+
+		/* V the dev's sema4, once io complete, put back on death row */
+		semAdd = findSem(lineNumber, deviceNumber, isRead);
+		(*semAdd)++;
+
+		if((*semAdd) <= 0) {
+			putInPool(p = removeBlocked(semAdd));
+			softBlkCount--;
+			p->p_s.s_v0 = status;
+
+			STCK(endOfInterrupt);
+			/* Account for time spent */
+			p->p_CPUTime += (stopTOD - endOfInterrupt);
+		}
+	}
+
+	/* General non-accounted time space belongs to OS, not any process */
+	if(waiting || curProc == NULL) {
+		/* Came back from waiting, get next job; don't return to WAIT */
+		waiting = FALSE;
+		nextVictim();
+	}
+
+	/* Return stolen time to interrupted proc if it deserves > 0 */
+	if(stopTOD - startTOD < QUANTUMTIME)
+		setTIMER(QUANTUMTIME - (stopTOD - startTOD));
+
+	loadState(oldInt);
+}
+
+/*********************** Helper Methods **********************/
+/*
+ * ack - Mutator and accessor that retrieves the status of
+ *   interrupting device and then ACKknowledges them
+ *
+ * PARAM: line of interrupt (to handleTerminal), and PTR to device
+ * RETURN: unaltered status of interrupt from device
+ */
+HIDDEN int ack(int lineNumber, device_t* device) {
+	int status;
+
+	if(lineNumber == TERMINT) {
+		status = handleTerminal(device);
+
+	} else {
+		status = device->d_status;
+		device->d_command = ACK;
+	}
+
+	return status;
+}
+
+/*
+ * findDevice - Calculate address of device given interrupt line and device num
+ */
+HIDDEN device_t* findDevice(int lineNum, int deviceNum) {
+	device_t* devRegArray = ((devregarea_t*) RAMBASEADDR)->devreg;
+	return &(devRegArray[(lineNum - LINENUMOFFSET) * DEVPERINT + deviceNum]);
+}
+
+/*
+ * findDeviceIndex - Select device number from interrupt line group
+ *   by investigating the interrupt bit map found in low order memory
+ *
+ * PARAM: line of perceived interrupt
+ * RETURN: index of 'on' bit of interrupting line, i.e. the device index
+ */
+HIDDEN int findDeviceIndex(int intLine) {
 	int deviceIndex;
-	int deviceMask;
-	int interruptingSemaphore;
-	device_t interruptingDevice;
-	unsigned int interruptStatus;
-	/* Check Processor Local Timer and Interval Timers */
+	int deviceMask = 1; /* Traveling bit to select device */
 
-	/* Determine line number of highest priority interrupt */
-	devregarea = (devregarea_t *) RAMBASEADDR;
-	lineIndex = 0;
-	while (devregarea->interrupt_dev[lineIndex] == 0) {
-		++lineIndex;
-	}
+	devregarea_t* bus = (devregarea_t*) RAMBASEADDR;
+	unsigned int deviceBits = bus->interrupt_dev[intLine - LINENUMOFFSET];
 
-	/* Select device number */
-	deviceIndex = 0;
-	deviceMask = 1;
-	while (devregarea->interrupt_dev[lineIndex] & deviceMask) == 0) {
-		deviceIndex++;
+	/* Find active bit */
+	for(deviceIndex = 0; deviceIndex < DEVPERINT; deviceIndex++) {
 		deviceMask = 1 << deviceIndex;
+
+		if(deviceBits & deviceMask) {
+			break;
+		}
 	}
 
-	interruptingDevice = devregarea->devreg[lineIndex * 8 + deviceIndex];
-	/* Save status for special handling */
-	interruptStatus = interruptingDevice->d_status;
+	return deviceIndex;
+}
 
-	/* Acknowledge interrupt to turn it off */
-	ack(&interruptingDevice);
+/*
+ * findLineIndex - Accesses the interrupt line info in Cause register
+ *   to determine the line number of the highest priority interrupt
+ *
+ * PARAM: causeRegister, e.g. the one found in INTOLDAREA
+ * RETURN: an int {0..7} representing the first interrupting device group
+ */
+HIDDEN int findLineIndex(unsigned int causeRegister) {
+	int lineIndex;
+	int numOfIntLines = 8;
+	unsigned int lineMask = 1;
+	unsigned int intLineBits = (causeRegister & INTPENDMASK) >> 8;
 
-	interruptingSemaphore = /* Find semaphore */;
-	SYSCALL(VERHOGEN, &interruptingSemaphore);
-	/* Handle case for timer, use psuedo-clock timer sema4 */
-		/* Perform V operation on psuedo-clock timer */
-		/* LDIT(INTERVALTIME); /* Arbitrary interval time */
-	/* Handle weird timing issues surrounding sys8-wait command */
-		/* Use result of V operation to determine race condition */
-		/* If waiting for this I/O, store status in process */
-		/* If I/O before waiting, store the interrupting status somewhere */
+	for(lineIndex = 0; lineIndex < numOfIntLines; lineIndex++) {
+		lineMask = 1 << lineIndex;
+
+		if(intLineBits & lineMask) {
+			break;
+		}
+	}
+
+	return lineIndex;
+}
+
+/*
+ * handleTerminal - mutator method that given an actively interrupting
+ *   terminal, will determine its status (to be returned to caller),
+ *   and ACKnowlege the interrupt whether it be read or write.
+ *
+ * PARAM: PTR to interrupting terminal device
+ * RETURN: status of interrupt (write/transm prioritized over read/recv)
+ */
+HIDDEN unsigned int handleTerminal(device_t* device) {
+	/* handle writes then reads */
+	unsigned int status;
+
+	if((device->t_transm_status & TRANSMITSTATUSMASK) != READY) {
+		status = device->t_transm_status;
+		device->t_transm_command = ACK;
+
+	} else {
+		status = device->t_recv_status;
+		device->t_recv_command = ACK;
+	}
+
+	return status;
+}
+
+/*
+ * isReadTerm - Decides whether interrupting device is a terminal
+ * and whether it should be treated as a read (TRUE) or write (FALSE) terminal
+ * Note: Dependent on pre-ACKnowledged status of term device,
+ *       We assume either read or write active, but check for improper lineNum
+ *
+ * PARAM: line of interrupt, PTR to interrupting terminal device
+ * RETURN: TRUE (isReadTerminal), FALSE (isWriteTerminal or wrong line)
+ */
+HIDDEN Bool isReadTerm(int lineNum, device_t* dev) {
+	/* Check writeStatus because write priortized over read */
+	if(lineNum != TERMINT) /* Wrong line, not even a terminal */
+		return FALSE;
+
+	if((dev->t_transm_status & TRANSMITSTATUSMASK) != READY)
+		return FALSE; /* is write term, not read */
+
+	return TRUE; /* lineNum == TERMINT && readStatus != READY; isReadTerm */
 }

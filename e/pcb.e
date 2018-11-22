@@ -13,7 +13,7 @@
 
 extern void freePcb (pcb_PTR p);
 extern pcb_PTR allocPcb ();
-extern void initPcbs ();
+extern void initPCBs ();
 
 extern pcb_PTR mkEmptyProcQ ();
 extern int emptyProcQ (pcb_PTR tp);

@@ -44,7 +44,6 @@ typedef struct {
 	device_t devreg[DEVINTNUM * DEVPERINT];
 } devregarea_t;
 
-#define STATESIZE 0x8c
 #define STATEREGNUM	31
 typedef struct state_t {
 	unsigned int	s_asid;
@@ -106,10 +105,8 @@ typedef struct pcb_t {
 	unsigned int p_CPUTime; /* total exec time in μ seconds */
 } pcb_t, *pcb_PTR;
 
-/* Either we use 49 sem's; 32normal + 2*8terminal (r/w) + 1timer
- * Or we use 104; 8lines * 8devices + 8write terminals
- * and accept the lost space for cleaner logic */
-#define MAXSEM 104
+/* We use 49 sem's; 32normal + 2*8terminal (r/w) + 1timer */
+#define MAXSEMS 49
 typedef struct semd_t {
 /* semaphore descriptor type */
 	struct semd_t	*s_next;		/* next element on the ASL */

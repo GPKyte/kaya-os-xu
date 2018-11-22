@@ -7,13 +7,27 @@
  *
  ****************************************************************************/
 
+/* File location descriptors for PANIC psuedo status code */
+#define EXCEP	0
+#define INIT	1
+#define INTER	2
+#define SCHED	3
+#define TEST	4
+
 /* Hardware & software constants */
 #define PAGESIZE		4096	/* page size in bytes */
 #define WORDLEN			4		/* word size in bytes */
 #define PTEMAGICNO		0x2A
 
 #define ROMPAGESTART	0x20000000	 /* ROM Reserved Page */
-
+#define INTOLDAREA	0x20000000
+#define INTNEWAREA	0x2000008c
+#define TLBOLDAREA	0x20000118
+#define TLBNEWAREA	0x200001a4
+#define PGRMOLDAREA	0x20000230
+#define PGRMNEWAREA	0x200002bc
+#define SYSOLDAREA	0x20000348
+#define SYSNEWAREA	0x200003d4
 
 /* timer, timescale, TOD-LO and other bus regs */
 #define RAMBASEADDR   0x10000000
@@ -34,24 +48,35 @@
 #define WAITIO					8
 
 /* utility constants */
-#define	TRUE		1
-#define	FALSE		0
-#define	ON			1
-#define	OFF			0
-#define	OLD			0
-#define	NEW			1
-#define	HIDDEN	static
-#define	Bool		int
-#define	EOS		'\0'
+#define TRUE		1
+#define FALSE		0
+#define ON		1
+#define OFF		0
+#define OLD		0
+#define NEW		1
+#define CHILD		0
+#define NOCHILD	-1
+#define HIDDEN		static
+#define Bool		int
+#define EOS		'\0'
+#define NULL ((void *) 0xFFFFFFFF)
+#define MAXINT ((int *) 0x7FFFFFFF)
+
+/* Bitwise masks and constants */
 /* Turn 1 and 2 On, but 3 off: 1ON | 2ON & ~3ON */
 #define VMpON		(1 << 25)
-#define INTpON	(1 << 2)
-#define INTMASKOFF 	(255 << 7) /* Not masking means interrupts on */
+#define INTpON		(1 << 2)
+#define INTcON		(1)
+#define INTMASKOFF	(255 << 8) /* Not masking means interrupts on */
 #define USERMODEON	(1 << 3)
 #define LOCALTIMEON	(1 << 27)
 
-#define NULL ((void *)0xFFFFFFFF)
-#define MAXINT ((void *)0x7FFFFFFF)
+ /* Cause register */
+#define NOCAUSE		~(124) /* 0b1111100 */
+#define RESERVEDINSTERR (10 << 2) /* 0b101000 */
+#define INTPENDMASK 	(255 << 8)
+
+#define TRANSMITSTATUSMASK 0x0F /* For Term Read Status */
 
 /* vectors number and type */
 #define VECTSNUM	4
@@ -62,8 +87,8 @@
 
 #define TRAPTYPES	3
 
-
 /* device interrupts */
+#define LINENUMOFFSET	3
 #define DISKINT		3
 #define TAPEINT		4
 #define NETWINT		5
@@ -85,7 +110,6 @@
 #define TRANSTATUS		2
 #define TRANCOMMAND		3
 
-
 /* device common STATUS codes */
 #define UNINSTALLED	0
 #define READY		1
@@ -105,6 +129,5 @@
 #define STCK(T) ((T) = ((* ((cpu_t *) TODLOADDR)) / (* ((cpu_t *) TIMESCALEADDR))))
 /* Sets count-down timer, used for giving a process a QUANTUMTIME to execute */
 #define LDIT(T)	((* ((cpu_t *) INTERVALTMR)) = (T) * (* ((cpu_t *) TIMESCALEADDR)))
-
 
 #endif
