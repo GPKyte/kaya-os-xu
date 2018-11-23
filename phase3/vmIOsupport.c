@@ -82,11 +82,57 @@ void test() {
 }
 
 void tlbHandler() {
+	/* Determine cause */
+	oldTlb = (state_PTR) TLBOLDAREA;
+	cause = oldTlb->s_cause;
+	cause = (cause << shiftBitsForCauseOffset) & someCauseMask;
 
+	/* Who am I? */
+	asid = oldTlb->s_asid;
+
+	if(cause != PAGELOADMISS && cause != PAGESTRMISS)
+		/* Enfore zero-tolerance policy rules, only handle missing page */
+		SYSCALL(TERMINATEPROCESS);
+
+	/* Gain mutal exclusion of pager to avoid inconsistent states */
+	SYSCALL(PASSEREN, &pager);
+	newFrameNumber = nextFrameIndex();
+	curFPEntry = framePool[newFrameNumber];
+	newFrame = curFPEntry->fp_frameAddr;
+
+	if(isDirty(newFrame)) {
+		/* Get info for next steps from Frame Pool */
+		oldFramePgTbl = curFPEntry->fp_pgTableAddr;
+
+		/* Clear out frame (?) cache to avoid inconsistencies */
+		/* TODO Better: Update page table entry as invalid to mean missing */
+		nukePageTable(oldFramePgTbl);
+
+		/* Write frame back to backing store */
+		storageAddr = calcBkgStoreAddr(curFPEntry->fp_asid, someUnknownPageOffset);
+		writeToBackingStore(newFrame, storageAddr);
+	}
+
+	/* Regardless of dirty frame, load in new page from BStore */
+	storageAddr = calcBkgStoreAddr(asid, someUnknownPageOffset);
+	readFromBackingStore(storageAddr, newFrame);
+
+	/* Resynch TLB Cache */
+	TLBCLEAR();
+
+	/* Update relevant page table entry */
+	/* Q: is this a different page table? Why? Does it belong to this new process? */
+	newPTEntry = uProcList[asid - 1]->up_pgTable[someIndexLikeTheLastEntryMaybe];
+	/* newPTEntry = findPTEntryAddr(pageTableAddr, virtualPageNumber/frameAddr?) */
+	newPTEntry->entryLO |= VALID;
+
+	/* End mutal exclusion of TLB Handling */
+	SYSCALL(VERHOGEN, &pager);
+	loadState(oldTlb);
 }
 
 
 /********************** Helper Methods *********************/
-HIDDEN findPageTableEntry() {
+HIDDEN ptEntry_t* findPageTableEntry() {
 
 }

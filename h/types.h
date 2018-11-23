@@ -132,4 +132,12 @@ typedef struct osPgTable_t {
 
 } /* TODO: decide on naming */
 
+#define MAXFRAMES
+typedef struct fpEntry_t {
+	/* Descriptor for frame entry in frame pool */
+	fp_asid;
+	fp_frameAddr;
+	fp_pgTableAddr;
+}
+
 #endif
