@@ -28,16 +28,39 @@ uProcEntry_t uProcList[MAXUPROC];
  * test - Set up the page and segment tables for all 8 user processes
  */
 void test() {
-	static uPgTable_t uPageTables[MAXUPROC];
+	static osPgTable_t osPgTbl;
+	static uPgTable_t sharedPgTbl, uPageTables[MAXUPROC];
 	state_t newStateList[MAXUPROC];
 
 	/* TODO: Create default entries for 2D Segment table */
 		/* kuSegOs covers 0x0000.0000 - 0x7FFF.FFFF */
 		/* kuSeg2 0x8000.0000 - 0xBFFF.FFFF */
 		/* kuSeg3 0xC000.0000 - 0xFFFF.FFFF */
-	for(loopVar = 0; loopVar < MAXSEGMENTS; loopVar++) {
-
+	for(loopVar = 0; loopVar < maxSTEntries; loopVar++) {
+		sEntry = &(segTable[segNum][loopVar]); /* A ptr to page table ptr */
+		*(sEntry) = NULL; /* TODO: Correct understanding of this table's entries */
 	}
+
+	/* Set up kSegOS page tables */
+	for(loopVar = 0; loopVar < MAXOSPTENTRIES; loopVar++) {
+		newPTEntry = &(osPgTable.entries[loopVar]);
+
+		newPTEntry->entryHI = ROMPAGESTART | asid;
+		newPTEntry->entryLO = DIRTY | GLOBAL | VALID;
+	}
+
+	/* Set up kSeg3 page tables */
+	for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
+		newPTEntry = &(sharedPgTbl.entries[loopVar]);
+
+		newPTEntry->entryHI = KUSEG3START | asid;
+		newPTEntry->entryLO = DIRTY | GLOBAL;
+	}
+
+	/* TODO: Initialize Swap Pool structure to manage Frame Pool */
+	/* TODO: Set swapPool mutex to 1 */
+	/* TODO: Init device mutex semaphore array; set each to 1 */
+	/* TODO: Set masterSema4 to 0 */
 
 	/* Set up user processes */
 	for(asid = 1; asid <= MAXUPROC; asid++) {
@@ -46,7 +69,7 @@ void test() {
 
 		/* Fill in default entries */
 		for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
-			newPTEntry = &(uPageTables[asid - 1][loopVar]);
+			newPTEntry = &(uPageTables[asid - 1].entries[loopVar]);
 
 			newPTEntry->entryHI = KUSEG2START | asid; /* TODO: shift these bits properly */
 			newPTEntry->entryLO = DIRTY;

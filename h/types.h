@@ -124,7 +124,7 @@ typedef struct ptEntry_t {
 #define MAXPTENTRIES 32
 tydedef struct uPgTable_t {
 	int magicPtHeaderWord; /* Cache to ID object as PTbl and current entry # */
-	ptEntry_t entry[MAXPTENTRIES];
+	ptEntry_t entries[MAXPTENTRIES];
 } uPgTable_t, *uPgTable_PTR;
 
 #define MAXOSPTENTRIES (2 * MAXPTENTRIES)
@@ -138,6 +138,6 @@ typedef struct fpEntry_t {
 	fp_asid;
 	fp_frameAddr;
 	fp_pgTableAddr;
-}
+} fpEntry_t; *fpEntry_PTR;
 
 #endif
