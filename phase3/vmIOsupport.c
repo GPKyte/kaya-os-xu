@@ -15,7 +15,9 @@
 
 #include
 
-type? segments_g[MAXSEGMENTS];
+int* pager; /* Mutex for page swaping mechanism */
+/* TODO: consider using union, or simplifying types 4 os- vs. u- pgTbls */
+uPgTable_PTR segTable[3][64]; /* segTable[SEGNUM][ASIDMAX] */
 uProcEntry_t uProcList[MAXUPROC];
 
 /************************ Prototypes ***********************/
@@ -45,7 +47,7 @@ void test() {
 	for(loopVar = 0; loopVar < MAXOSPTENTRIES; loopVar++) {
 		newPTEntry = &(osPgTable.entries[loopVar]);
 
-		newPTEntry->entryHI = ROMPAGESTART | asid;
+		newPTEntry->entryHI = ROMPAGESTART | loopVar;
 		newPTEntry->entryLO = DIRTY | GLOBAL | VALID;
 	}
 
@@ -53,9 +55,11 @@ void test() {
 	for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
 		newPTEntry = &(sharedPgTbl.entries[loopVar]);
 
-		newPTEntry->entryHI = KUSEG3START | asid;
+		newPTEntry->entryHI = KUSEG3START | loopVar;
 		newPTEntry->entryLO = DIRTY | GLOBAL;
 	}
+
+	/* TODO: Consider setting all seg3 segment to the only seg3 page table address */
 
 	/* TODO: Initialize Swap Pool structure to manage Frame Pool */
 	/* TODO: Set swapPool mutex to 1 */
@@ -64,8 +68,10 @@ void test() {
 
 	/* Set up user processes */
 	for(asid = 1; asid <= MAXUPROC; asid++) {
-		/* Make a new page table for this process */
+		/* Set up new page table for process */
 		uPageTables[asid - 1].magicPtHeaderWord = MAGIC;
+
+		updateSegmentTableEntry(2, asid, &(uPageTables[asid - 1]));
 
 		/* Fill in default entries */
 		for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
@@ -117,6 +123,7 @@ void tlbHandler() {
 		/* Enfore zero-tolerance policy rules, only handle missing page */
 		SYSCALL(TERMINATEPROCESS);
 
+
 	/* Gain mutal exclusion of pager to avoid inconsistent states */
 	SYSCALL(PASSEREN, &pager);
 	newFrameNumber = nextFrameIndex();
@@ -144,7 +151,7 @@ void tlbHandler() {
 	TLBCLEAR();
 
 	/* Update relevant page table entry */
-	/* Q: is this a different page table? Why? Does it belong to this new process? */
+	/* TODO: Q: is this a different page table? Why? Does it belong to this new process? */
 	newPTEntry = uProcList[asid - 1]->up_pgTable[someIndexLikeTheLastEntryMaybe];
 	/* newPTEntry = findPTEntryAddr(pageTableAddr, virtualPageNumber/frameAddr?) */
 	newPTEntry->entryLO |= VALID;
@@ -158,4 +165,20 @@ void tlbHandler() {
 /********************** Helper Methods *********************/
 HIDDEN ptEntry_t* findPageTableEntry() {
 
+}
+
+void updateSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
+	/* First, boundary check segment and asid, but not address */
+	/*	TLB exception already covers bad address to some extent */
+	if(segment < 0 || segment > 3)
+		gameOver(99);
+
+	if(asid < 0 || asid > 63)
+		gameOver(99);
+
+	/* Overwrite current entry of segTable with address of page table */
+	segmentTable[segment][asid] = addr;
+}
+void updateSegmentTableEntry(int segment, int asid, osPgTable_PTR addr) {
+	updateSegmentTableEntry(segment, asid, (uPgTable_PTR) addr);
 }
