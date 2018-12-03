@@ -78,6 +78,16 @@
 
 #define TRANSMITSTATUSMASK 0x0F /* For Term Read Status */
 
+/* page table operations */
+#define KUSEG2START   0x80000000
+#define KUSEG3START   0xC0000000
+#define KSEGOSEND     KUSEG2START - 1
+#define DIRTY         0 /* TODO: is this correct? */
+#define GLOBAL        1
+#define VALID         1
+#define MAXPAGES      32
+
+
 /* vectors number and type */
 #define VECTSNUM	4
 
