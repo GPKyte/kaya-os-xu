@@ -13,7 +13,12 @@
  * DATE PUBLISHED:
  ***********************************************************/
 
-#include
+#include "../h/types.h"
+#include "../h/const.h"
+#include "../e/initProc.e"
+
+#include "usr/local/include/umps2/umps/libumps.e"
+
 
 int* pager; /* Mutex for page swaping mechanism */
 /* TODO: consider using union, or simplifying types 4 os- vs. u- pgTbls */
@@ -89,7 +94,7 @@ void test() {
 		newProcDesc->up_syncSem = 0;
 		newProcDesc->up_pgTable = &(uPageTables[asid -1]);
 		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid);
-		/* Probably don't need to set these here, will be handled in uProcInit();
+		/* Probably don't need to set these here, will be handled initProc();
 		newProcDesc->up_stateAreas[OLD][TLBTRAP];
 		newProcDesc->up_stateAreas[OLD][PROGTRAP];
 		newProcDesc->up_stateAreas[OLD][SYSTRAP];
@@ -101,7 +106,7 @@ void test() {
 		newState = &(newStateList[asid - 1]);
 		newState->s_asid = asid;
 		newState->s_sp = NULL; /* TODO: fill in later, maybe in other code block */
-		newState->s_pc = (memaddr) uProcInit();
+		newState->s_pc = (memaddr) initProc();
 		/* Interrupts on, Local Timer On, VM Off, Kernel mode on */
 		newState->s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
 			& ~VMpON & ~USERMODEON;
@@ -110,6 +115,11 @@ void test() {
 	}
 }
 
+/*
+ * tlbHandler -
+ *
+ *
+ */
 void tlbHandler() {
 	/* Determine cause */
 	oldTlb = (state_PTR) TLBOLDAREA;

@@ -14,7 +14,7 @@ typedef signed int cpu_t;
 typedef unsigned int memaddr;
 
 
-typedef struct {
+typedef struct device_t {
 	unsigned int d_status;
 	unsigned int d_command;
 	unsigned int d_data0;
@@ -109,15 +109,15 @@ typedef struct pcb_t {
 #define MAXSEMS 49
 typedef struct semd_t {
 /* semaphore descriptor type */
-	struct semd_t	*s_next;		/* next element on the ASL */
-	int				*s_semAdd;		/* pointer to the semaphore */
-	pcb_t			*s_procQ;		/* tail pointer to a process queue */
+	struct semd_t		*s_next;		/* next element on the ASL */
+	int							*s_semAdd;		/* pointer to the semaphore */
+	pcb_t						*s_procQ;		/* tail pointer to a process queue */
 } semd_t, *semd_PTR;
 
 /* Generic entry in page table */
 typedef struct ptEntry_t {
-	int entryHI; /*  */
-	int entryLO; /*  */
+	unsigned int entryHI; /*  */
+	unsigned int entryLO; /*  */
 } ptEntry_t;
 
 /* User type page table */
@@ -135,9 +135,17 @@ typedef struct osPgTable_t {
 #define MAXFRAMES
 typedef struct fpEntry_t {
 	/* Descriptor for frame entry in frame pool */
-	fp_asid;
-	fp_frameAddr;
-	fp_pgTableAddr;
+	int fp_asid;
+	int fp_frameAddr;
+	int fp_pgTableAddr;
 } fpEntry_t; *fpEntry_PTR;
+
+typedef struct swapPool_t {
+	/* Descriptor for swap pool entries */
+	int asid;
+	int segNO;
+	int pgNO;
+	ptEntry_t	*pte;
+} swapPool_t;
 
 #endif
