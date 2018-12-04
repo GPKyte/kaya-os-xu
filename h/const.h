@@ -82,10 +82,17 @@
 #define KUSEG2START   0x80000000
 #define KUSEG3START   0xC0000000
 #define KSEGOSEND     KUSEG2START - 1
-#define DIRTY         0 /* TODO: is this correct? */
+#define DIRTY         0 /* TODO: is this correct? I think this should be 1 */
 #define GLOBAL        1
 #define VALID         1
 #define MAXPAGES      32
+#define ENTRYCNTMASK  0xFFFFF /* Bits 0-19 On */
+#define MAGICNUM      (42 << 24)
+#define MAGICNUMMASK  0xFF000000 /* Bits 24-31 On */
+
+/* Segment Table */
+#define SEGMENTS      3
+#define MAXPROCID     64
 
 
 /* vectors number and type */

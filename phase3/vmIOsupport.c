@@ -22,7 +22,7 @@
 
 int* pager; /* Mutex for page swaping mechanism */
 /* TODO: consider using union, or simplifying types 4 os- vs. u- pgTbls */
-uPgTable_PTR segTable[3][64]; /* segTable[SEGNUM][ASIDMAX] */
+uPgTable_PTR segTable[SEGMENTS][MAXPROCID];
 uProcEntry_t uProcList[MAXUPROC];
 
 /************************ Prototypes ***********************/
@@ -36,19 +36,18 @@ uProcEntry_t uProcList[MAXUPROC];
  */
 void test() {
 	static osPgTable_t osPgTbl;
-	static uPgTable_t sharedPgTbl, uPageTables[MAXUPROC];
+	static uPgTable_t sharedPgTbl, uPgTblList[MAXUPROC];
 	state_t newStateList[MAXUPROC];
 
-	/* TODO: Create default entries for 2D Segment table */
-		/* kuSegOs covers 0x0000.0000 - 0x7FFF.FFFF */
-		/* kuSeg2 0x8000.0000 - 0xBFFF.FFFF */
-		/* kuSeg3 0xC000.0000 - 0xFFFF.FFFF */
-	for(loopVar = 0; loopVar < maxSTEntries; loopVar++) {
-		sEntry = &(segTable[segNum][loopVar]); /* A ptr to page table ptr */
-		*(sEntry) = NULL; /* TODO: Correct understanding of this table's entries */
+	/* Set up kSegOS and kuSeg3 Segment Table entries (all the same-ish) */
+	for(loopVar = 0; loopVar < MAXPROCID; loopVar++) {
+		updateSegmentTableEntry(0, loopVar, &osPgTbl);
+		updateSegmentTableEntry(3, loopVar, &sharedPgTbl);
+		/* kuSeg2 handled with each unique process later */
 	}
 
 	/* Set up kSegOS page tables */
+	osPgTable.magicPtHeaderWord = MAGICNUM;
 	for(loopVar = 0; loopVar < MAXOSPTENTRIES; loopVar++) {
 		newPTEntry = &(osPgTable.entries[loopVar]);
 
@@ -57,6 +56,7 @@ void test() {
 	}
 
 	/* Set up kSeg3 page tables */
+	sharedPgTbl.magicPtHeaderWord = MAGICNUM;
 	for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
 		newPTEntry = &(sharedPgTbl.entries[loopVar]);
 
@@ -64,23 +64,21 @@ void test() {
 		newPTEntry->entryLO = DIRTY | GLOBAL;
 	}
 
-	/* TODO: Consider setting all seg3 segment to the only seg3 page table address */
-
 	/* TODO: Initialize Swap Pool structure to manage Frame Pool */
 	/* TODO: Set swapPool mutex to 1 */
 	/* TODO: Init device mutex semaphore array; set each to 1 */
-	/* TODO: Set masterSema4 to 0 */
+	masterSem = 0;
 
 	/* Set up user processes */
 	for(asid = 1; asid <= MAXUPROC; asid++) {
 		/* Set up new page table for process */
-		uPageTables[asid - 1].magicPtHeaderWord = MAGIC;
+		uPgTblList[asid - 1].magicPtHeaderWord = MAGICNUM;
 
-		updateSegmentTableEntry(2, asid, &(uPageTables[asid - 1]));
+		updateSegmentTableEntry(2, asid, &(uPgTblList[asid - 1]));
 
 		/* Fill in default entries */
 		for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
-			newPTEntry = &(uPageTables[asid - 1].entries[loopVar]);
+			newPTEntry = &(uPgTblList[asid - 1].entries[loopVar]);
 
 			newPTEntry->entryHI = KUSEG2START | asid; /* TODO: shift these bits properly */
 			newPTEntry->entryLO = DIRTY;
@@ -92,15 +90,8 @@ void test() {
 		/* Fill entry for user process tracking */
 		newProcDesc = uProcList[asid - 1];
 		newProcDesc->up_syncSem = 0;
-		newProcDesc->up_pgTable = &(uPageTables[asid -1]);
+		newProcDesc->up_pgTable = &(uPgTblList[asid -1]);
 		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid);
-		/* Probably don't need to set these here, will be handled initProc();
-		newProcDesc->up_stateAreas[OLD][TLBTRAP];
-		newProcDesc->up_stateAreas[OLD][PROGTRAP];
-		newProcDesc->up_stateAreas[OLD][SYSTRAP];
-		newProcDesc->up_stateAreas[NEW][TLBTRAP];
-		newProcDesc->up_stateAreas[NEW][PROGTRAP];
-		newProcDesc->up_stateAreas[NEW][SYSTRAP]; */
 
 		/* Create default kernel level state starting in init code */
 		newState = &(newStateList[asid - 1]);
@@ -185,6 +176,10 @@ void updateSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
 
 	if(asid < 0 || asid > 63)
 		gameOver(99);
+
+	/* Is it actually a page table? */
+	if((addr->magicPtHeaderWord & MAGICNUMMASK) != MAGICNUM)
+		gameOver(99); /* Magic is a lie */
 
 	/* Overwrite current entry of segTable with address of page table */
 	segmentTable[segment][asid] = addr;
