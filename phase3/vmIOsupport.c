@@ -22,8 +22,7 @@
 
 int* pager; /* Mutex for page swaping mechanism */
 int* devSemList[loopVar];
-/* TODO: consider using union, or simplifying types 4 os- vs. u- pgTbls */
-uPgTable_PTR segTable[SEGMENTS][MAXPROCID];
+int segTable[SEGMENTS][MAXPROCID]; /* TODO: find a generic type solution that better describes segTbl */
 uProcEntry_t uProcList[MAXUPROC];
 
 /************************ Prototypes ***********************/
@@ -46,9 +45,9 @@ void test() {
 
 	/* Set up kSegOS and kuSeg3 Segment Table entries (all the same-ish) */
 	for(loopVar = 0; loopVar < MAXPROCID; loopVar++) {
-		updateSegmentTableEntry(0, loopVar, &osPgTbl);
-		updateSegmentTableEntry(3, loopVar, &sharedPgTbl);
-		/* kuSeg2 handled with each unique process later */
+		setSegmentTableEntry(KSEGOS, loopVar, &osPgTbl);
+		setSegmentTableEntry(KUSEG3, loopVar, &sharedPgTbl);
+		/* kuSeg2 handled for each unique process later */
 	}
 
 	/* Set up kSegOS page tables */
@@ -97,7 +96,7 @@ void test() {
 		/* Set up new page table for process */
 		uPgTblList[asid - 1].magicPtHeaderWord = MAGICNUM;
 
-		updateSegmentTableEntry(KUSEG2, asid, &(uPgTblList[asid - 1]));
+		setSegmentTableEntry(KUSEG2, asid, &(uPgTblList[asid - 1]));
 
 		/* Fill in default entries */
 		for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
@@ -193,7 +192,11 @@ HIDDEN ptEntry_t* findPageTableEntry() {
 
 }
 
-void updateSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
+int getSegmentTableEntry(int segment, int asid) {
+	return segTable[segment][asid];
+}
+
+void setSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
 	/* First, boundary check segment and asid, but not address */
 	/*	TLB exception already covers bad address to some extent */
 	if(segment < 0 || segment > 3)
@@ -207,8 +210,8 @@ void updateSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
 		gameOver(99); /* Magic is a lie */
 
 	/* Overwrite current entry of segTable with address of page table */
-	segmentTable[segment][asid] = addr;
+	segTable[segment][asid] = (int) addr;
 }
-void updateSegmentTableEntry(int segment, int asid, osPgTable_PTR addr) {
-	updateSegmentTableEntry(segment, asid, (uPgTable_PTR) addr);
+void setSegmentTableEntry(int segment, int asid, osPgTable_PTR addr) {
+	setSegmentTableEntry(segment, asid, (uPgTable_PTR) addr);
 }
