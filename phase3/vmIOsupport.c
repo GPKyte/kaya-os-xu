@@ -56,7 +56,8 @@ void test() {
 	for(loopVar = 0; loopVar < MAXOSPTENTRIES; loopVar++) {
 		newPTEntry = &(osPgTable.entries[loopVar]);
 
-		newPTEntry->entryHI = ROMPAGESTART | loopVar;
+		/* TODO: Should we add segment number or asid at all here? (both 0) */
+		newPTEntry->entryHI = KSEGOSVPN << 12;
 		newPTEntry->entryLO = DIRTY | GLOBAL | VALID;
 	}
 
@@ -65,7 +66,9 @@ void test() {
 	for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
 		newPTEntry = &(sharedPgTbl.entries[loopVar]);
 
-		newPTEntry->entryHI = KUSEG3START | loopVar;
+		newPTEntry->entryHI = (KUSEG3 << 30)
+			| (KUSEG3START << 12)
+			| (MAXPROCID << 6);
 		newPTEntry->entryLO = DIRTY | GLOBAL;
 	}
 
@@ -94,18 +97,20 @@ void test() {
 		/* Set up new page table for process */
 		uPgTblList[asid - 1].magicPtHeaderWord = MAGICNUM;
 
-		updateSegmentTableEntry(2, asid, &(uPgTblList[asid - 1]));
+		updateSegmentTableEntry(KUSEG2, asid, &(uPgTblList[asid - 1]));
 
 		/* Fill in default entries */
 		for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
 			newPTEntry = &(uPgTblList[asid - 1].entries[loopVar]);
 
-			newPTEntry->entryHI = KUSEG2START | asid; /* TODO: shift these bits properly */
+			newPTEntry->entryHI = (KUSEG2 << 30)
+				| (KUSEG2VPN << 12)
+				| (asid << 6);
 			newPTEntry->entryLO = DIRTY;
 		}
 
 		/* Correct last entry to become a stack page */
-		newPTEntry->entryHI = (KUSEG3START - PAGESIZE) | asid /* TODO: confirm const and bit shift */
+		newPTEntry->entryHI = (KUSEG3VPN) | (asid << 6)
 
 		/* Fill entry for user process tracking */
 		newProcDesc = uProcList[asid - 1];
