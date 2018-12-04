@@ -132,20 +132,12 @@ typedef struct osPgTable_t {
 
 } osPgTable_t, osPgTable_PTR; /* TODO: decide on naming */
 
-#define MAXFRAMES
-typedef struct fpEntry_t {
+#define MAXFRAMES 10 /* Less than 2 * MAXUPROC to force paging */
+typedef struct fpTable_t {
 	/* Descriptor for frame entry in frame pool */
-	int fp_asid;
-	int fp_frameAddr;
-	int fp_pgTableAddr;
-} fpEntry_t; *fpEntry_PTR;
-
-typedef struct swapPool_t {
-	/* Descriptor for swap pool entries */
-	int asid;
-	int segNO;
-	int pgNO;
-	ptEntry_t	*pte;
-} swapPool_t;
+	/* Use same format as EntryHI + 0/1 for "in use" */
+	unsigned int frames[MAXFRAMES];
+	memaddr      frameAddr[MAXFRAMES];
+} fpTable_t;
 
 #endif

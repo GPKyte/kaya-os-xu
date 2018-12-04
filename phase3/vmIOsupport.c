@@ -21,6 +21,7 @@
 
 
 int* pager; /* Mutex for page swaping mechanism */
+int* devSemList[loopVar];
 /* TODO: consider using union, or simplifying types 4 os- vs. u- pgTbls */
 uPgTable_PTR segTable[SEGMENTS][MAXPROCID];
 uProcEntry_t uProcList[MAXUPROC];
@@ -35,9 +36,13 @@ uProcEntry_t uProcList[MAXUPROC];
  * test - Set up the page and segment tables for all 8 user processes
  */
 void test() {
+	static fpTable_t framePool;
 	static osPgTable_t osPgTbl;
 	static uPgTable_t sharedPgTbl, uPgTblList[MAXUPROC];
 	state_t newStateList[MAXUPROC];
+
+	unsigned int ramtop;
+	devregarea_t* devregarea;
 
 	/* Set up kSegOS and kuSeg3 Segment Table entries (all the same-ish) */
 	for(loopVar = 0; loopVar < MAXPROCID; loopVar++) {
@@ -64,10 +69,25 @@ void test() {
 		newPTEntry->entryLO = DIRTY | GLOBAL;
 	}
 
-	/* TODO: Initialize Swap Pool structure to manage Frame Pool */
-	/* TODO: Set swapPool mutex to 1 */
-	/* TODO: Init device mutex semaphore array; set each to 1 */
-	masterSem = 0;
+	/* Possible opportunity for optimization is pre-loading frame pool */
+	/* Initialize Swap Pool structure to manage Frame Pool */
+	devregarea = (devregarea_t*) RAMBASEADDR;
+	ramtop = (devregarea->rambase) + (devregarea->ramsize);
+	for(loopVar = 0; loopVar < MAXFRAMES; loopVar++) {
+		framePool.frames[loopVar] = getENTRYHI();
+		/* Calculate physical location of frame starting address *
+		 * Sits beneath the kernel and test stack frames         */
+		frameLoc = ramtop - (3 + loopVar) * PAGESIZE;
+		framePool.frameAddr[loopVar] = (memaddr) frameLoc;
+	}
+
+
+	pager = 1; /* Init mutex for swap pool pager */
+	/* Init device mutex semaphore array; set each to 1 */
+	for(loopVar = 0; loopVar < MAXSEMS; loopVar++)
+		devSemList[loopVar] = 1;
+
+	masterSem = 0; /* For graceful halting of OS after test fin */
 
 	/* Set up user processes */
 	for(asid = 1; asid <= MAXUPROC; asid++) {
