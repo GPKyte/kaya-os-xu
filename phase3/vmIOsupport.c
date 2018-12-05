@@ -71,7 +71,8 @@ void test() {
 		newPTEntry->entryLO = DIRTY | GLOBAL;
 	}
 
-	/* Possible opportunity for optimization is pre-loading frame pool */
+
+	/* TODO: pre-load frame pool */
 	/* Initialize Swap Pool structure to manage Frame Pool */
 	devregarea = (devregarea_t*) RAMBASEADDR;
 	ramtop = (devregarea->rambase) + (devregarea->ramsize);
@@ -143,7 +144,11 @@ void tlbHandler() {
 	cause = (cause << shiftBitsForCauseOffset) & someCauseMask;
 
 	/* Who am I? */
-	asid = oldTlb->s_asid;
+	asid = (oldTlb->s_asid & ASIDMASK) >> 6;
+	segNum = (oldTlb->s_asid & SEGMASK) >> 30;
+	/* We store "page number" in the offset from the relevant VPN start */
+	pgNum = (oldTlb->s_asid & VPNMASK) >> 12;
+
 
 	if(cause != PAGELOADMISS && cause != PAGESTRMISS)
 		/* Enfore zero-tolerance policy rules, only handle missing page */
@@ -151,6 +156,17 @@ void tlbHandler() {
 
 	/* Gain mutal exclusion of pager to avoid inconsistent states */
 	SYSCALL(PASSEREN, &pager);
+
+	/* Check shared table to see if it's already been brought in */
+	if(segNum == KUSEG3) {
+		destPageEntry = findPageTableEntry(
+			(uPgTable_PTR) getSegmentTableEntry(segNum, asid), vpn);
+
+		if((destPageEntry->entryLO & VALID) == TRUE) {
+			SYSCALL(VERHOGEN, &pager);
+			loadState(oldTlb);
+		}
+	}
 
 	newFrameNumber = selectFrameIndex();
 	curFPEntry = framePool.frames[newFrameNumber];
@@ -168,6 +184,7 @@ void tlbHandler() {
 		nukePageTable(curPageTable);
 
 		/* Write frame back to backing store */
+		/* TODO: Find where page offset could be found */
 		storageAddr = calcBkgStoreAddr(curFPEntry->fp_asid, someUnknownPageOffset);
 		writePageToBackingStore(newFrame, storageAddr);
 	}
