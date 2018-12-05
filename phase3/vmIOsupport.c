@@ -76,11 +76,11 @@ void test() {
 	devregarea = (devregarea_t*) RAMBASEADDR;
 	ramtop = (devregarea->rambase) + (devregarea->ramsize);
 	for(loopVar = 0; loopVar < MAXFRAMES; loopVar++) {
-		framePool.frames[loopVar] = getENTRYHI();
+		framePool.frames[loopVar] = 0;
 		/* Calculate physical location of frame starting address *
 		 * Sits beneath the kernel and test stack frames         */
 		frameLoc = ramtop - (3 + loopVar) * PAGESIZE;
-		framePool.frameAddr[loopVar] = (memaddr) frameLoc;
+		framePool.frameAddr[loopVar] = frameLoc;
 	}
 
 

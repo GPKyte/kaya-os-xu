@@ -134,10 +134,11 @@ typedef struct osPgTable_t {
 
 #define MAXFRAMES 10 /* Less than 2 * MAXUPROC to force paging */
 typedef struct fpTable_t {
+	int indexLastFrameReplaced; /* TODO: Idea for cached info */
 	/* Descriptor for frame entry in frame pool */
 	/* Use same format as EntryHI + 0/1 for "in use" */
 	unsigned int frames[MAXFRAMES];
-	memaddr      frameAddr[MAXFRAMES];
+	memaddr      frameAddr[MAXFRAMES]; /* TODO: Idea for cached info */
 } fpTable_t;
 
 #endif
