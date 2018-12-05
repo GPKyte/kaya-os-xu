@@ -56,7 +56,7 @@ void test() {
 		newPTEntry = &(osPgTable.entries[loopVar]);
 
 		/* TODO: Should we add segment number or asid at all here? (both 0) */
-		newPTEntry->entryHI = KSEGOSVPN << 12;
+		newPTEntry->entryHI = (KSEGOSVPN + loopVar) << 12;
 		newPTEntry->entryLO = DIRTY | GLOBAL | VALID;
 	}
 
@@ -66,7 +66,7 @@ void test() {
 		newPTEntry = &(sharedPgTbl.entries[loopVar]);
 
 		newPTEntry->entryHI = (KUSEG3 << 30)
-			| (KUSEG3START << 12)
+			| ((KUSEG3VPN + loopVar) << 12)
 			| (MAXPROCID << 6);
 		newPTEntry->entryLO = DIRTY | GLOBAL;
 	}
@@ -103,7 +103,7 @@ void test() {
 			newPTEntry = &(uPgTblList[asid - 1].entries[loopVar]);
 
 			newPTEntry->entryHI = (KUSEG2 << 30)
-				| (KUSEG2VPN << 12)
+				| ((KUSEG2VPN + loopVar) << 12)
 				| (asid << 6);
 			newPTEntry->entryLO = DIRTY;
 		}
