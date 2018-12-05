@@ -95,6 +95,7 @@
 #define ENTRYCNTMASK  0xFFFFF /* Bits 0-19 On */
 #define MAGICNUM      (42 << 24)
 #define MAGICNUMMASK  0xFF000000 /* Bits 24-31 On */
+#define PFNMASK       0xFFFFF000
 
 /* Segment Table */
 #define SEGMENTS      3

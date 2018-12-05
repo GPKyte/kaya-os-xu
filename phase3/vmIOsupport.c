@@ -201,7 +201,8 @@ void tlbHandler() {
 	TLBCLEAR();
 
 	/* Update relevant page table entry */
-	newPTEntry->entryLO |= VALID;
+	newPTEntry->entryLO &= ~PFNMASK /* Erase current PFN */
+	newPTEntry->entryLO |= (newFrameAddr / PAGESIZE) | VALID;
 
 	/* End mutal exclusion of TLB Handling */
 	SYSCALL(VERHOGEN, &pager);
