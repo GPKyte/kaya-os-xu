@@ -108,13 +108,13 @@ void test() {
 			newPTEntry->entryLO = DIRTY;
 		}
 
-		/* Correct last entry to become a stack page */
-		newPTEntry->entryHI = (KUSEG3VPN) | (asid << 6)
+		/* Correct last entry to act as a stack page */
+		newPTEntry->entryHI = (KUSEG3VPN << 12) | (asid << 6)
 
 		/* Fill entry for user process tracking */
 		newProcDesc = uProcList[asid - 1];
 		newProcDesc->up_syncSem = 0;
-		newProcDesc->up_pgTable = &(uPgTblList[asid -1]);
+		newProcDesc->up_pgTable = &(uPgTblList[asid - 1]);
 		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid);
 
 		/* Create default kernel level state starting in init code */
