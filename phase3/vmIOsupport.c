@@ -206,6 +206,17 @@ HIDDEN ptEntry_PTR findPageTableEntry(uPgTbl_PTR pageTable, int VPN) {
 	return pageTable->entries[indexOfMatch];
 }
 
+/* TODO: modify original findSem method if indeed 1:1
+ * findMutex - Calculates address of device semaphore, specifically mutex
+ * PARAM: int lineNum is the device type, correlates with the interrupt lineNum
+ *        int deviceNum is the index of a device within a type group
+ *        Bool isReadTerm is FALSE for writeT & non-terminals, TRUE for readT
+ * RETURN: int* calculated address of device semaphore
+ */
+int* findMutex(int lineNum, int deviceNum, Bool isReadTerm) {
+	int termOffset = (isReadTerm) ? 1 : 0;
+	int semGroup = (lineNum - LINENUMOFFSET) + termOffset;
+	return &(mutexSems[semGroup * DEVPERINT + deviceNum]);
 }
 
 int getSegmentTableEntry(int segment, int asid) {
