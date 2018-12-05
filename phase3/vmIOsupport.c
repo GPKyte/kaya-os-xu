@@ -269,6 +269,12 @@ void engageDiskDevice(int sectIndex, memaddr addr, int readOrWrite) {
 	SYSCALL(VERHOGEN, findMutex(DISKINT, 0, FALSE));
 }
 
+int selectFrameIndex() {
+	framePool.indexOfLastFrameReplaced += 1;
+	framePool.indexOfLastFrameReplaced %= MAXFRAMES;
+	return (framePool.indexOfLastFrameReplaced);
+}
+
 void setSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
 	/* First, boundary check segment and asid, but not address */
 	/*	TLB exception already covers bad address to some extent */
