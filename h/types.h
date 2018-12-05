@@ -116,9 +116,9 @@ typedef struct semd_t {
 
 /* Generic entry in page table */
 typedef struct ptEntry_t {
-	unsigned int entryHI; /*  */
-	unsigned int entryLO; /*  */
-} ptEntry_t;
+	unsigned int entryHI; /* segNo - Virtual Page Number - asid */
+	unsigned int entryLO; /* Physical Frame Number - N - D - V - G */
+} ptEntry_t, *ptEntry_PTR;
 
 /* User type page table */
 #define MAXPTENTRIES 32
@@ -130,7 +130,7 @@ typedef struct uPgTable_t {
 #define MAXOSPTENTRIES (2 * MAXPTENTRIES)
 typedef struct osPgTable_t {
 
-} osPgTable_t, osPgTable_PTR; /* TODO: decide on naming */
+} osPgTable_t, *osPgTable_PTR;
 
 #define MAXFRAMES 10 /* Less than 2 * MAXUPROC to force paging */
 typedef struct fpTable_t {
