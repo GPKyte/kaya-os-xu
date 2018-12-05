@@ -122,6 +122,7 @@ void test() {
 		newState->s_asid = asid;
 		newState->s_sp = NULL; /* TODO: fill in later, maybe in other code block */
 		newState->s_pc = (memaddr) initProc();
+
 		/* Interrupts on, Local Timer On, VM Off, Kernel mode on */
 		newState->s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
 			& ~VMpON & ~USERMODEON;
@@ -148,14 +149,20 @@ void tlbHandler() {
 		/* Enfore zero-tolerance policy rules, only handle missing page */
 		SYSCALL(TERMINATEPROCESS);
 
-
 	/* Gain mutal exclusion of pager to avoid inconsistent states */
 	SYSCALL(PASSEREN, &pager);
-	newFrameNumber = nextFrameIndex();
-	curFPEntry = framePool[newFrameNumber];
-	newFrame = curFPEntry->fp_frameAddr;
 
-	if(isDirty(newFrame)) {
+	newFrameNumber = selectFrameIndex();
+	curFPEntry = framePool.frames[newFrameNumber];
+	newFrameAddr = framePool.frameAddr[newFrameNumber];
+
+	/* Find PTE for the to-be-overwritten page in order
+	 * to determine if its a dirty page */
+	curPageTable = getSegmentTableEntry(curFPEntry >> 30, getASID(curFPEntry));
+	curPage = findPageTableEntry(curPageTable, curFPEntry & VPNMASK); /* TODO: make this actually find entry */
+
+	/* TODO: Consider keeping isDirty info in framepool entries... */
+	if(isDirty(curPage)) { /* Then write page to backing store */
 		/* Get info for next steps from Frame Pool */
 		oldFramePgTbl = curFPEntry->fp_pgTableAddr;
 
@@ -205,6 +212,10 @@ int getSegmentTableEntry(int segment, int asid) {
 	return segTable[segment][asid];
 }
 
+Bool isDirty(ptEntry_PTR pageDesc) {
+	return TRUE; /* (*pageDesc & DIRTY); */
+}
+
 /* TODO: abstract positioning into helper method */
 void readPageFromBackingStore(int sectIndex, int destFrameAddr) {
 	int head, sect, cyl, maxHeads, maxSects, maxCyls;
@@ -252,6 +263,7 @@ void setSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
 	/* Overwrite current entry of segTable with address of page table */
 	segTable[segment][asid] = (int) addr;
 }
+
 void setSegmentTableEntry(int segment, int asid, osPgTable_PTR addr) {
 	setSegmentTableEntry(segment, asid, (uPgTable_PTR) addr);
 }
