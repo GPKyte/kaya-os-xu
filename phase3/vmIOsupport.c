@@ -147,8 +147,10 @@ void tlbHandler() {
 	asid = (oldTlb->s_asid & ASIDMASK) >> 6;
 	segNum = (oldTlb->s_asid & SEGMASK) >> 30;
 	/* We store "page number" in the offset from the relevant VPN start */
-	pgNum = (oldTlb->s_asid & VPNMASK) >> 12;
+	vpn = (oldTlb->s_asid & VPNMASK) >> 12;
 
+	destPgTbl = (uPgTable_PTR) getSegmentTableEntry(segNum, asid);
+	destPTEIndex = findPTEntryIndex(destPgTbl, vpn);
 
 	if(cause != PAGELOADMISS && cause != PAGESTRMISS)
 		/* Enfore zero-tolerance policy rules, only handle missing page */
@@ -158,25 +160,21 @@ void tlbHandler() {
 	SYSCALL(PASSEREN, &pager);
 
 	/* Check shared table to see if it's already been brought in */
-	if(segNum == KUSEG3) {
-		destPageEntry = findPageTableEntry(
-			(uPgTable_PTR) getSegmentTableEntry(segNum, asid), vpn);
-
-		if((destPageEntry->entryLO & VALID) == TRUE) {
-			SYSCALL(VERHOGEN, &pager);
-			loadState(oldTlb);
-		}
+	if(segNum == KUSEG3 && ((destPageEntry->entryLO & VALID) == TRUE)) {
+		SYSCALL(VERHOGEN, &pager);
+		loadState(oldTlb);
 	}
 
 	newFrameNum = selectFrameIndex();
 	curFPEntry = framePool.frames[newFrameNum];
 	newFrameAddr = framePool.frameAddr[newFrameNum];
 
-	if(frameIsUsed(curFPEntry)) {
+	if(frameInUse(curFPEntry)) {
 		/* Find PTE for the to-be-overwritten page in order
 		 * to determine if its a dirty page */
 		curPageTable = getSegmentTableEntry(curFPEntry & SEGMASK, curFPEntry & ASIDMASK);
-		curPage = findPageTableEntry(curPageTable, curFPEntry & VPNMASK); /* TODO: make this actually find entry, also consider returning index instead */
+		curPageIndex = findPageTableEntry(curPageTable, curFPEntry & VPNMASK);
+		curPage = curPageTable->entries[curPageIndex];
 		curPage &= ~VALID; /* Invalidate curPage to mean "missing" */
 
 		/* TODO: Consider keeping isDirty info in framepool entries... */
@@ -187,25 +185,22 @@ void tlbHandler() {
 
 			/* Write frame back to backing store */
 			/* TODO: Find where page offset could be found, 1:1 VPN and pageNum?? */
-			storageAddr = calcBkgStoreAddr(curFPEntry->fp_asid, someUnknownPageOffset);
+			storageAddr = calcBkgStoreAddr(curFPEntry->fp_asid, curPageIndex);
 			writePageToBackingStore(newFrame, storageAddr);
 		}
 	}
 
 	/* Update Frame Pool to match new Page Entry */
-	framePool.frames[newFrameNum] = oldTlb->s_asid + 1; /* +1 for "in use" */
+	framePool.frames[newFrameNum] = destPageEntry->entryHI + 1; /* +1 for "in use" */
 
 	/* Regardless of dirty frame, load in new page from BStore */
-	storageAddr = calcBkgStoreAddr(asid, someUnknownPageOffset);
+	storageAddr = calcBkgStoreAddr(asid, destPTEIndex);
 	readPageFromBackingStore(storageAddr, newFrameAddr);
 
 	/* Resynch TLB Cache */
 	TLBCLEAR();
 
 	/* Update relevant page table entry */
-	/* TODO: Q: is this a different page table? Why? Does it belong to this new process? */
-	newPTEntry = uProcList[asid - 1]->up_pgTable[someIndexLikeTheLastEntryMaybe];
-	/* newPTEntry = findPTEntryAddr(pageTableAddr, virtualPageNumber/frameAddr?) */
 	newPTEntry->entryLO |= VALID;
 
 	/* End mutal exclusion of TLB Handling */
@@ -220,10 +215,22 @@ int calcBkgStoreAddr(int asid, int pageOffset) {
 	return pageIndex = (asid * MAXPAGES) + pageOffset;
 }
 
-HIDDEN ptEntry_PTR findPageTableEntry(uPgTbl_PTR pageTable, int VPN) {
-	int indexOfMatch = 0;
-	/* TODO: loop through page table entries to find index */
-	return pageTable->entries[indexOfMatch];
+HIDDEN int findPTEntryIndex(uPgTbl_PTR pageTable, int vpn) {
+	Bool isAMatch;
+	int vpnToMatch;
+	int loopVar = 0;
+	int indexOfMatch = NULL; /* If not found, this indicates error condition */
+	int numEntries = pageTable->magicPtHeaderWord & ENTRYCNTMASK;
+
+	while(loopVar < numEntries && indexOfMatch == NULL) {
+		vpnToMatch = ((pageTable->entries[loopVar] & VPNMASK) >> 12);
+		isAMatch = (vpn == vpnToMatch);
+
+		indexOfMatch = (isAMatch) ? loopVar : NULL;
+		loopVar++;
+	}
+
+	return indexOfMatch;
 }
 
 /* TODO: modify original findSem method if indeed 1:1
