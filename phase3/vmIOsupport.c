@@ -241,20 +241,18 @@ void engageDiskDevice(int sectIndex, memaddr addr, int readOrWrite) {
 
 	SYSCALL(PASSEREN, findMutex(DISKINT, 0, FALSE));
 
-	maxSects = diskDev->d_data1 & sectMask;
-	maxHeads = diskDev->d_data1 & headMask;
-	maxCyls = diskDev->d_data1 & cylMask;
+	maxSects = (diskDev->d_data1 & sectMask) >> 0;
+	maxHeads = (diskDev->d_data1 & headMask) >> 8;
+	maxCyls = (diskDev->d_data1 & cylMask) >> 16;
 
 	/* Calc cylinder */
 	cyl = sectIndex / (maxHeads * maxSects);
-	if(cyl >= maxCyls)
-		SYSCALL(TERMINATEPROCESS);
+	if(cyl >= maxCyls) { SYSCALL(TERMINATEPROCESS); }
 
 	/* Move boom to the correct disk cylinder */
  	desDev->d_command = cyl << 8 | SEEKCYL;
 	status = SYSCALL(WAITIO, DISKINT, 0, 0);
-	if(status != ACK)
-		SYSCALL(TERMINATEPROCESS);
+	if(status != ACK) { SYSCALL(TERMINATEPROCESS); }
 
 	/* Calc position within cylinder */
 	head = (sectIndex / maxSects) % maxHeads;
