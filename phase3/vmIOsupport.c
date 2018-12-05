@@ -227,35 +227,48 @@ Bool isDirty(ptEntry_PTR pageDesc) {
 	return TRUE; /* (*pageDesc & DIRTY); */
 }
 
-/* TODO: abstract positioning into helper method */
 void readPageFromBackingStore(int sectIndex, int destFrameAddr) {
+	SYSCALL(PASSEREN, findMutex(DISKINT, 0, FALSE));
+
+	prepareDiskDevice(sectIndex, destFrameAddr, READBLK);
+
+	status = SYSCALL(WAITIO, DISKINT, 0, 0); /* Wait for job to complete */
+	if(status != ACK)
+		SYSCALL(TERMINATEPROCESS);
+
+	SYSCALL(VERHOGEN, findMutex(DISKINT, 0, FALSE));
+}
+
+void prepareDiskDevice(int sectIndex, memaddr addr, int readOrWrite) {
 	int head, sect, cyl, maxHeads, maxSects, maxCyls;
 	devregtr* diskDev = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT];
 
-	SYSCALL(PASSEREN, findMutex(DISKINT, 0, FALSE));
+	int sectMask = 0x000000FF;
+	int headMask = 0x0000FF00;
+	int cylMask = 0xFFFF0000;
 
-	/* TODO: consider making masks? */
-	maxSects = (diskDev->d_data1 << 24) >> 24;
-	maxHeads = (diskDev->d_data1 << 16) >> 24;
-	maxCyls = diskDev->d_data1 >> 16;
+	maxSects = diskDev->d_data1 & sectMask;
+	maxHeads = diskDev->d_data1 & headMask;
+	maxCyls = diskDev->d_data1 & cylMask;
 
-	/* Go to the right disk cylinder */
-	cyl = sectIndex / (maxHeads * maxSects); /* TODO: boundary check cyl */
+	/* Calc cylinder */
+	cyl = sectIndex / (maxHeads * maxSects);
+	if(cyl >= maxCyls)
+		SYSCALL(TERMINATEPROCESS);
 
- 	desDev->d_command = SEEKCYL | cyl << 8;
+	/* Move boom to the correct disk cylinder */
+ 	desDev->d_command = cyl << 8 | SEEKCYL;
 	status = SYSCALL(WAITIO, DISKINT, 0, 0);
-	/* TODO: check status for issues if(status != ACK) */
+	if(status != ACK)
+		SYSCALL(TERMINATEPROCESS);
 
-	/* Give read directions to appropriate disk device */
+	/* Calc position within cylinder */
 	head = (sectIndex / maxSects) % maxHeads;
 	sect = sectIndex % maxSects;
 
-	diskDev->d_command = head << 16 | sect << 8 | READBLK;
+	/* Position and Prepare device */
+	diskDev->d_command = head << 16 | sect << 8 | readOrWrite;
 	diskDev->d_data0 = destFrameAddr; /* Move destFrameAddr into DATA0 */
-	status = SYSCALL(WAITIO, DISKINT, 0, 0); /* Wait for job to complete */
-
-	/* TODO: check status for issues */
-	SYSCALL(VERHOGEN, findMutex(DISKINT, 0, FALSE));
 }
 
 void setSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
