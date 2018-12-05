@@ -168,26 +168,32 @@ void tlbHandler() {
 		}
 	}
 
-	newFrameNumber = selectFrameIndex();
-	curFPEntry = framePool.frames[newFrameNumber];
-	newFrameAddr = framePool.frameAddr[newFrameNumber];
+	newFrameNum = selectFrameIndex();
+	curFPEntry = framePool.frames[newFrameNum];
+	newFrameAddr = framePool.frameAddr[newFrameNum];
 
-	/* Find PTE for the to-be-overwritten page in order
-	 * to determine if its a dirty page */
-	curPageTable = getSegmentTableEntry(curFPEntry >> 30, getASID(curFPEntry));
-	curPage = findPageTableEntry(curPageTable, curFPEntry & VPNMASK); /* TODO: make this actually find entry */
+	if(frameIsUsed(curFPEntry)) {
+		/* Find PTE for the to-be-overwritten page in order
+		 * to determine if its a dirty page */
+		curPageTable = getSegmentTableEntry(curFPEntry & SEGMASK, curFPEntry & ASIDMASK);
+		curPage = findPageTableEntry(curPageTable, curFPEntry & VPNMASK); /* TODO: make this actually find entry, also consider returning index instead */
+		curPage &= ~VALID; /* Invalidate curPage to mean "missing" */
 
-	/* TODO: Consider keeping isDirty info in framepool entries... */
-	if(isDirty(curPage)) { /* Then write page to backing store */
-		/* Clear out frame (?) cache to avoid inconsistencies */
-		/* TODO Better: Update page table entry as invalid to mean missing */
-		nukePageTable(curPageTable);
+		/* TODO: Consider keeping isDirty info in framepool entries... */
+		if(isDirty(curPage)) { /* Then write page to backing store */
+			/* Clear out TLB to avoid inconsistencies */
+			/* TODO Better: Overwrite cached page table entry */
+			TLBCLEAR();
 
-		/* Write frame back to backing store */
-		/* TODO: Find where page offset could be found */
-		storageAddr = calcBkgStoreAddr(curFPEntry->fp_asid, someUnknownPageOffset);
-		writePageToBackingStore(newFrame, storageAddr);
+			/* Write frame back to backing store */
+			/* TODO: Find where page offset could be found, 1:1 VPN and pageNum?? */
+			storageAddr = calcBkgStoreAddr(curFPEntry->fp_asid, someUnknownPageOffset);
+			writePageToBackingStore(newFrame, storageAddr);
+		}
 	}
+
+	/* Update Frame Pool to match new Page Entry */
+	framePool.frames[newFrameNum] = oldTlb->s_asid + 1; /* +1 for "in use" */
 
 	/* Regardless of dirty frame, load in new page from BStore */
 	storageAddr = calcBkgStoreAddr(asid, someUnknownPageOffset);
