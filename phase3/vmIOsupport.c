@@ -163,12 +163,9 @@ void tlbHandler() {
 
 	/* TODO: Consider keeping isDirty info in framepool entries... */
 	if(isDirty(curPage)) { /* Then write page to backing store */
-		/* Get info for next steps from Frame Pool */
-		oldFramePgTbl = curFPEntry->fp_pgTableAddr;
-
 		/* Clear out frame (?) cache to avoid inconsistencies */
 		/* TODO Better: Update page table entry as invalid to mean missing */
-		nukePageTable(oldFramePgTbl);
+		nukePageTable(curPageTable);
 
 		/* Write frame back to backing store */
 		storageAddr = calcBkgStoreAddr(curFPEntry->fp_asid, someUnknownPageOffset);
@@ -225,6 +222,23 @@ int getSegmentTableEntry(int segment, int asid) {
 
 Bool isDirty(ptEntry_PTR pageDesc) {
 	return TRUE; /* (*pageDesc & DIRTY); */
+}
+
+void nukePageTable(uPgTbl_PTR pageTable) {
+	int loopVar, entries;
+	/* Is this a page table or small island city? */
+	if(pageTable.magicPtHeaderWord & MAGICNUMMASK != MAGICNUM)
+		SYSCALL(TERMINATEPROCESS);
+
+	entries = pageTable.magicPtHeaderWord & ENTRYCNTMASK;
+	for(loopVar = 0; loopVar < entries; loopVar++) {
+		/* TODO: Check if NULL is an appropriate value, is 0 better? */
+		pageTable.entries[loopVar]->entryHI = NULL;
+		pageTable.entries[loopVar]->entryLO = NULL;
+	}
+
+	/* Reset Header Word Entry Count */
+	pageTable.magicPtHeaderWord = MAGICNUM;
 }
 
 void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
