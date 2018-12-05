@@ -227,25 +227,19 @@ Bool isDirty(ptEntry_PTR pageDesc) {
 	return TRUE; /* (*pageDesc & DIRTY); */
 }
 
-void readPageFromBackingStore(int sectIndex, int destFrameAddr) {
-	SYSCALL(PASSEREN, findMutex(DISKINT, 0, FALSE));
-
-	prepareDiskDevice(sectIndex, destFrameAddr, READBLK);
-
-	status = SYSCALL(WAITIO, DISKINT, 0, 0); /* Wait for job to complete */
-	if(status != ACK)
-		SYSCALL(TERMINATEPROCESS);
-
-	SYSCALL(VERHOGEN, findMutex(DISKINT, 0, FALSE));
+void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
+	engageDiskDevice(sectIndex, destFrameAddr, READBLK);
 }
 
-void prepareDiskDevice(int sectIndex, memaddr addr, int readOrWrite) {
+void engageDiskDevice(int sectIndex, memaddr addr, int readOrWrite) {
 	int head, sect, cyl, maxHeads, maxSects, maxCyls;
 	devregtr* diskDev = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT];
 
 	int sectMask = 0x000000FF;
 	int headMask = 0x0000FF00;
 	int cylMask = 0xFFFF0000;
+
+	SYSCALL(PASSEREN, findMutex(DISKINT, 0, FALSE));
 
 	maxSects = diskDev->d_data1 & sectMask;
 	maxHeads = diskDev->d_data1 & headMask;
@@ -269,6 +263,12 @@ void prepareDiskDevice(int sectIndex, memaddr addr, int readOrWrite) {
 	/* Position and Prepare device */
 	diskDev->d_command = head << 16 | sect << 8 | readOrWrite;
 	diskDev->d_data0 = destFrameAddr; /* Move destFrameAddr into DATA0 */
+
+	status = SYSCALL(WAITIO, DISKINT, 0, 0); /* Wait for job to complete */
+	if(status != ACK)
+		SYSCALL(TERMINATEPROCESS);
+
+	SYSCALL(VERHOGEN, findMutex(DISKINT, 0, FALSE));
 }
 
 void setSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
@@ -290,4 +290,8 @@ void setSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
 
 void setSegmentTableEntry(int segment, int asid, osPgTable_PTR addr) {
 	setSegmentTableEntry(segment, asid, (uPgTable_PTR) addr);
+}
+
+void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex) {
+	engageDiskDevice(sectIndex, srcFrameAddr, WRITBLK);
 }
