@@ -21,7 +21,7 @@
 
 
 int* pager; /* Mutex for page swaping mechanism */
-int* devSemList[loopVar];
+int* mutexSems[MAXSEMS];
 int segTable[SEGMENTS][MAXPROCID]; /* TODO: find a generic type solution that better describes segTbl */
 uProcEntry_t uProcList[MAXUPROC];
 
@@ -115,7 +115,7 @@ void test() {
 		newProcDesc = uProcList[asid - 1];
 		newProcDesc->up_syncSem = 0;
 		newProcDesc->up_pgTable = &(uPgTblList[asid - 1]);
-		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid);
+		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid, 0);
 
 		/* Create default kernel level state starting in init code */
 		newState = &(newStateList[asid - 1]);
@@ -165,12 +165,12 @@ void tlbHandler() {
 
 		/* Write frame back to backing store */
 		storageAddr = calcBkgStoreAddr(curFPEntry->fp_asid, someUnknownPageOffset);
-		writeToBackingStore(newFrame, storageAddr);
+		writePageToBackingStore(newFrame, storageAddr);
 	}
 
 	/* Regardless of dirty frame, load in new page from BStore */
 	storageAddr = calcBkgStoreAddr(asid, someUnknownPageOffset);
-	readFromBackingStore(storageAddr, newFrame);
+	readPageFromBackingStore(storageAddr, newFrameAddr);
 
 	/* Resynch TLB Cache */
 	TLBCLEAR();
@@ -188,12 +188,52 @@ void tlbHandler() {
 
 
 /********************** Helper Methods *********************/
-HIDDEN ptEntry_t* findPageTableEntry() {
+int calcBkgStoreAddr(int asid, int pageOffset) {
+	int pageIndex;
+	return pageIndex = (asid * MAXPAGES) + pageOffset;
+}
+
+HIDDEN ptEntry_PTR findPageTableEntry(uPgTbl_PTR pageTable, int VPN) {
+	int indexOfMatch = 0;
+	/* TODO: loop through page table entries to find index */
+	return pageTable->entries[indexOfMatch];
+}
 
 }
 
 int getSegmentTableEntry(int segment, int asid) {
 	return segTable[segment][asid];
+}
+
+/* TODO: abstract positioning into helper method */
+void readPageFromBackingStore(int sectIndex, int destFrameAddr) {
+	int head, sect, cyl, maxHeads, maxSects, maxCyls;
+	devregtr* diskDev = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT];
+
+	SYSCALL(PASSEREN, findMutex(DISKINT, 0, FALSE));
+
+	/* TODO: consider making masks? */
+	maxSects = (diskDev->d_data1 << 24) >> 24;
+	maxHeads = (diskDev->d_data1 << 16) >> 24;
+	maxCyls = diskDev->d_data1 >> 16;
+
+	/* Go to the right disk cylinder */
+	cyl = sectIndex / (maxHeads * maxSects); /* TODO: boundary check cyl */
+
+ 	desDev->d_command = SEEKCYL | cyl << 8;
+	status = SYSCALL(WAITIO, DISKINT, 0, 0);
+	/* TODO: check status for issues if(status != ACK) */
+
+	/* Give read directions to appropriate disk device */
+	head = (sectIndex / maxSects) % maxHeads;
+	sect = sectIndex % maxSects;
+
+	diskDev->d_command = head << 16 | sect << 8 | READBLK;
+	diskDev->d_data0 = destFrameAddr; /* Move destFrameAddr into DATA0 */
+	status = SYSCALL(WAITIO, DISKINT, 0, 0); /* Wait for job to complete */
+
+	/* TODO: check status for issues */
+	SYSCALL(VERHOGEN, findMutex(DISKINT, 0, FALSE));
 }
 
 void setSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
