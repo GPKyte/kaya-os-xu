@@ -79,13 +79,33 @@
 #define TRANSMITSTATUSMASK 0x0F /* For Term Read Status */
 
 /* page table operations */
+#define KSEGOS        0
+#define KSEGOSVPN     ROMPAGESTART / PAGESIZE
+#define KUSEG2        2
 #define KUSEG2START   0x80000000
+#define KUSEG2VPN     KUSEG2START / PAGESIZE
+#define KUSEG3        3
 #define KUSEG3START   0xC0000000
+#define KUSEG3VPN     KUSEG3START / PAGESIZE
 #define KSEGOSEND     KUSEG2START - 1
-#define DIRTY         0 /* TODO: is this correct? */
-#define GLOBAL        1
-#define VALID         1
+
 #define MAXPAGES      32
+#define DIRTY         (1 << 10) /* TODO: is this correct? I think this should be 1 */
+#define GLOBAL        (1 << 9)
+#define VALID         (1 << 8)
+#define MAGICNUM      (42 << 24)
+
+#define MAGICNUMMASK  0xFF000000 /* Bits 24-31 On */
+#define ENTRYCNTMASK  0x000FFFFF /* Bits 0-19 On */
+#define PFNMASK       0xFFFFF000
+#define VPNMASK       0x3FFFF000
+#define ASIDMASK      0x00000fc0
+#define SEGMASK       0xB0000000
+
+
+/* Segment Table */
+#define SEGMENTS      3
+#define MAXPROCID     64
 
 
 /* vectors number and type */

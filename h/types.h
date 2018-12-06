@@ -116,15 +116,9 @@ typedef struct semd_t {
 
 /* Generic entry in page table */
 typedef struct ptEntry_t {
-	unsigned int entryHI; /*  */
-	unsigned int entryLO; /*  */
-} ptEntry_t;
-
-typedef struct segTable_t {
-	osPgTable_t			*kSegOS;
-	uPgTable_t			*kUseg2;
-	uPgTable_t			*kUseg3;
-} segTable_t, *segTable_PTR;
+	unsigned int entryHI; /* segNo - Virtual Page Number - asid */
+	unsigned int entryLO; /* Physical Frame Number - N - D - V - G */
+} ptEntry_t, *ptEntry_PTR;
 
 /* User type page table */
 #define MAXPTENTRIES 32
@@ -139,12 +133,19 @@ typedef struct osPgTable_t {
 		ptEntry_t		entries[MAXOSPTENTRIES];
 } osPgTable_t, *osPgTable_PTR; /* TODO: decide on naming */
 
-#define MAXFRAMES
-typedef struct fpEntry_t {
+#define MAXFRAMES 10 /* Less than 2 * MAXUPROC to force paging */
+typedef struct fpTable_t {
+	int indexOfLastFrameReplaced; /* TODO: Idea for cached info */
 	/* Descriptor for frame entry in frame pool */
-	int fp_asid;
-	int fp_frameAddr; /* is this segNo ? */
-	int fp_pgTableAddr; /* is this pgNo ? */
-} fpEntry_t; *fpEntry_PTR;
+	/* Use same format as EntryHI + 0/1 for "in use" */
+	unsigned int frames[MAXFRAMES];
+	memaddr      frameAddr[MAXFRAMES]; /* TODO: Idea for cached info */
+} fpTable_t;
+
+typedef struct segTable_t {
+	osPgTable_PTR kSegOS[MAXPROCID];
+	uPgTable_PTR  kuSeg2[MAXPROCID];
+	uPgTable_PTR  kuSeg3[MAXPROCID];
+} segTable_t;
 
 #endif

@@ -21,9 +21,9 @@
 
 
 int* pager; /* Mutex for page swaping mechanism */
-/* TODO: consider using union, or simplifying types 4 os- vs. u- pgTbls */
-uPgTable_PTR segTable[3][64]; /* segTable[SEGNUM][ASIDMAX] */
+int* mutexSems[MAXSEMS];
 uProcEntry_t uProcList[MAXUPROC];
+segTable_t* segTable = 0x20000500;
 
 /************************ Prototypes ***********************/
 
@@ -35,78 +35,96 @@ uProcEntry_t uProcList[MAXUPROC];
  * test - Set up the page and segment tables for all 8 user processes
  */
 void test() {
+	static fpTable_t framePool;
 	static osPgTable_t osPgTbl;
-	static uPgTable_t sharedPgTbl, uPageTables[MAXUPROC];
+	static uPgTable_t sharedPgTbl, uPgTblList[MAXUPROC];
 	state_t newStateList[MAXUPROC];
 
-	/* TODO: Create default entries for 2D Segment table */
-		/* kuSegOs covers 0x0000.0000 - 0x7FFF.FFFF */
-		/* kuSeg2 0x8000.0000 - 0xBFFF.FFFF */
-		/* kuSeg3 0xC000.0000 - 0xFFFF.FFFF */
-	for(loopVar = 0; loopVar < maxSTEntries; loopVar++) {
-		sEntry = &(segTable[segNum][loopVar]); /* A ptr to page table ptr */
-		*(sEntry) = NULL; /* TODO: Correct understanding of this table's entries */
+	unsigned int ramtop;
+	devregarea_t* devregarea;
+
+	/* Set up kSegOS and kuSeg3 Segment Table entries (all the same-ish) */
+	for(loopVar = 0; loopVar < MAXPROCID; loopVar++) {
+		segTable->kSegOS[loopVar] = &osPgTbl);
+		segTable->kuSeg3[loopVar] = &sharedPgTbl);
+		/* kuSeg2 handled for each unique process later */
 	}
 
 	/* Set up kSegOS page tables */
+	osPgTable.magicPtHeaderWord = MAGICNUM;
 	for(loopVar = 0; loopVar < MAXOSPTENTRIES; loopVar++) {
 		newPTEntry = &(osPgTable.entries[loopVar]);
 
-		newPTEntry->entryHI = ROMPAGESTART | loopVar;
+		/* TODO: Should we add segment number or asid at all here? (both 0) */
+		newPTEntry->entryHI = (KSEGOSVPN + loopVar) << 12;
 		newPTEntry->entryLO = DIRTY | GLOBAL | VALID;
 	}
 
 	/* Set up kSeg3 page tables */
+	sharedPgTbl.magicPtHeaderWord = MAGICNUM;
 	for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
 		newPTEntry = &(sharedPgTbl.entries[loopVar]);
 
-		newPTEntry->entryHI = KUSEG3START | loopVar;
+		newPTEntry->entryHI = (KUSEG3 << 30)
+			| ((KUSEG3VPN + loopVar) << 12)
+			| (MAXPROCID << 6);
 		newPTEntry->entryLO = DIRTY | GLOBAL;
 	}
 
-	/* TODO: Consider setting all seg3 segment to the only seg3 page table address */
 
-	/* TODO: Initialize Swap Pool structure to manage Frame Pool */
-	/* TODO: Set swapPool mutex to 1 */
-	/* TODO: Init device mutex semaphore array; set each to 1 */
-	/* TODO: Set masterSema4 to 0 */
+	/* TODO: pre-load frame pool */
+	/* Initialize Swap Pool structure to manage Frame Pool */
+	devregarea = (devregarea_t*) RAMBASEADDR;
+	ramtop = (devregarea->rambase) + (devregarea->ramsize);
+	for(loopVar = 0; loopVar < MAXFRAMES; loopVar++) {
+		framePool.frames[loopVar] = 0;
+		/* Calculate physical location of frame starting address *
+		 * Sits beneath the kernel and test stack frames         */
+		frameLoc = ramtop - (3 + loopVar) * PAGESIZE;
+		framePool.frameAddr[loopVar] = frameLoc;
+	}
+
+
+	pager = 1; /* Init mutex for swap pool pager */
+	/* Init device mutex semaphore array; set each to 1 */
+	for(loopVar = 0; loopVar < MAXSEMS; loopVar++)
+		devSemList[loopVar] = 1;
+
+	masterSem = 0; /* For graceful halting of OS after test fin */
 
 	/* Set up user processes */
-	for(asid = 1; asid <= MAXUPROC; asid++) {
+	for(asid = 1; asid < MAXUPROC; asid++) {
 		/* Set up new page table for process */
-		uPageTables[asid - 1].magicPtHeaderWord = MAGIC;
+		uPgTblList[asid - 1].magicPtHeaderWord = MAGICNUM;
 
-		updateSegmentTableEntry(2, asid, &(uPageTables[asid - 1]));
+		/* Make Segment Table Entry for uProc's new Page Table */
+		segTable->kuSeg2[asid] = &(uPgTblList[asid - 1]));
 
 		/* Fill in default entries */
 		for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
-			newPTEntry = &(uPageTables[asid - 1].entries[loopVar]);
+			newPTEntry = &(uPgTblList[asid - 1].entries[loopVar]);
 
-			newPTEntry->entryHI = KUSEG2START | asid; /* TODO: shift these bits properly */
+			newPTEntry->entryHI = (KUSEG2 << 30)
+				| ((KUSEG2VPN + loopVar) << 12)
+				| (asid << 6);
 			newPTEntry->entryLO = DIRTY;
 		}
 
-		/* Correct last entry to become a stack page */
-		newPTEntry->entryHI = (KUSEG3START - PAGESIZE) | asid /* TODO: confirm const and bit shift */
+		/* Correct last entry to act as a stack page */
+		newPTEntry->entryHI = (KUSEG3VPN << 12) | (asid << 6)
 
 		/* Fill entry for user process tracking */
 		newProcDesc = uProcList[asid - 1];
 		newProcDesc->up_syncSem = 0;
-		newProcDesc->up_pgTable = &(uPageTables[asid -1]);
-		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid);
-		/* Probably don't need to set these here, will be handled initProc();
-		newProcDesc->up_stateAreas[OLD][TLBTRAP];
-		newProcDesc->up_stateAreas[OLD][PROGTRAP];
-		newProcDesc->up_stateAreas[OLD][SYSTRAP];
-		newProcDesc->up_stateAreas[NEW][TLBTRAP];
-		newProcDesc->up_stateAreas[NEW][PROGTRAP];
-		newProcDesc->up_stateAreas[NEW][SYSTRAP]; */
+		newProcDesc->up_pgTable = &(uPgTblList[asid - 1]);
+		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid, 0);
 
 		/* Create default kernel level state starting in init code */
 		newState = &(newStateList[asid - 1]);
 		newState->s_asid = asid;
 		newState->s_sp = NULL; /* TODO: fill in later, maybe in other code block */
 		newState->s_pc = (memaddr) initProc();
+
 		/* Interrupts on, Local Timer On, VM Off, Kernel mode on */
 		newState->s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
 			& ~VMpON & ~USERMODEON;
@@ -127,44 +145,70 @@ void tlbHandler() {
 	cause = (cause << shiftBitsForCauseOffset) & someCauseMask;
 
 	/* Who am I? */
-	asid = oldTlb->s_asid;
+	asid = (oldTlb->s_asid & ASIDMASK) >> 6;
+	segNum = (oldTlb->s_asid & SEGMASK) >> 30;
+	/* We store "page number" in the offset from the relevant VPN start */
+	vpn = (oldTlb->s_asid & VPNMASK) >> 12;
+
+	destPgTbl = getSegmentTableEntry(segNum, asid);
+	destPTEIndex = findPTEntryIndex(destPgTbl, vpn);
 
 	if(cause != PAGELOADMISS && cause != PAGESTRMISS)
 		/* Enfore zero-tolerance policy rules, only handle missing page */
 		SYSCALL(TERMINATEPROCESS);
 
-
 	/* Gain mutal exclusion of pager to avoid inconsistent states */
 	SYSCALL(PASSEREN, &pager);
-	newFrameNumber = nextFrameIndex();
-	curFPEntry = framePool[newFrameNumber];
-	newFrame = curFPEntry->fp_frameAddr;
 
-	if(isDirty(newFrame)) {
-		/* Get info for next steps from Frame Pool */
-		oldFramePgTbl = curFPEntry->fp_pgTableAddr;
+	/* Check shared table to see if it's already been brought in */
+	if(segNum == KUSEG3 && ((destPageEntry->entryLO & VALID) == TRUE)) {
+		SYSCALL(VERHOGEN, &pager);
+		loadState(oldTlb);
+	}
 
-		/* Clear out frame (?) cache to avoid inconsistencies */
-		/* TODO Better: Update page table entry as invalid to mean missing */
-		nukePageTable(oldFramePgTbl);
+	newFrameNum = selectFrameIndex();
+	curFPEntry = framePool.frames[newFrameNum];
+	newFrameAddr = framePool.frameAddr[newFrameNum];
 
-		/* Write frame back to backing store */
-		storageAddr = calcBkgStoreAddr(curFPEntry->fp_asid, someUnknownPageOffset);
-		writeToBackingStore(newFrame, storageAddr);
+	if(frameInUse(curFPEntry)) {
+		/* Find PTE for the to-be-overwritten page in order
+		 * to determine if its a dirty page */
+		curPageTable = getSegmentTableEntry(
+			(curFPEntry & SEGMASK) >> 30,
+			(curFPEntry & ASIDMASK) >> 6);
+
+		curPageIndex = findPageTableEntry(curPageTable,
+			(curFPEntry & VPNMASK) >> 12);
+
+		curPage = curPageTable->entries[curPageIndex];
+		curPage &= ~VALID; /* Invalidate curPage to mean "missing" */
+
+		/* TODO: Consider keeping isDirty info in framepool entries... */
+		if(isDirty(curPage)) { /* Then write page to backing store */
+			/* Clear out TLB to avoid inconsistencies */
+			/* TODO Better: Overwrite cached page table entry */
+			TLBCLEAR();
+
+			/* Write frame back to backing store */
+			/* TODO: Find where page offset could be found, 1:1 VPN and pageNum?? */
+			storageAddr = calcBkgStoreAddr(curFPEntry->fp_asid, curPageIndex);
+			writePageToBackingStore(newFrame, storageAddr);
+		}
 	}
 
 	/* Regardless of dirty frame, load in new page from BStore */
-	storageAddr = calcBkgStoreAddr(asid, someUnknownPageOffset);
-	readFromBackingStore(storageAddr, newFrame);
+	storageAddr = calcBkgStoreAddr(asid, destPTEIndex);
+	readPageFromBackingStore(storageAddr, newFrameAddr);
+
+	/* Update Frame Pool to match new Page Entry */
+	framePool.frames[newFrameNum] = destPageEntry->entryHI + 1; /* +1 for "in use" */
 
 	/* Resynch TLB Cache */
 	TLBCLEAR();
 
 	/* Update relevant page table entry */
-	/* TODO: Q: is this a different page table? Why? Does it belong to this new process? */
-	newPTEntry = uProcList[asid - 1]->up_pgTable[someIndexLikeTheLastEntryMaybe];
-	/* newPTEntry = findPTEntryAddr(pageTableAddr, virtualPageNumber/frameAddr?) */
-	newPTEntry->entryLO |= VALID;
+	newPTEntry->entryLO &= ~PFNMASK /* Erase current PFN */
+	newPTEntry->entryLO |= (newFrameAddr / PAGESIZE) | VALID;
 
 	/* End mutal exclusion of TLB Handling */
 	SYSCALL(VERHOGEN, &pager);
@@ -173,11 +217,133 @@ void tlbHandler() {
 
 
 /********************** Helper Methods *********************/
-HIDDEN ptEntry_t* findPageTableEntry() {
-
+int calcBkgStoreAddr(int asid, int pageOffset) {
+	int pageIndex;
+	return pageIndex = (asid * MAXPAGES) + pageOffset;
 }
 
-void updateSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
+HIDDEN int findPTEntryIndex(uPgTbl_PTR pageTable, int vpn) {
+	Bool isAMatch;
+	int vpnToMatch;
+	int loopVar = 0;
+	int indexOfMatch = NULL; /* If not found, this indicates error condition */
+	int numEntries = pageTable->magicPtHeaderWord & ENTRYCNTMASK;
+
+	while(loopVar < numEntries && indexOfMatch == NULL) {
+		vpnToMatch = ((pageTable->entries[loopVar] & VPNMASK) >> 12);
+		isAMatch = (vpn == vpnToMatch);
+
+		indexOfMatch = (isAMatch) ? loopVar : NULL;
+		loopVar++;
+	}
+
+	return indexOfMatch;
+}
+
+/* TODO: modify original findSem method if indeed 1:1
+ * findMutex - Calculates address of device semaphore, specifically mutex
+ * PARAM: int lineNum is the device type, correlates with the interrupt lineNum
+ *        int deviceNum is the index of a device within a type group
+ *        Bool isReadTerm is FALSE for writeT & non-terminals, TRUE for readT
+ * RETURN: int* calculated address of device semaphore
+ */
+int* findMutex(int lineNum, int deviceNum, Bool isReadTerm) {
+	int termOffset = (isReadTerm) ? 1 : 0;
+	int semGroup = (lineNum - LINENUMOFFSET) + termOffset;
+	return &(mutexSems[semGroup * DEVPERINT + deviceNum]);
+}
+
+/*
+ * getSegmentTableEntry - accessor to retrieve the os or user page table ptr
+ *   kept in the segment table.
+ * Note! User and OS pgTbls are treated as User pg tables
+ *   because doing otherwise has little practical advantages
+ *   and would complicate otherwise simple logic
+ * PARAM: int segment to look in, int asid to choose a process
+ * RETURN: ~uPgTbl_PTR to a USER OR OS page table
+ */
+uPgTbl_PTR getSegmentTableEntry(int segment, int asid) {
+	if(segment == KSEGOS)
+		return segTable->kSegOS[asid];
+	else if (segment == KUSEG2)
+		return segTable->KUSEG2[asid];
+	else if (segment == KUSEG3)
+		return segTable->KUSEG3[asid];
+	else
+		return NULL; /* This is an error condition */
+}
+
+Bool isDirty(ptEntry_PTR pageDesc) {
+	return TRUE; /* (*pageDesc & DIRTY); */
+}
+
+void nukePageTable(uPgTbl_PTR pageTable) {
+	int loopVar, entries;
+	/* Is this a page table or small island city? */
+	if(pageTable.magicPtHeaderWord & MAGICNUMMASK != MAGICNUM)
+		SYSCALL(TERMINATEPROCESS);
+
+	entries = pageTable.magicPtHeaderWord & ENTRYCNTMASK;
+	for(loopVar = 0; loopVar < entries; loopVar++) {
+		/* TODO: Check if NULL is an appropriate value, is 0 better? */
+		pageTable.entries[loopVar]->entryHI = NULL;
+		pageTable.entries[loopVar]->entryLO = NULL;
+	}
+
+	/* Reset Header Word Entry Count */
+	pageTable.magicPtHeaderWord = MAGICNUM;
+}
+
+void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
+	engageDiskDevice(sectIndex, destFrameAddr, READBLK);
+}
+
+void engageDiskDevice(int sectIndex, memaddr addr, int readOrWrite) {
+	int head, sect, cyl, maxHeads, maxSects, maxCyls;
+	devregtr* diskDev = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT];
+
+	int sectMask = 0x000000FF;
+	int headMask = 0x0000FF00;
+	int cylMask = 0xFFFF0000;
+
+	SYSCALL(PASSEREN, findMutex(DISKINT, 0, FALSE));
+
+	maxSects = (diskDev->d_data1 & sectMask) >> 0;
+	maxHeads = (diskDev->d_data1 & headMask) >> 8;
+	maxCyls = (diskDev->d_data1 & cylMask) >> 16;
+
+	/* Calc cylinder */
+	cyl = sectIndex / (maxHeads * maxSects);
+	if(cyl >= maxCyls) { SYSCALL(TERMINATEPROCESS); }
+
+	/* Move boom to the correct disk cylinder */
+ 	desDev->d_command = cyl << 8 | SEEKCYL;
+	status = SYSCALL(WAITIO, DISKINT, 0, 0);
+	if(status != ACK) { SYSCALL(TERMINATEPROCESS); }
+
+	/* Calc position within cylinder */
+	head = (sectIndex / maxSects) % maxHeads;
+	sect = sectIndex % maxSects;
+
+	/* Position and Prepare device */
+	diskDev->d_command = head << 16 | sect << 8 | readOrWrite;
+	diskDev->d_data0 = destFrameAddr; /* Move destFrameAddr into DATA0 */
+
+	status = SYSCALL(WAITIO, DISKINT, 0, 0); /* Wait for job to complete */
+	if(status != ACK)
+		SYSCALL(TERMINATEPROCESS);
+
+	SYSCALL(VERHOGEN, findMutex(DISKINT, 0, FALSE));
+}
+
+int selectFrameIndex() {
+	framePool.indexOfLastFrameReplaced += 1;
+	framePool.indexOfLastFrameReplaced %= MAXFRAMES;
+	return (framePool.indexOfLastFrameReplaced);
+}
+
+/* TODO: Remove the setSegmentTableEntry abstractions for lack of use */
+void setSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
 	/* First, boundary check segment and asid, but not address */
 	/*	TLB exception already covers bad address to some extent */
 	if(segment < 0 || segment > 3)
@@ -186,9 +352,23 @@ void updateSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
 	if(asid < 0 || asid > 63)
 		gameOver(99);
 
+	/* Is it actually a page table? */
+	if((addr->magicPtHeaderWord & MAGICNUMMASK) != MAGICNUM)
+		gameOver(99); /* Magic is a lie */
+
 	/* Overwrite current entry of segTable with address of page table */
-	segmentTable[segment][asid] = addr;
+	if(segment == KSEGOS)
+		segTable->kSegOS[asid] = (osPgTable_PTR) addr;
+	else if (segment == KUSEG2)
+		segTable->KUSEG2[asid] = addr;
+	else /* (segment == KUSEG3) */
+		segTable->KUSEG3[asid] = addr;
 }
-void updateSegmentTableEntry(int segment, int asid, osPgTable_PTR addr) {
-	updateSegmentTableEntry(segment, asid, (uPgTable_PTR) addr);
+
+void setSegmentTableEntry(int segment, int asid, osPgTable_PTR addr) {
+	setSegmentTableEntry(segment, asid, (uPgTable_PTR) addr);
+}
+
+void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex) {
+	engageDiskDevice(sectIndex, srcFrameAddr, WRITBLK);
 }
