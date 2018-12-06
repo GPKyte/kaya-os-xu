@@ -120,32 +120,31 @@ typedef struct ptEntry_t {
 	unsigned int entryLO; /*  */
 } ptEntry_t;
 
+typedef struct segTable_t {
+	osPgTable_t			*kSegOS;
+	uPgTable_t			*kUseg2;
+	uPgTable_t			*kUseg3;
+} segTable_t, *segTable_PTR;
+
 /* User type page table */
 #define MAXPTENTRIES 32
 typedef struct uPgTable_t {
-	int magicPtHeaderWord; /* Cache to ID object as PTbl and current entry # */
-	ptEntry_t entries[MAXPTENTRIES];
+	int					magicPtHeaderWord; /* Cache to ID object as PTbl and current entry # */
+	ptEntry_t		entries[MAXPTENTRIES];
 } uPgTable_t, *uPgTable_PTR;
 
 #define MAXOSPTENTRIES (2 * MAXPTENTRIES)
 typedef struct osPgTable_t {
-
-} osPgTable_t, osPgTable_PTR; /* TODO: decide on naming */
+ 		int					header;
+		ptEntry_t		entries[MAXOSPTENTRIES];
+} osPgTable_t, *osPgTable_PTR; /* TODO: decide on naming */
 
 #define MAXFRAMES
 typedef struct fpEntry_t {
 	/* Descriptor for frame entry in frame pool */
 	int fp_asid;
-	int fp_frameAddr;
-	int fp_pgTableAddr;
+	int fp_frameAddr; /* is this segNo ? */
+	int fp_pgTableAddr; /* is this pgNo ? */
 } fpEntry_t; *fpEntry_PTR;
-
-typedef struct swapPool_t {
-	/* Descriptor for swap pool entries */
-	int asid;
-	int segNO;
-	int pgNO;
-	ptEntry_t	*pte;
-} swapPool_t;
 
 #endif
