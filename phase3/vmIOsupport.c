@@ -22,8 +22,8 @@
 
 int* pager; /* Mutex for page swaping mechanism */
 int* mutexSems[MAXSEMS];
-int segTable[SEGMENTS][MAXPROCID]; /* TODO: find a generic type solution that better describes segTbl */
 uProcEntry_t uProcList[MAXUPROC];
+segTable_t* segTable = 0x20000500;
 
 /************************ Prototypes ***********************/
 
@@ -45,8 +45,8 @@ void test() {
 
 	/* Set up kSegOS and kuSeg3 Segment Table entries (all the same-ish) */
 	for(loopVar = 0; loopVar < MAXPROCID; loopVar++) {
-		setSegmentTableEntry(KSEGOS, loopVar, &osPgTbl);
-		setSegmentTableEntry(KUSEG3, loopVar, &sharedPgTbl);
+		segTable->kSegOS[loopVar] = &osPgTbl);
+		segTable->kuSeg3[loopVar] = &sharedPgTbl);
 		/* kuSeg2 handled for each unique process later */
 	}
 
@@ -93,11 +93,12 @@ void test() {
 	masterSem = 0; /* For graceful halting of OS after test fin */
 
 	/* Set up user processes */
-	for(asid = 1; asid <= MAXUPROC; asid++) {
+	for(asid = 1; asid < MAXUPROC; asid++) {
 		/* Set up new page table for process */
 		uPgTblList[asid - 1].magicPtHeaderWord = MAGICNUM;
 
-		setSegmentTableEntry(KUSEG2, asid, &(uPgTblList[asid - 1]));
+		/* Make Segment Table Entry for uProc's new Page Table */
+		segTable->kuSeg2[asid] = &(uPgTblList[asid - 1]));
 
 		/* Fill in default entries */
 		for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
@@ -149,7 +150,7 @@ void tlbHandler() {
 	/* We store "page number" in the offset from the relevant VPN start */
 	vpn = (oldTlb->s_asid & VPNMASK) >> 12;
 
-	destPgTbl = (uPgTable_PTR) getSegmentTableEntry(segNum, asid);
+	destPgTbl = getSegmentTableEntry(segNum, asid);
 	destPTEIndex = findPTEntryIndex(destPgTbl, vpn);
 
 	if(cause != PAGELOADMISS && cause != PAGESTRMISS)
@@ -172,8 +173,13 @@ void tlbHandler() {
 	if(frameInUse(curFPEntry)) {
 		/* Find PTE for the to-be-overwritten page in order
 		 * to determine if its a dirty page */
-		curPageTable = getSegmentTableEntry(curFPEntry & SEGMASK, curFPEntry & ASIDMASK);
-		curPageIndex = findPageTableEntry(curPageTable, curFPEntry & VPNMASK);
+		curPageTable = getSegmentTableEntry(
+			(curFPEntry & SEGMASK) >> 30,
+			(curFPEntry & ASIDMASK) >> 6);
+
+		curPageIndex = findPageTableEntry(curPageTable,
+			(curFPEntry & VPNMASK) >> 12);
+
 		curPage = curPageTable->entries[curPageIndex];
 		curPage &= ~VALID; /* Invalidate curPage to mean "missing" */
 
@@ -247,8 +253,24 @@ int* findMutex(int lineNum, int deviceNum, Bool isReadTerm) {
 	return &(mutexSems[semGroup * DEVPERINT + deviceNum]);
 }
 
-int getSegmentTableEntry(int segment, int asid) {
-	return segTable[segment][asid];
+/*
+ * getSegmentTableEntry - accessor to retrieve the os or user page table ptr
+ *   kept in the segment table.
+ * Note! User and OS pgTbls are treated as User pg tables
+ *   because doing otherwise has little practical advantages
+ *   and would complicate otherwise simple logic
+ * PARAM: int segment to look in, int asid to choose a process
+ * RETURN: ~uPgTbl_PTR to a USER OR OS page table
+ */
+uPgTbl_PTR getSegmentTableEntry(int segment, int asid) {
+	if(segment == KSEGOS)
+		return segTable->kSegOS[asid];
+	else if (segment == KUSEG2)
+		return segTable->KUSEG2[asid];
+	else if (segment == KUSEG3)
+		return segTable->KUSEG3[asid];
+	else
+		return NULL; /* This is an error condition */
 }
 
 Bool isDirty(ptEntry_PTR pageDesc) {
@@ -320,6 +342,7 @@ int selectFrameIndex() {
 	return (framePool.indexOfLastFrameReplaced);
 }
 
+/* TODO: Remove the setSegmentTableEntry abstractions for lack of use */
 void setSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
 	/* First, boundary check segment and asid, but not address */
 	/*	TLB exception already covers bad address to some extent */
@@ -334,7 +357,12 @@ void setSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
 		gameOver(99); /* Magic is a lie */
 
 	/* Overwrite current entry of segTable with address of page table */
-	segTable[segment][asid] = (int) addr;
+	if(segment == KSEGOS)
+		segTable->kSegOS[asid] = (osPgTable_PTR) addr;
+	else if (segment == KUSEG2)
+		segTable->KUSEG2[asid] = addr;
+	else /* (segment == KUSEG3) */
+		segTable->KUSEG3[asid] = addr;
 }
 
 void setSegmentTableEntry(int segment, int asid, osPgTable_PTR addr) {

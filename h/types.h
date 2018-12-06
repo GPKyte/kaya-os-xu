@@ -141,4 +141,10 @@ typedef struct fpTable_t {
 	memaddr      frameAddr[MAXFRAMES]; /* TODO: Idea for cached info */
 } fpTable_t;
 
+typedef struct segTable_t {
+	osPgTable_PTR kSegOS[MAXPROCID];
+	uPgTable_PTR  kuSeg2[MAXPROCID];
+	uPgTable_PTR  kuSeg3[MAXPROCID];
+} segTable_t;
+
 #endif
