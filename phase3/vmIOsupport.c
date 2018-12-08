@@ -32,108 +32,6 @@ segTable_t* segTable = 0x20000500;
 
 /********************* External Methods ********************/
 /*
- * test - Set up the page and segment tables for all 8 user processes
- */
-void test() {
-	static fpTable_t framePool;
-	static osPgTable_t osPgTbl;
-	static uPgTable_t sharedPgTbl, uPgTblList[MAXUPROC];
-	state_t newStateList[MAXUPROC];
-
-	unsigned int ramtop;
-	devregarea_t* devregarea;
-
-	/* Set up kSegOS and kuSeg3 Segment Table entries (all the same-ish) */
-	for(loopVar = 0; loopVar < MAXPROCID; loopVar++) {
-		segTable->kSegOS[loopVar] = &osPgTbl);
-		segTable->kuSeg3[loopVar] = &sharedPgTbl);
-		/* kuSeg2 handled for each unique process later */
-	}
-
-	/* Set up kSegOS page tables */
-	osPgTable.magicPtHeaderWord = MAGICNUM;
-	for(loopVar = 0; loopVar < MAXOSPTENTRIES; loopVar++) {
-		newPTEntry = &(osPgTable.entries[loopVar]);
-
-		/* TODO: Should we add segment number or asid at all here? (both 0) */
-		newPTEntry->entryHI = (KSEGOSVPN + loopVar) << 12;
-		newPTEntry->entryLO = DIRTY | GLOBAL | VALID;
-	}
-
-	/* Set up kSeg3 page tables */
-	sharedPgTbl.magicPtHeaderWord = MAGICNUM;
-	for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
-		newPTEntry = &(sharedPgTbl.entries[loopVar]);
-
-		newPTEntry->entryHI = (KUSEG3 << 30)
-			| ((KUSEG3VPN + loopVar) << 12)
-			| (MAXPROCID << 6);
-		newPTEntry->entryLO = DIRTY | GLOBAL;
-	}
-
-
-	/* TODO: pre-load frame pool */
-	/* Initialize Swap Pool structure to manage Frame Pool */
-	devregarea = (devregarea_t*) RAMBASEADDR;
-	ramtop = (devregarea->rambase) + (devregarea->ramsize);
-	for(loopVar = 0; loopVar < MAXFRAMES; loopVar++) {
-		framePool.frames[loopVar] = 0;
-		/* Calculate physical location of frame starting address *
-		 * Sits beneath the kernel and test stack frames         */
-		frameLoc = ramtop - (3 + loopVar) * PAGESIZE;
-		framePool.frameAddr[loopVar] = frameLoc;
-	}
-
-
-	pager = 1; /* Init mutex for swap pool pager */
-	/* Init device mutex semaphore array; set each to 1 */
-	for(loopVar = 0; loopVar < MAXSEMS; loopVar++)
-		devSemList[loopVar] = 1;
-
-	masterSem = 0; /* For graceful halting of OS after test fin */
-
-	/* Set up user processes */
-	for(asid = 1; asid < MAXUPROC; asid++) {
-		/* Set up new page table for process */
-		uPgTblList[asid - 1].magicPtHeaderWord = MAGICNUM;
-
-		/* Make Segment Table Entry for uProc's new Page Table */
-		segTable->kuSeg2[asid] = &(uPgTblList[asid - 1]));
-
-		/* Fill in default entries */
-		for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
-			newPTEntry = &(uPgTblList[asid - 1].entries[loopVar]);
-
-			newPTEntry->entryHI = (KUSEG2 << 30)
-				| ((KUSEG2VPN + loopVar) << 12)
-				| (asid << 6);
-			newPTEntry->entryLO = DIRTY;
-		}
-
-		/* Correct last entry to act as a stack page */
-		newPTEntry->entryHI = (KUSEG3VPN << 12) | (asid << 6)
-
-		/* Fill entry for user process tracking */
-		newProcDesc = uProcList[asid - 1];
-		newProcDesc->up_syncSem = 0;
-		newProcDesc->up_pgTable = &(uPgTblList[asid - 1]);
-		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid, 0);
-
-		/* Create default kernel level state starting in init code */
-		newState = &(newStateList[asid - 1]);
-		newState->s_asid = asid;
-		newState->s_sp = NULL; /* TODO: fill in later, maybe in other code block */
-		newState->s_pc = (memaddr) initProc();
-
-		/* Interrupts on, Local Timer On, VM Off, Kernel mode on */
-		newState->s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
-			& ~VMpON & ~USERMODEON;
-
-		SYSCALL(CREATEPROCESS, newState); /* SYSCALLs are Main reason for kernel mode */
-	}
-}
-
-/*
  * tlbHandler -
  *
  *
@@ -216,7 +114,112 @@ void tlbHandler() {
 }
 
 
+/*
+ * sysCallHandler handles SYS9 - SYS18
+ *
+ */
+void sysCallHandler() {
+	unsigned int asid = getENTRYHI();
+	state_PTR oldSys = &(uProcList[asid - 1].up_stateAreas[OLD][SYSTRAP]);
+
+	/* check Cause.ExcCode in uProc's SYS/BP Old area for SYS/BP */
+	if(((oldSys->s_cause & 127) >> 2) == _BP_)
+		??
+
+
+	/* check for invalid SYSCALL */
+	/* if invalid, avadaKedavra */
+	/* switch cases for each sysCall */
+	switch(oldSys->s_a0) {
+		case 9:
+			sys9_readFromTerminal(char *addr);
+
+		case 10:
+			sys10_writeToTerminal(char *virtAddr, int len);
+
+		case 11:
+			sys11_vVirtSem(int *semaddr);
+
+		case 12:
+			sys12_pVirtSem(int *semaddr);
+
+		case 13:
+			sys13_delay(int secondsToDelay);
+
+		case 14:
+			sys14_diskPut(int *blockAddr, int diskNo, int sectNo);
+
+		case 15:
+			sys15_diskGet(int *blockAddr, int diskNo, int sectNo);
+
+		case 16:
+			sys16_writeToPrinter(char *virtAddr, int len);
+
+		case 17:
+			sys17_getTOD();
+
+		case 18:
+			sys18_terminate();
+	}
+}
+
 /********************** Helper Methods *********************/
+HIDDEN int sys9_readFromTerminal(char *addr) {
+
+}
+
+HIDDEN int sys10_writeToTerminal(char *virtAddr, int len) {
+
+}
+
+HIDDEN void sys11_vVirtSem(int *semaddr) {
+
+}
+
+HIDDEN void sys12_pVirtSem(int *semaddr) {
+
+}
+
+HIDDEN void sys13_delay(int secondsToDelay) {
+
+}
+
+/*
+ * sys14_diskPut - write to disk
+ */
+HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
+	int *bufferAddr = DISKBUFFERSTART;
+
+	/* check for invalid blockAddr. if addr is in ksegOS, terminate */
+	/* TODO: check for diskNo, if writing to disk0, terminate */
+	if((bufferAddr <= KSEGOSEND) || )
+		sys18_terminate();
+
+		writePageToBackingStore(bufferAddr, sectNo);
+}
+
+/*
+ * sys15_diskGet - read from disk
+ */
+HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo) {
+
+readPageFromBackingStore(sectNo, bufferAddr);
+	/* check for invalid blockAddr. if addr is in ksegOS, terminate */
+	/* check for diskNo, if reading from disk0, terminate */
+}
+
+HIDDEN int sys16_writeToPrinter(char *virtAddr, int len) {
+
+}
+
+HIDDEN unsigned int sys17_getTOD() {
+
+}
+
+HIDDEN void sys18_terminate() {
+
+}
+
 int calcBkgStoreAddr(int asid, int pageOffset) {
 	int pageIndex;
 	return pageIndex = (asid * MAXPAGES) + pageOffset;
@@ -295,7 +298,7 @@ void nukePageTable(uPgTbl_PTR pageTable) {
 }
 
 void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
-	engageDiskDevice(sectIndex, destFrameAddr, READBLK);
+	engageDiskDevice(sectIndex, destFrameAddr, READ);
 }
 
 void engageDiskDevice(int sectIndex, memaddr addr, int readOrWrite) {
@@ -370,5 +373,5 @@ void setSegmentTableEntry(int segment, int asid, osPgTable_PTR addr) {
 }
 
 void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex) {
-	engageDiskDevice(sectIndex, srcFrameAddr, WRITBLK);
+	engageDiskDevice(sectIndex, srcFrameAddr, WRITE);
 }
