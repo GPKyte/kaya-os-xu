@@ -22,14 +22,31 @@ delayd_PTR nextToWake_h;
 
 typedef struct delayd_t {
 	delayd_PTR   d_next;
-	int          d_procQ;
-	unsigned int d_wakeTime;
+	pcb_PTR      d_occupant;
+	cpu_t        d_wakeTime;
 }
 
 
 /********************* External Methods ********************/
 
 
+void initADL(void) {
+	int i;
+	static semd_t bedFactory[MAXPROC + 2]; /* +2 for dummy nodes */
+
+	openBeds_h = NULL; /* Init delay list */
+
+	for(i = 0; i < MAXPROC; i++) {
+		freeBed(&(bedFactory[i]));
+	}
+
+	/* Set boundary beds for ADL to simplify condition checking */
+	bedFactory[MAXPROC].s_wakeTime = 0;
+	nextToWake_h = &(bedFactory[MAXPROC]);
+	bedFactory[MAXPROC + 1].d_wakeTime = (cpu_t) MAXINT;
+	nextToWake_h->d_next = &(bedFactory[MAXPROC + 1]);
+	nextToWake_h->d_next->d_next = NULL;
+}
 
 
 /********************** Helper Methods *********************/
