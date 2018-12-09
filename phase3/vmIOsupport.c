@@ -144,7 +144,7 @@ void sysCallHandler() {
 			sys12_pVirtSem(int *semaddr);
 
 		case 13:
-			sys13_delay(int secondsToDelay);
+			sys13_delay(asid, secondsToDelay);
 
 		case 14:
 			sys14_diskPut(int *blockAddr, int diskNo, int sectNo);
@@ -180,8 +180,16 @@ HIDDEN void sys12_pVirtSem(int *semaddr) {
 
 }
 
-HIDDEN void sys13_delay(int secondsToDelay) {
+HIDDEN void sys13_delay(int asid, int secondsToDelay) {
+	cpu_t startTime;
+	STCK(startTime);
+	alarmTime = startTime + secondsToDelay;
 
+	if(alarmTime <= 0) /* Invalid operation, "delay" forever */
+		sys18_terminate();
+
+	setAlarm(asid, alarmTime);
+	sys12_pVirtSem(&(uProcList[asid - 1]->up_syncSem));
 }
 
 /*

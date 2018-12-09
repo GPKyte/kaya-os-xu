@@ -74,14 +74,14 @@ void summonSandmanTheDelayDemon() {
 }
 
 /*
- * delayProcess - a mutator to insert a process into a delay descriptor
+ * setAlarm - a mutator to insert a process into a delay descriptor
  *   on the ordered ADL. The process should be the only process to sleep on
  *   this descriptor
  *
- * PARAM:  Time of Day to wake up proc, and proc to delay
+ * PARAM:  Id of Proc to delay, Time of Day to wake up proc
  * RETURN: TRUE if successfully delayed, FALSE otherwise
  */
-Bool delayProcess(cpu_t wakeTime, int asid) {
+Bool setAlarm(int asid, cpu_t wakeTime) {
 	delayd_PTR neighborNapper = searchBeds(wakeTime);
 	delayd_PTR target = allocBed();
 
