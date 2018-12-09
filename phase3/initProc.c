@@ -17,6 +17,7 @@
 #include "../h/types.h"
 #include "../e/scheduler.e"
 #include "../e/vmiosupport.e"
+#include "../e/adl.e"
 
 #include "usr/local/include/umps2/umps/libumps.e"
 
@@ -35,6 +36,7 @@ void test() {
 	static fpTable_t framePool;
 	static osPgTable_t osPgTbl;
 	static uPgTable_t sharedPgTbl, uPgTblList[MAXUPROC];
+	state_t delayDaemonState;
 	state_t newStateList[MAXUPROC];
 
 	unsigned int ramtop;
@@ -86,6 +88,14 @@ void test() {
 		devSemList[loopVar] = 1;
 
 	masterSem = 0; /* For graceful halting of OS after test fin */
+	/* Set up the delay daemon:
+	 *   Daemon will have unique ASID in kernel-mode
+	 *   with VMc on and all interrupts enabled */
+	initADL();
+	delayDaemonState.s_asid = delayDaemonID; /* TODO: decide ASID for DD */
+	delayDaemonState.s_pc = (memaddr) summonSandmanTheDelayDemon();
+ 	delayDaemonState.s_status = (VMpON | INTpON | INTMASKOFF) & ~USERMODEON;
+	SYSCALL(CREATEPROCESS, &delayDaemonState);
 
 	/* Set up user processes */
 	for(asid = 1; asid < MAXUPROC; asid++) {
