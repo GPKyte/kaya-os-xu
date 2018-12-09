@@ -48,7 +48,30 @@ void initADL(void) {
 	nextToWake_h->d_next->d_next = NULL;
 }
 
+void summonSandmanTheDelayDemon() {
+	cpu_t alarmTime;
+	int *semAdd;
+	delayd_PTR napNeighbor;
 
+	while(TRUE) {
+		STCK(alarmTime);
+
+		/* Find beds to wake up */
+		while(nextToWake_h->d_wakeTime <= alarmTime) {
+			/* Wake up processes by calling V on their semaphore */
+			semAdd = &(uProcList[nextToWake_h->d_asid - 1]->up_syncSem);
+			SYSCALL(VMVERHOGEN, semAdd); /* Wake up proc */
+
+			/* Kick out proc */
+			napNeighbor = nextToWake_h->d_next;
+			freeBed(nextToWake_h);
+			nextToWake_h = napNeighbor;
+		}
+
+		/* Take micronap */
+		SYSCALL(WAITCLOCK);
+	}
+}
 
 /*
  * delayProcess - a mutator to insert a process into a delay descriptor
