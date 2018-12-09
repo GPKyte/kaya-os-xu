@@ -113,48 +113,69 @@ void tlbHandler() {
  *
  */
 void sysCallHandler() {
-	unsigned int asid = getENTRYHI();
+	unsigned int asid = getASID(getENTRYHI());
 	state_PTR oldSys = &(uProcList[asid - 1].up_stateAreas[OLD][SYSTRAP]);
 
 	/* check Cause.ExcCode in uProc's SYS/BP Old area for SYS/BP */
 	if(((oldSys->s_cause & 127) >> 2) == _BP_)
 		??
 
-
 	/* check for invalid SYSCALL */
 	/* if invalid, avadaKedavra */
+	if(oldSys <= 0 || oldSys > 18)
+		sys18_terminate();
+
 	/* switch cases for each sysCall */
 	switch(oldSys->s_a0) {
 		case 9:
-			sys9_readFromTerminal(char *addr);
+			char *addr = oldSys->s_a1;
+			oldSys->s_v0 = sys9_readFromTerminal(addr);
 
 		case 10:
-			sys10_writeToTerminal(char *virtAddr, int len);
+			char *virtAddr = oldSys->s_a1;
+			int len = oldSys->s_a2;
+			oldSys->s_v0 = sys10_writeToTerminal(virtAddr, len);
 
 		case 11:
-			sys11_vVirtSem(int *semaddr);
+			int *semaddr = oldSys->s_a1;
+			sys11_vVirtSem(semaddr);
 
 		case 12:
-			sys12_pVirtSem(int *semaddr);
+			semaddr = oldSys->s_a1;
+			sys12_pVirtSem(semaddr);
 
 		case 13:
+			int secondsToDelay = oldSys->s_a1;
 			sys13_delay(asid, secondsToDelay);
 
 		case 14:
-			sys14_diskPut(int *blockAddr, int diskNo, int sectNo);
+			int *blockAddr = oldSys->s_a1;
+			int diskNo = oldSys->s_a2;
+			int sectNo = oldSys->s_a3;
+			oldSys->s_v0 = sys14_diskPut(blockAddr, diskNo, sectNo);
 
 		case 15:
-			sys15_diskGet(int *blockAddr, int diskNo, int sectNo);
+			blockAddr = oldSys->s_a1;
+			diskNo = oldSys->s_a2;
+			sectNo = oldSys->s_a3;
+			oldSys->s_v0 = sys15_diskGet(blockAddr, diskNo,sectNo);
 
 		case 16:
-			sys16_writeToPrinter(char *virtAddr, int len);
+			virtAddr = oldSys->s_a1;
+			len = oldSys->s_a2;
+			oldSys->s_v0 = sys16_writeToPrinter(virtAddr, len);
 
 		case 17:
-			sys17_getTOD();
+			oldSys->s_v0 = sys17_getTOD();
 
 		case 18:
 			sys18_terminate();
+
+		default: /* Anything else */
+			sys18_terminate();
 	}
+
+	loadState(oldSys);
 }
 
 /********************** Helper Methods *********************/
