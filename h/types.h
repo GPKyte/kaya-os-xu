@@ -123,14 +123,15 @@ typedef struct ptEntry_t {
 /* User type page table */
 #define MAXPTENTRIES 32
 typedef struct uPgTable_t {
-	int magicPtHeaderWord; /* Cache to ID object as PTbl and current entry # */
-	ptEntry_t entries[MAXPTENTRIES];
+	int					magicPtHeaderWord; /* Cache to ID object as PTbl and current entry # */
+	ptEntry_t		entries[MAXPTENTRIES];
 } uPgTable_t, *uPgTable_PTR;
 
 #define MAXOSPTENTRIES (2 * MAXPTENTRIES)
 typedef struct osPgTable_t {
-
-} osPgTable_t, *osPgTable_PTR;
+ 		int					header;
+		ptEntry_t		entries[MAXOSPTENTRIES];
+} osPgTable_t, *osPgTable_PTR; /* TODO: decide on naming */
 
 #define MAXFRAMES 10 /* Less than 2 * MAXUPROC to force paging */
 typedef struct fpTable_t {
@@ -140,6 +141,13 @@ typedef struct fpTable_t {
 	unsigned int frames[MAXFRAMES];
 	memaddr      frameAddr[MAXFRAMES]; /* TODO: Idea for cached info */
 } fpTable_t;
+
+typedef struct uProcEntry_t {
+	int up_pgTable;
+	int up_syncSem;
+	int up_bkgStoreAddr;
+	state_t	up_stateAreas[2][TRAPTYPES];
+} uProcEntry_t, *uProcEntry_PTR;
 
 typedef struct segTable_t {
 	osPgTable_PTR kSegOS[MAXPROCID];

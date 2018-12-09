@@ -16,22 +16,125 @@
 #include "../h/const.h"
 #include "../h/types.h"
 #include "../e/scheduler.e"
-#include "../e/vmIOsupport.e"
+#include "../e/vmiosupport.e"
 
 #include "usr/local/include/umps2/umps/libumps.e"
+
+uPgTable_PTR kUseg3_pte; /* shared variable among all users */
+
 
 /************************ Prototypes ***********************/
 unsigned int getASID();
 
 
 /********************* External Methods ********************/
-
 /*
+ * test - Set up the page and segment tables for all 8 user processes
+ */
+void test() {
+	static fpTable_t framePool;
+	static osPgTable_t osPgTbl;
+	static uPgTable_t sharedPgTbl, uPgTblList[MAXUPROC];
+	state_t newStateList[MAXUPROC];
+
+	unsigned int ramtop;
+	devregarea_t* devregarea;
+
+	/* Set up kSegOS and kuSeg3 Segment Table entries (all the same-ish) */
+	for(loopVar = 0; loopVar < MAXPROCID; loopVar++) {
+		segTable->kSegOS[loopVar] = &osPgTbl);
+		segTable->kuSeg3[loopVar] = &sharedPgTbl);
+		/* kuSeg2 handled for each unique process later */
+	}
+
+	/* Set up kSegOS page tables */
+	osPgTable.magicPtHeaderWord = MAGICNUM;
+	for(loopVar = 0; loopVar < MAXOSPTENTRIES; loopVar++) {
+		newPTEntry = &(osPgTable.entries[loopVar]);
+
+		/* TODO: Should we add segment number or asid at all here? (both 0) */
+		newPTEntry->entryHI = (KSEGOSVPN + loopVar) << 12;
+		newPTEntry->entryLO = DIRTY | GLOBAL | VALID;
+	}
+
+	/* Set up kSeg3 page tables */
+	sharedPgTbl.magicPtHeaderWord = MAGICNUM;
+	for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
+		newPTEntry = &(sharedPgTbl.entries[loopVar]);
+
+		newPTEntry->entryHI = (KUSEG3 << 30)
+			| ((KUSEG3VPN + loopVar) << 12)
+			| (MAXPROCID << 6);
+		newPTEntry->entryLO = DIRTY | GLOBAL;
+	}
+
+	/* TODO: pre-load frame pool */
+	/* Initialize Swap Pool structure to manage Frame Pool */
+	devregarea = (devregarea_t*) RAMBASEADDR;
+	ramtop = (devregarea->rambase) + (devregarea->ramsize);
+	for(loopVar = 0; loopVar < MAXFRAMES; loopVar++) {
+		framePool.frames[loopVar] = 0;
+		/* Calculate physical location of frame starting address *
+		 * Sits beneath the kernel and test stack frames         */
+		frameLoc = ramtop - (3 + loopVar) * PAGESIZE;
+		framePool.frameAddr[loopVar] = frameLoc;
+	}
+
+	pager = 1; /* Init mutex for swap pool pager */
+	/* Init device mutex semaphore array; set each to 1 */
+	for(loopVar = 0; loopVar < MAXSEMS; loopVar++)
+		devSemList[loopVar] = 1;
+
+	masterSem = 0; /* For graceful halting of OS after test fin */
+
+	/* Set up user processes */
+	for(asid = 1; asid < MAXUPROC; asid++) {
+		/* Set up new page table for process */
+		uPgTblList[asid - 1].magicPtHeaderWord = MAGICNUM;
+
+		/* Make Segment Table Entry for uProc's new Page Table */
+		segTable->kuSeg2[asid] = &(uPgTblList[asid - 1]));
+
+		/* Fill in default entries */
+		for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
+			newPTEntry = &(uPgTblList[asid - 1].entries[loopVar]);
+
+			newPTEntry->entryHI = (KUSEG2 << 30)
+				| ((KUSEG2VPN + loopVar) << 12)
+				| (asid << 6);
+			newPTEntry->entryLO = DIRTY;
+		}
+
+		/* Correct last entry to act as a stack page */
+		newPTEntry->entryHI = (KUSEG3VPN << 12) | (asid << 6)
+
+		/* Fill entry for user process tracking */
+		newProcDesc = uProcList[asid - 1];
+		newProcDesc->up_syncSem = 0;
+		newProcDesc->up_pgTable = &(uPgTblList[asid - 1]);
+		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid, 0);
+
+		/* Create default kernel level state starting in init code */
+		newState = &(newStateList[asid - 1]);
+		newState->s_asid = asid;
+		newState->s_sp = NULL; /* TODO: fill in later, maybe in other code block */
+		newState->s_pc = (memaddr) initProc();
+
+		/* Interrupts on, Local Timer On, VM Off, Kernel mode on */
+		newState->s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
+			& ~VMpON & ~USERMODEON;
+
+		SYSCALL(CREATEPROCESS, newState); /* SYSCALLs are Main reason for kernel mode */
+	}
+}
+
+/*****************************************************************************
  * initProc - loads a user process from the tape drive
  * and copy it to the backing store on disk 0, then start
  * that specific user process.
- */
-HIDDEN void initProc() {
+ *
+ ****************************************************************************/
+HIDDEN void initUProc() {
   int i, newAreaSP;
   state_PTR newArea; /* TODO: either this or will have to specify area */
   state_t procState;
@@ -46,7 +149,7 @@ HIDDEN void initProc() {
 
   for(i = 0; i < TRAPTYPES; i++) {
     newArea->s_status =
-    INTpON | INTMASKOFF | LOCALTIMEON | VMpON | ~USERMODEON;
+        INTpON | INTMASKOFF | LOCALTIMEON | VMpON | ~USERMODEON;
     newArea->s_asid = getENTRYHI();
 
     /* TODO: init pgrmTrap and sysCall handlers for P3 */
@@ -97,10 +200,9 @@ HIDDEN void initProc() {
   loadState(&procState);
 }
 
-/*
+/***********************************************************************
  *  getASID - returns the ASID of the currently running process
- */
-
+ ***********************************************************************/
 unsigned int getASID() {
   unsigned int asid = getENTRYHI();
   asid = (asid & 0x00000FC0) >> 6;

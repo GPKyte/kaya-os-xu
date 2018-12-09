@@ -61,6 +61,8 @@
 #define EOS		'\0'
 #define NULL ((void *) 0xFFFFFFFF)
 #define MAXINT ((int *) 0x7FFFFFFF)
+#define READ    0;
+#define WRITE   1;
 
 /* Bitwise masks and constants */
 /* Turn 1 and 2 On, but 3 off: 1ON | 2ON & ~3ON */
@@ -79,8 +81,13 @@
 #define TRANSMITSTATUSMASK 0x0F /* For Term Read Status */
 
 /* page table operations */
+#define OSFRAMES      30
+#define MAXPAGES      32
+
 #define KSEGOS        0
+#define KSEGOSSTART   ROMPAGESTART
 #define KSEGOSVPN     ROMPAGESTART / PAGESIZE
+#define KSEGOSSIZE    OSFRAMES * PAGESIZE
 #define KUSEG2        2
 #define KUSEG2START   0x80000000
 #define KUSEG2VPN     KUSEG2START / PAGESIZE
@@ -89,8 +96,7 @@
 #define KUSEG3VPN     KUSEG3START / PAGESIZE
 #define KSEGOSEND     KUSEG2START - 1
 
-#define MAXPAGES      32
-#define DIRTY         (1 << 10) /* TODO: is this correct? I think this should be 1 */
+#define DIRTY         (1 << 10)
 #define GLOBAL        (1 << 9)
 #define VALID         (1 << 8)
 #define MAGICNUM      (42 << 24)
@@ -102,11 +108,13 @@
 #define ASIDMASK      0x00000fc0
 #define SEGMASK       0xB0000000
 
+#define UPROCSTACKSIZE  (2 * PAGESIZE)
+#define DISKBUFFERSTART  (KSEGOSSTART + KSEGOSSIZE)
+#define TAPEBUFFERSSTART  (DISKBUFFERSTART + PAGESIZE)
 
 /* Segment Table */
 #define SEGMENTS      3
 #define MAXPROCID     64
-
 
 /* vectors number and type */
 #define VECTSNUM	4
