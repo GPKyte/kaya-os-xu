@@ -19,12 +19,6 @@
 
 #include "usr/local/include/umps2/umps/libumps.e"
 
-
-int* pager; /* Mutex for page swaping mechanism */
-int* mutexSems[MAXSEMS];
-uProcEntry_t uProcList[MAXUPROC];
-segTable_t* segTable = 0x20000500;
-
 /************************ Prototypes ***********************/
 
 

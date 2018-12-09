@@ -23,6 +23,10 @@
 
 uPgTable_PTR kUseg3_pte; /* shared variable among all users */
 
+int pager; /* Mutex for page swaping mechanism */
+int mutexSems[MAXSEMS];
+uProcEntry_t uProcList[MAXUPROC];
+segTable_t* segTable = 0x20000500;
 
 /************************ Prototypes ***********************/
 unsigned int getASID();
@@ -39,8 +43,9 @@ void test() {
 	state_t delayDaemonState;
 	state_t newStateList[MAXUPROC];
 
-	unsigned int ramtop;
-	devregarea_t* devregarea;
+	devregarea_t* devregarea = (devregarea_t*) RAMBASEADDR;
+	unsigned int ramtop = (devregarea->rambase) + (devregarea->ramsize);
+	masterSem = 0; /* For graceful halting of OS after test fin */
 
 	/* Set up kSegOS and kuSeg3 Segment Table entries (all the same-ish) */
 	for(loopVar = 0; loopVar < MAXPROCID; loopVar++) {
@@ -49,7 +54,7 @@ void test() {
 		/* kuSeg2 handled for each unique process later */
 	}
 
-	/* Set up kSegOS page tables */
+	/* Set up kSegOS page table entries */
 	osPgTable.magicPtHeaderWord = MAGICNUM;
 	for(loopVar = 0; loopVar < MAXOSPTENTRIES; loopVar++) {
 		newPTEntry = &(osPgTable.entries[loopVar]);
@@ -59,7 +64,7 @@ void test() {
 		newPTEntry->entryLO = DIRTY | GLOBAL | VALID;
 	}
 
-	/* Set up kSeg3 page tables */
+	/* Set up kSeg3 page table entries */
 	sharedPgTbl.magicPtHeaderWord = MAGICNUM;
 	for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
 		newPTEntry = &(sharedPgTbl.entries[loopVar]);
@@ -72,8 +77,7 @@ void test() {
 
 	/* TODO: pre-load frame pool */
 	/* Initialize Swap Pool structure to manage Frame Pool */
-	devregarea = (devregarea_t*) RAMBASEADDR;
-	ramtop = (devregarea->rambase) + (devregarea->ramsize);
+	pager = 1; /* Init mutex for swap pool pager */
 	for(loopVar = 0; loopVar < MAXFRAMES; loopVar++) {
 		framePool.frames[loopVar] = 0;
 		/* Calculate physical location of frame starting address *
@@ -82,12 +86,11 @@ void test() {
 		framePool.frameAddr[loopVar] = frameLoc;
 	}
 
-	pager = 1; /* Init mutex for swap pool pager */
 	/* Init device mutex semaphore array; set each to 1 */
-	for(loopVar = 0; loopVar < MAXSEMS; loopVar++)
+	for(loopVar = 0; loopVar < MAXSEMS; loopVar++) {
 		devSemList[loopVar] = 1;
+	}
 
-	masterSem = 0; /* For graceful halting of OS after test fin */
 	/* Set up the delay daemon:
 	 *   Daemon will have unique ASID in kernel-mode
 	 *   with VMc on and all interrupts enabled */
@@ -139,7 +142,7 @@ void test() {
 }
 
 /*****************************************************************************
- * initProc - loads a user process from the tape drive
+ * initUProc - loads a user process from the tape drive
  * and copy it to the backing store on disk 0, then start
  * that specific user process.
  *
