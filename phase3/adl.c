@@ -49,6 +49,33 @@ void initADL(void) {
 }
 
 
+
+/*
+ * delayProcess - a mutator to insert a process into a delay descriptor
+ *   on the ordered ADL. The process should be the only process to sleep on
+ *   this descriptor
+ *
+ * PARAM:  Time of Day to wake up proc, and proc to delay
+ * RETURN: TRUE if successfully delayed, FALSE otherwise
+ */
+Bool delayProcess(cpu_t wakeTime, pcb_PTR sleepyProc) {
+	delayd_PTR neighborNapper = searchBeds(wakeTime);
+	delayd_PTR target = allocBed();
+
+	if(target == NULL) {
+		/* Allocation failed, all beds occupied TODO: this shouldn't be a concern.. ?*/
+		return (FALSE);
+	} else {
+		/* Init fields and insert new bed into ADL */
+		target->d_occupant = sleepyProc;
+		target->d_wakeTime = wakeTime;
+		target->d_next = neighborNapper->d_next;
+		neighborNapper->d_next = target;
+	}
+
+	return (TRUE);
+}
+
 /********************** Helper Methods *********************/
 HIDDEN void freeBed(delayd_t bed) {
 	bed->d_next = openBeds_h;
