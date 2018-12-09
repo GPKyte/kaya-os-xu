@@ -298,10 +298,10 @@ void nukePageTable(uPgTbl_PTR pageTable) {
 }
 
 void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
-	engageDiskDevice(sectIndex, destFrameAddr, READ);
+	engageDiskDevice(0, sectIndex, destFrameAddr, READ);
 }
 
-void engageDiskDevice(int sectIndex, memaddr addr, int readOrWrite) {
+void engageDiskDevice(int disk, int sectIndex, memaddr addr, int readOrWrite) {
 	int head, sect, cyl, maxHeads, maxSects, maxCyls;
 	devregtr* diskDev = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT];
 
@@ -373,5 +373,5 @@ void setSegmentTableEntry(int segment, int asid, osPgTable_PTR addr) {
 }
 
 void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex) {
-	engageDiskDevice(sectIndex, srcFrameAddr, WRITE);
+	engageDiskDevice(0, sectIndex, srcFrameAddr, WRITE);
 }
