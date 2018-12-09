@@ -22,7 +22,7 @@ delayd_PTR nextToWake_h;
 
 typedef struct delayd_t {
 	delayd_PTR   d_next;
-	pcb_PTR      d_occupant;
+	int          d_occupantID;
 	cpu_t        d_wakeTime;
 }
 
@@ -32,19 +32,19 @@ typedef struct delayd_t {
 
 void initADL(void) {
 	int i;
-	static semd_t bedFactory[MAXPROC + 2]; /* +2 for dummy nodes */
+	static semd_t bedFactory[MAXUPROC + 2]; /* +2 for dummy nodes */
 
 	openBeds_h = NULL; /* Init delay list */
 
-	for(i = 0; i < MAXPROC; i++) {
+	for(i = 0; i < MAXUPROC; i++) {
 		freeBed(&(bedFactory[i]));
 	}
 
 	/* Set boundary beds for ADL to simplify condition checking */
-	bedFactory[MAXPROC].s_wakeTime = 0;
-	nextToWake_h = &(bedFactory[MAXPROC]);
-	bedFactory[MAXPROC + 1].d_wakeTime = (cpu_t) MAXINT;
-	nextToWake_h->d_next = &(bedFactory[MAXPROC + 1]);
+	bedFactory[MAXUPROC].s_wakeTime = 0;
+	nextToWake_h = &(bedFactory[MAXUPROC]);
+	bedFactory[MAXUPROC + 1].d_wakeTime = (cpu_t) MAXINT;
+	nextToWake_h->d_next = &(bedFactory[MAXUPROC + 1]);
 	nextToWake_h->d_next->d_next = NULL;
 }
 
@@ -81,7 +81,7 @@ void summonSandmanTheDelayDemon() {
  * PARAM:  Time of Day to wake up proc, and proc to delay
  * RETURN: TRUE if successfully delayed, FALSE otherwise
  */
-Bool delayProcess(cpu_t wakeTime, pcb_PTR sleepyProc) {
+Bool delayProcess(cpu_t wakeTime, int asid) {
 	delayd_PTR neighborNapper = searchBeds(wakeTime);
 	delayd_PTR target = allocBed();
 
@@ -90,7 +90,7 @@ Bool delayProcess(cpu_t wakeTime, pcb_PTR sleepyProc) {
 		return (FALSE);
 	} else {
 		/* Init fields and insert new bed into ADL */
-		target->d_occupant = sleepyProc;
+		target->d_occupantID = asid;
 		target->d_wakeTime = wakeTime;
 		target->d_next = neighborNapper->d_next;
 		neighborNapper->d_next = target;
