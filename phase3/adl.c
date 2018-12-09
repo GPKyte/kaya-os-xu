@@ -22,7 +22,7 @@ delayd_PTR nextToWake_h;
 
 typedef struct delayd_t {
 	delayd_PTR   d_next;
-	pcb_PTR      d_occupants;
+	pcb_PTR      d_occupant;
 	cpu_t        d_wakeTime;
 }
 
@@ -57,32 +57,22 @@ void initADL(void) {
  *
  * PARAM:  Time of Day to wake up proc, and proc to delay
  * RETURN: TRUE if successfully delayed, FALSE otherwise
- * TODO: Evaluate TRUE/FALSE mapping
  */
 Bool delayProcess(cpu_t wakeTime, pcb_PTR sleepyProc) {
-	delayd_PTR napNeighbor = searchBeds(wakeTime);
-	delayd_PTR target;
+	delayd_PTR neighborNapper = searchBeds(wakeTime);
+	delayd_PTR target = allocBed();
 
-	/* Verify if bed already in place or needs allocated */
-	if(napNeighbor->d_next->d_wakeTime == wakeTime) {
-		target = napNeighbor->d_next;
-
+	if(target == NULL) {
+		/* Allocation failed, all beds occupied TODO: this shouldn't be a concern.. ?*/
+		return (FALSE);
 	} else {
-		target = allocBed();
-
-		if(target == NULL) {
-			/* Allocation failed, all beds occupied */
-			return (FALSE);
-
-		} else {
-			/* Init fields and insert new bed into ADL */
-			target->d_wakeTime = wakeTime;
-			target->d_next = neighborNapper->d_next;
-			neighborNapper->d_next = target;
-		}
+		/* Init fields and insert new bed into ADL */
+		target->d_occupant = sleepyProc;
+		target->d_wakeTime = wakeTime;
+		target->d_next = neighborNapper->d_next;
+		neighborNapper->d_next = target;
 	}
 
-	insertProcQ(&(target->d_occupants), sleepyProc);
 	return (TRUE);
 }
 
@@ -93,25 +83,23 @@ HIDDEN void freeBed(delayd_t bed) {
 }
 
 HIDDEN delayd_PTR allocBed (void) {
-	if(freeBed_h == NULL) {
+	if(bedFree_h == NULL) {
 		return (NULL);
 	} else {
-		/* Take bed and update available bed list */
-		delayd_PTR cleanBed = freeBed_h;
-		freeBed_h = cleanBed->d_next;
+		delayd_PTR cleanBed = bedFree_h;
+		bedFree_h = cleanBed->d_next;
 
 		/* Clean bed */
 		cleanBed->d_next = NULL;
+		cleanBed->d_procQ = mkEmptyProcQ();
 		cleanBed->d_wakeTime = NULL;
-		cleanBed->d_occupants = mkEmptyProcQ();
 		return (cleanBed);
 	}
 }
 
 /*
  * searchBeds - an accessor used to find and return the predecessor/proper
- *		location of the desired Bed
- *		regardless of whether it exists yet.
+ *		location of the desired semaphore, regardless of whether it exists yet.
  *
  * PARAM:	wakeTime - a pointer to a semaphore address.
  * RETURN:	the predecessor of the given semaphore address in the ASL.
