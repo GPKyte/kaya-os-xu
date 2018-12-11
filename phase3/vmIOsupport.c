@@ -128,8 +128,9 @@ void sysCallHandler() {
 	/* switch cases for each sysCall */
 	switch(oldSys->s_a0) {
 		case 9:
+			int termNo = asid - 1;
 			char *addr = oldSys->s_a1;
-			oldSys->s_v0 = sys9_readFromTerminal(addr);
+			oldSys->s_v0 = sys9_readFromTerminal(termNo, addr);
 
 		case 10:
 			char *virtAddr = oldSys->s_a1;
@@ -179,8 +180,45 @@ void sysCallHandler() {
 }
 
 /********************** Helper Methods *********************/
-HIDDEN int sys9_readFromTerminal(char *addr) {
+HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
+	int status;
+	int charReadCount = 0;
+	int semAddr = findMutex(TERMINT, termNo, TRUE);
+	Bool isReading = TRUE;
 
+	devregtr *termReg = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * TERMINT + termNo];
+
+	/* Check boundary conditions, no OS access */
+	if(addr < KUSEG2START)
+		sys18_terminate();
+
+	sys12_pVirtSem(semAddr); /* Gain mutual exclusion of term device */
+	while(isReading) {
+		/* Prepare terminal and wait for Operation */
+		disableInterrupts();
+		termReg->t_recv_command = RECEIVECHAR;
+		status = SYSCALL(WAITIO, TERMINT, termNo, TRUE);
+		enableInterrupts();
+
+		/* Respond to results */
+		rChar = (status & 0xFF00);
+		status = (status & 0xFF);
+
+		if(status == RECVD) {
+			*(addr + charReadCount) = rChar;
+			charReadCount++;
+
+		} else {
+			isReading = FALSE;
+		}
+	}
+
+	sys11_vVirtSem(semAddr)	/* Release exclusion */
+
+	if(charReadCount > 0) /* Return successfully */
+		return charReadCount;
+	else
+		return (-1 * status); /* Return failure */
 }
 
 HIDDEN int sys10_writeToTerminal(char *virtAddr, int len) {
