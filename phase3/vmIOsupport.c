@@ -324,7 +324,7 @@ void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
 	engageDiskDevice(0, sectIndex, destFrameAddr, READ);
 }
 
-void engageDiskDevice(int disk, int sectIndex, memaddr addr, int readOrWrite) {
+unsigned int engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) {
 	int head, sect, cyl, maxHeads, maxSects, maxCyls;
 	devregtr* diskDev = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT];
 
@@ -340,26 +340,30 @@ void engageDiskDevice(int disk, int sectIndex, memaddr addr, int readOrWrite) {
 
 	/* Calc cylinder */
 	cyl = sectIndex / (maxHeads * maxSects);
+
+	/* TODO: disable interrupts?? */
 	if(cyl >= maxCyls) { SYSCALL(TERMINATEPROCESS); }
 
 	/* Move boom to the correct disk cylinder */
  	desDev->d_command = cyl << 8 | SEEKCYL;
-	status = SYSCALL(WAITIO, DISKINT, 0, 0);
+	status = SYSCALL(WAITIO, DISKINT, diskNo, FALSE);
+
 	if(status != ACK) { SYSCALL(TERMINATEPROCESS); }
 
 	/* Calc position within cylinder */
 	head = (sectIndex / maxSects) % maxHeads;
 	sect = sectIndex % maxSects;
 
-	/* Position and Prepare device */
+	/* Prepare and Engage device */
 	diskDev->d_command = head << 16 | sect << 8 | readOrWrite;
 	diskDev->d_data0 = destFrameAddr; /* Move destFrameAddr into DATA0 */
 
-	status = SYSCALL(WAITIO, DISKINT, 0, 0); /* Wait for job to complete */
+	status = SYSCALL(WAITIO, DISKINT, diskNo, FALSE); /* Wait for job to complete */
 	if(status != ACK)
 		SYSCALL(TERMINATEPROCESS);
 
 	SYSCALL(VERHOGEN, findMutex(DISKINT, 0, FALSE));
+	return status;
 }
 
 int selectFrameIndex() {
@@ -396,5 +400,9 @@ void setSegmentTableEntry(int segment, int asid, osPgTable_PTR addr) {
 }
 
 void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex) {
+	int *semAddr = findMutex(DISKINT, 0, FALSE);
+
+	sys12_pVirtSem(semAddr);
 	engageDiskDevice(0, sectIndex, srcFrameAddr, WRITE);
+	sys11_vVirtSem(semAddr);
 }
