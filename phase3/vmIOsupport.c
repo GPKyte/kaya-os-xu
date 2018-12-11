@@ -386,7 +386,7 @@ void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
 
 unsigned int engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) {
 	int head, sect, cyl, maxHeads, maxSects, maxCyls;
-	devregtr* diskDev = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT];
+	devregtr* diskDev = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT + diskNo];
 
 	int sectMask = 0x000000FF;
 	int headMask = 0x0000FF00;
