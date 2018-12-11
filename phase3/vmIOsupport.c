@@ -215,10 +215,15 @@ HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
 
 	/* check for invalid blockAddr. if addr is in ksegOS, terminate */
 	/* TODO: check for diskNo, if writing to disk0, terminate */
-	if((bufferAddr <= KSEGOSEND) || )
+	if((bufferAddr <= KSEGOSEND) || disk0 == 0)
 		sys18_terminate();
 
-		writePageToBackingStore(bufferAddr, sectNo);
+	/* Transfer data from virtual address into physically located buffer */
+	for(wordIndex = 0; wordIndex < PAGESIZE; wordIndex++) {
+		*(blockAddr + wordIndex) = *(bufferAddr + wordIndex);
+	}
+
+	engageDiskDevice(diskNo, sectNo, bufferAddr, WRITE);
 }
 
 /*
