@@ -212,18 +212,21 @@ HIDDEN void sys13_delay(int asid, int secondsToDelay) {
  */
 HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
 	int *bufferAddr = DISKBUFFERSTART;
+	int *semAddr = findMutex(DISKINT, diskNo, FALSE);
 
 	/* check for invalid blockAddr. if addr is in ksegOS, terminate */
 	/* TODO: check for diskNo, if writing to disk0, terminate */
 	if((bufferAddr <= KSEGOSEND) || disk0 == 0)
 		sys18_terminate();
 
+	sys12_pVirtSem(semAddr);
 	/* Transfer data from virtual address into physically located buffer */
 	for(wordIndex = 0; wordIndex < PAGESIZE; wordIndex++) {
 		*(blockAddr + wordIndex) = *(bufferAddr + wordIndex);
 	}
 
 	engageDiskDevice(diskNo, sectNo, bufferAddr, WRITE);
+	sys11_vVirtSem(semAddr);
 }
 
 /*
@@ -231,16 +234,19 @@ HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
  */
 HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo) {
 	int *bufferAddr = DISKBUFFERSTART;
+	int *semAddr = findMutex(DISKINT, diskNo, FALSE);
 
 	if(blockAddr < KUSEG2START || diskNo == 0)
 		sys18_terminate(); /* illegal access, kill process */
 
+	sys12_pVirtSem(semAddr);
 	engageDiskDevice(diskNo, sectNo, bufferAddr, READ);
 
 	/* Transfer data from physically located buffer into virtual address */
 	for(wordIndex = 0; wordIndex < PAGESIZE; wordIndex++) {
 		*(blockAddr + wordIndex) = *(bufferAddr + wordIndex);
 	}
+	sys11_vVirtSem(semAddr);
 }
 
 HIDDEN int sys16_writeToPrinter(char *virtAddr, int len) {
@@ -333,7 +339,11 @@ void nukePageTable(uPgTbl_PTR pageTable) {
 }
 
 void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
+	int *semAddr = findMutex(DISKINT, 0, FALSE);
+
+	sys12_pVirtSem(semAddr);
 	engageDiskDevice(0, sectIndex, destFrameAddr, READ);
+	sys11_vVirtSem(semAddr);
 }
 
 unsigned int engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) {
@@ -343,8 +353,6 @@ unsigned int engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readO
 	int sectMask = 0x000000FF;
 	int headMask = 0x0000FF00;
 	int cylMask = 0xFFFF0000;
-
-	SYSCALL(PASSEREN, findMutex(DISKINT, 0, FALSE));
 
 	maxSects = (diskDev->d_data1 & sectMask) >> 0;
 	maxHeads = (diskDev->d_data1 & headMask) >> 8;
@@ -374,7 +382,6 @@ unsigned int engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readO
 	if(status != ACK)
 		SYSCALL(TERMINATEPROCESS);
 
-	SYSCALL(VERHOGEN, findMutex(DISKINT, 0, FALSE));
 	return status;
 }
 
