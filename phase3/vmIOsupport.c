@@ -205,7 +205,7 @@ HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
 		rChar = (status & 0xFF00);
 		status = (status & 0xFF);
 
-		if(status == RECVD) {
+		if(status == RECVD && rChar != EOS) {
 			*(addr + charReadCount) = rChar;
 			charReadCount++;
 
