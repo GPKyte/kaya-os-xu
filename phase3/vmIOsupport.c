@@ -225,10 +225,17 @@ HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
  * sys15_diskGet - read from disk
  */
 HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo) {
+	int *bufferAddr = DISKBUFFERSTART;
 
-readPageFromBackingStore(sectNo, bufferAddr);
-	/* check for invalid blockAddr. if addr is in ksegOS, terminate */
-	/* check for diskNo, if reading from disk0, terminate */
+	if(blockAddr < KUSEG2START || diskNo == 0)
+		sys18_terminate(); /* illegal access, kill process */
+
+	engageDiskDevice(diskNo, sectNo, bufferAddr, READ);
+
+	/* Transfer data from physically located buffer into virtual address */
+	for(wordIndex = 0; wordIndex < PAGESIZE; wordIndex++) {
+		*(blockAddr + wordIndex) = *(bufferAddr + wordIndex);
+	}
 }
 
 HIDDEN int sys16_writeToPrinter(char *virtAddr, int len) {
