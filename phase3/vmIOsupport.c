@@ -163,9 +163,10 @@ void sysCallHandler() {
 			oldSys->s_v0 = sys15_diskGet(blockAddr, diskNo,sectNo);
 
 		case 16:
+			int prntNo = asid - 1;
 			virtAddr = oldSys->s_a1;
 			len = oldSys->s_a2;
-			oldSys->s_v0 = sys16_writeToPrinter(virtAddr, len);
+			oldSys->s_v0 = sys16_writeToPrinter(prntNo, virtAddr, len);
 
 		case 17:
 			oldSys->s_v0 = sys17_getTOD();
@@ -231,7 +232,7 @@ HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 	devregtr *termReg = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * TERMINT + termNo];
 
 	/* Check boundary conditions, no OS access */
-	if(virtAddr < KUSEG2START)
+	if(virtAddr < KUSEG2START || len < 0 || len > 128)
 		sys18_terminate();
 
 	sys12_pVirtSem(semAddr); /* Gain mutual exclusion of term device */
@@ -254,8 +255,8 @@ HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 
 	sys11_vVirtSem(semAddr)	/* Release exclusion */
 
-	if(charReadCount > 0) /* Return successfully */
-		return charReadCount;
+	if(noFailure) /* Return successfully */
+		return writeCount;
 	else
 		return (-1 * status); /* Return failure */
 }
@@ -289,13 +290,13 @@ HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
 
 	/* check for invalid blockAddr. if addr is in ksegOS, terminate */
 	/* TODO: check for diskNo, if writing to disk0, terminate */
-	if((bufferAddr <= KSEGOSEND) || disk0 == 0)
+	if((bufferAddr <= KSEGOSEND) || diskNo == 0)
 		sys18_terminate();
 
 	sys12_pVirtSem(semAddr);
 	/* Transfer data from virtual address into physically located buffer */
 	for(wordIndex = 0; wordIndex < PAGESIZE; wordIndex++) {
-		*(blockAddr + wordIndex) = *(bufferAddr + wordIndex);
+		*(bufferAddr + wordIndex) = *(blockAddr + wordIndex);
 	}
 
 	engageDiskDevice(diskNo, sectNo, bufferAddr, WRITE);
@@ -322,15 +323,51 @@ HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo) {
 	sys11_vVirtSem(semAddr);
 }
 
-HIDDEN int sys16_writeToPrinter(char *virtAddr, int len) {
+HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
+	int status, prntCount;
+	int prntChar = 0;
+	int semAddr = findMutex(PRNTINT, prntNo, FALSE);
+	Bool noFailure = TRUE;
 
+	devregtr *prntReg = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * PRNTINT + prntNo];
+
+	/* Check boundary conditions, no OS access */
+	if(virtAddr < KUSEG2START || len < 0 || len > 128)
+		sys18_terminate();
+
+	sys12_pVirtSem(semAddr); /* Gain mutual exclusion of printer device */
+	while(noFailure && prntCount < len) {
+		/* Prepare printer and wait for Operation */
+		disableInterrupts();
+		prntChar = *(virtAddr + prntCount);
+		prntReg->d_data = prntChar;
+		prntReg->d_command = PRINTCHR;
+		status = SYSCALL(WAITIO, PRNTINT, prntNo, FALSE);
+		enableInterrupts();
+
+		if(status == READY) {
+			prntCount++;
+
+		} else {
+			noFailure = FALSE;
+		}
+	}
+
+	sys11_vVirtSem(semAddr)	/* Release exclusion */
+
+	if(noFailure) /* Return successfully */
+		return prntCount;
+	else
+		return (-1 * status); /* Return failure */
 }
 
-HIDDEN unsigned int sys17_getTOD() {
-
+HIDDEN cpu_t sys17_getTOD() {
+	cpu_t tod;
+	STCK(tod);
+	return tod;
 }
 
-HIDDEN void sys18_terminate() {
+HIDDEN void sys18_terminate(int asid) {
 
 }
 
@@ -382,10 +419,13 @@ int* findMutex(int lineNum, int deviceNum, Bool isReadTerm) {
 uPgTbl_PTR getSegmentTableEntry(int segment, int asid) {
 	if(segment == KSEGOS)
 		return segTable->kSegOS[asid];
+
 	else if (segment == KUSEG2)
 		return segTable->KUSEG2[asid];
+
 	else if (segment == KUSEG3)
 		return segTable->KUSEG3[asid];
+
 	else
 		return NULL; /* This is an error condition */
 }
