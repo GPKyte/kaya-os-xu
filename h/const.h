@@ -148,6 +148,10 @@
 #define TRANSTATUS		2
 #define TRANCOMMAND		3
 
+/* terminal success STATUS codes */
+#define CRECV    5
+#define CTRANS   5
+
 /* device common STATUS codes */
 #define UNINSTALLED	0
 #define READY		1
@@ -156,6 +160,7 @@
 /* device common COMMAND codes */
 #define RESET		0
 #define ACK			1
+#define PRINTCHR  2
 
 /* operations */
 #define	MIN(A,B)	((A) < (B) ? A : B)
