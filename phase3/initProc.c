@@ -138,6 +138,7 @@ void test() {
 		newState->s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
 			& ~VMpON & ~USERMODEON;
 
+		SYSCALL(PASSEREN, &masterSem);
 		SYSCALL(CREATEPROCESS, newState); /* SYSCALLs are Main reason for kernel mode */
 	}
 }
