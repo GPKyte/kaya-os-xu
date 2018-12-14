@@ -368,7 +368,18 @@ HIDDEN cpu_t sys17_getTOD() {
 }
 
 HIDDEN void sys18_terminate(int asid) {
-
+	uProcEntry_PTR upe = &(uProcList[asid - 1]);
+	disableInterrupts(); /* New process ldst() will recover ints */
+	/* Clear page table, segment table entry & remove from the ADL & AVSL */
+	nukePageTable(upe.up_pgTable);
+	segTable.kuSeg2[asid] = NULL;
+	/* Could be sleeping or blocked on Mutex semaphore */
+	
+	/* Halt Delay Daemon when approaching the end */
+	if(masterSem == 1) { banishDaemon(); }
+	/* Count down to death */
+	SYSCALL(VERHOGEN, &masterSem);
+	SYSCALL(TERMINATEPROCESS);
 }
 
 int calcBkgStoreAddr(int asid, int pageOffset) {
@@ -394,7 +405,7 @@ HIDDEN int findPTEntryIndex(uPgTbl_PTR pageTable, int vpn) {
 	return indexOfMatch;
 }
 
-/* TODO: modify original findSem method if indeed 1:1
+/*
  * findMutex - Calculates address of device semaphore, specifically mutex
  * PARAM: int lineNum is the device type, correlates with the interrupt lineNum
  *        int deviceNum is the index of a device within a type group
