@@ -31,7 +31,6 @@ segTable_t* segTable = 0x20000500;
 /************************ Prototypes ***********************/
 unsigned int getASID();
 
-
 /********************* External Methods ********************/
 /*
  * test - Set up the page and segment tables for all 8 user processes
@@ -146,27 +145,53 @@ void test() {
  * and copy it to the backing store on disk 0, then start
  * that specific user process.
  *
+ * Set up the three new areas for Pass up or die
+ *  - status: all INTs ON | LOCTIMERON | VMpON | USERMODEON
+ *  - ASID = your asid value
+ *  - stack page: to be filled in later
+ *  - PC = t9 = address of your P3 handler
+ *
+ *  Read the contents of the tape device (asid-1) onto the
+ *  backing store device (disk0)
+ *  - keep reading until the tape block marker (data1) is
+ *    no longer ENDOFBLOCK
+ *    - read block from tape and then immediately write
+ *      it out to disk0
+ *
+ *  Set up a new state for the user process
+ *    - status: all INTs ON | LOCALTIMEON | VMpON | USERMODEON
+ *    - asid = your asid
+ *    - stack page = last page of kUseg2 (0xC000.0000)
+ *    - PC = well known address from the start of kUseg2
+ *
  ****************************************************************************/
 HIDDEN void initUProc() {
-  int i, newAreaSP;
+  int newAreaSP, status, i;
   state_PTR newArea; /* TODO: either this or will have to specify area */
-  state_t procState;
+	state_t uProcState; /* used to update user process' new state */
+	device_PTR tape, bckngStr;
   unsigned int asid = getASID();
 
-  /* 1) Set up the three new areas for Pass up or die
-   *  - status: all INTs ON | LOCTIMERON | VMpON | USERMODEON
-   *  - ASID = your asid value
-   *  - stack page: to be filled in later
-   *  - PC = t9 = address of your P3 handler
-   */
+	/* backing store disk, disk0 */
+	bckngStr = (device_t*) (INTDEVREGSTART +((DISKINT-3) * DEVREGSIZE * DEVPERINT) + (0 * DEVREGSIZE));
 
-  for(i = 0; i < TRAPTYPES; i++) {
+	/* the tape the data is read from */
+	tape = (device_t*) (INTDEVREGSTART + ((TAPEINT-3) *DEVREGSIZE * DEVPERINT) + ((asid-1) * DEVREGSIZE));
+
+	/* Set up the three new areas for Pass up or die
+	 *  - status: all INTs ON | LOCTIMERON | VMpON | USERMODEON
+	 *  - ASID = your asid value
+	 *  - TODO: stack page: to be filled in later
+	 *  - PC = t9 = address of your P3 handler
+	 */
+	 for(i = 0; i < TRAPTYPES; i++) {
+		newArea = (&uProcList[asid-1].up_stateAreas[NEW][i]);
     newArea->s_status =
         INTpON | INTMASKOFF | LOCALTIMEON | VMpON | ~USERMODEON;
     newArea->s_asid = getENTRYHI();
 
-    /* TODO: init pgrmTrap and sysCall handlers for P3 */
-    /* TODO: stack page */
+    /* TODO: pgrmTrapHandler for P3 */
+    /* TODO: stack page for New area*/
     switch (i) {
       case (TLBTRAP):
         newArea->s_pc = newArea->s_t9 = (memaddr) tlbHandler;
@@ -183,44 +208,51 @@ HIDDEN void initUProc() {
         newAreaSP = ; /* memory page for sys5 sp for each newArea */
         break;
     }
+		/* call SYS 5 for every trap type (3 times) */
+		SYSCALL(SPECTRAPVEC, i, (int)(&uProcList[asid-1].up_stateAreas[NEW][i]));
+	 }
 
-    /* call SYS 5 for every trap type (3 times) */
-    SYSCALL();
-  }
+	/*  Read the contents of the tape device (asid-1) onto the
+	 *  backing store device (disk0)
+	 *  - keep reading until the tape block marker (data1) is
+	 *    no longer EOB
+	 *    - read block from tape and then immediately write
+	 *      it out to disk0 (backing store)
+	 */
+	 while((tape->d_data1 != EOT) && (tape->d_data1 != EOF)) {
+		 /* read contents until data1 is no longer EOB */
+		 tape->d_data1 = TAPEBUFFERSSTART + (PAGESIZE * (asid-1));
+		 tape->d_command = READBLK; /* issue read block command */
 
-  /*
-   *  Read the contents of the tape device (asid-1) onto the
-   *  backing store device (disk0)
-   *  - keep reading until the tape block marker (data1) is
-   *    no longer ENDOFBLOCK
-   *    - read block from tape and then immediately write
-   *      it out to disk0
-   */
+		 status = SYSCALL(WAITIO, TAPEINT, asid-1, 0); /* wait to be read */
 
+		 /* check status. if Device not ready, terminate*/
+		 if(status != READY)
+		 	SYSCALL(TERMINATE, 0, 0, 0);
+	 }
 
-  /*  Set up a new state for the user process
-   *    - status: all INTs ON | LOCALTIMEON | VMpON | USERMODEON
-   *    - asid = your asid
-   *    - stack page = last page of kUseg2 (0xC000.0000)
-   *    - PC = well known address from the start of kUseg2
-   */
-  procState.s_status =
-      INTpON | INTMASKOFF | LOCALTIMEON | VMpON | USERMODEON;
-  procState.s_asid = asid;
-  procState.s_sp = KUSEG3START;
-  procState.s_pc = procState.s_t9 = (memaddr) KUSEG2START;
+/*  Set up a new state for the user process
+ *    - status: all INTs ON | LOCALTIMEON | VMpON | USERMODEON
+ *    - asid = your asid
+ *    - stack page = last page of kUseg2 (0xC000.0000)
+ *    - PC = well known address from the start of kUseg2
+ */
+  uProcState.s_status =
+      ALLOFF | INTpON | INTMASKOFF | LOCALTIMEON | VMpON | VMcON | ~USERMODEON;
+  uProcState.s_asid = getENTRYHI();
+  uProcState.s_sp = KUSEG3START;
+  uProcState.s_pc = uProcState.s_t9 = (memaddr) KUSEG2START;
 
-  loadState(&procState);
+  loadState(&uProcState);
 }
 
-/***********************************************************************
+/*************************** Helper Methods ****************************/
+/*
  *  getASID - returns the ASID of the currently running process
- ***********************************************************************/
+ */
 unsigned int getASID() {
   unsigned int asid = getENTRYHI();
   asid = (asid & 0x00000FC0) >> 6;
 
   return (asid);
 }
-
-/********************** Helper Methods *********************/
