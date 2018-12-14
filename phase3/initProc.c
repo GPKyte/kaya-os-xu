@@ -23,9 +23,10 @@
 
 uPgTable_PTR kUseg3_pte; /* shared variable among all users */
 
-int pager; /* Mutex for page swaping mechanism */
-int mutexSems[MAXSEMS];
-uProcEntry_t uProcList[MAXUPROC];
+static int masterSem;
+static int pager; /* Mutex for page swaping mechanism */
+static int mutexSems[MAXSEMS];
+static uProcEntry_t uProcList[MAXUPROC];
 segTable_t* segTable = 0x20000500;
 
 /************************ Prototypes ***********************/
@@ -61,7 +62,7 @@ void test() {
 
 		/* TODO: Should we add segment number or asid at all here? (both 0) */
 		newPTEntry->entryHI = (KSEGOSVPN + loopVar) << 12;
-		newPTEntry->entryLO = DIRTY | GLOBAL | VALID;
+		newPTEntry->entryLO = (KSEGOSVPN + loopVar) << 12 | DIRTY | GLOBAL | VALID;
 	}
 
 	/* Set up kSeg3 page table entries */
@@ -108,7 +109,7 @@ void test() {
 		/* Make Segment Table Entry for uProc's new Page Table */
 		segTable->kuSeg2[asid] = &(uPgTblList[asid - 1]));
 
-		/* Fill in default entries */
+		/* Fill in default page table entries */
 		for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
 			newPTEntry = &(uPgTblList[asid - 1].entries[loopVar]);
 
