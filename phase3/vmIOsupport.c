@@ -374,7 +374,7 @@ HIDDEN void sys18_terminate(int asid) {
 	nukePageTable(upe.up_pgTable);
 	segTable.kuSeg2[asid] = NULL;
 	/* Could be sleeping or blocked on Mutex semaphore */
-	
+
 	/* Halt Delay Daemon when approaching the end */
 	if(masterSem == 1) { banishDaemon(); }
 	/* Count down to death */
@@ -389,8 +389,7 @@ int calcBkgStoreAddr(int asid, int pageOffset) {
 
 HIDDEN int findPTEntryIndex(uPgTbl_PTR pageTable, int vpn) {
 	Bool isAMatch;
-	int vpnToMatch;
-	int loopVar = 0;
+	int vpnToMatch, loopVar = 0;
 	int indexOfMatch = NULL; /* If not found, this indicates error condition */
 	int numEntries = pageTable->magicPtHeaderWord & ENTRYCNTMASK;
 
@@ -428,7 +427,7 @@ int* findMutex(int lineNum, int deviceNum, Bool isReadTerm) {
  * RETURN: ~uPgTbl_PTR to a USER OR OS page table
  */
 uPgTbl_PTR getSegmentTableEntry(int segment, int asid) {
-	if(segment == KSEGOS)
+	if(segment == KSEGOS || segment == 1)
 		return segTable->kSegOS[asid];
 
 	else if (segment == KUSEG2)
@@ -442,11 +441,12 @@ uPgTbl_PTR getSegmentTableEntry(int segment, int asid) {
 }
 
 Bool isDirty(ptEntry_PTR pageDesc) {
-	return TRUE; /* (*pageDesc & DIRTY); */
+	return TRUE; /* (*pageDesc & DIRTY) ? TRUE : FALSE; */
 }
 
 void nukePageTable(uPgTbl_PTR pageTable) {
 	int loopVar, entries;
+
 	/* Is this a page table or small island city? */
 	if(pageTable.magicPtHeaderWord & MAGICNUMMASK != MAGICNUM)
 		SYSCALL(TERMINATEPROCESS);
@@ -530,10 +530,10 @@ void setSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
 		gameOver(99); /* Magic is a lie */
 
 	/* Overwrite current entry of segTable with address of page table */
-	if(segment == KSEGOS)
-		segTable->kSegOS[asid] = (osPgTable_PTR) addr;
-	else if (segment == KUSEG2)
+	if (segment == KUSEG2)
 		segTable->KUSEG2[asid] = addr;
+	else if(segment == KSEGOS)
+		segTable->kSegOS[asid] = (osPgTable_PTR) addr;
 	else /* (segment == KUSEG3) */
 		segTable->KUSEG3[asid] = addr;
 }
