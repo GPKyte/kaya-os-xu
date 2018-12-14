@@ -169,11 +169,8 @@ HIDDEN void initUProc() {
   int newAreaSP, status, i;
   state_PTR newArea; /* TODO: either this or will have to specify area */
 	state_t uProcState; /* used to update user process' new state */
-	device_PTR tape, bckngStr;
+	device_PTR tape;
   unsigned int asid = getASID();
-
-	/* backing store disk, disk0 */
-	bckngStr = (device_t*) (INTDEVREGSTART +((DISKINT-3) * DEVREGSIZE * DEVPERINT) + (0 * DEVREGSIZE));
 
 	/* the tape the data is read from */
 	tape = (device_t*) (INTDEVREGSTART + ((TAPEINT-3) *DEVREGSIZE * DEVPERINT) + ((asid-1) * DEVREGSIZE));
