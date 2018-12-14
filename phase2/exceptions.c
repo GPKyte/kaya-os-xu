@@ -214,11 +214,9 @@ HIDDEN void innocentOrNoose(int exceptionType, state_PTR oldState) {
 		/* Default case, nexception state not specified */
 		sys2_terminateProcess();
 
-	/*
-	 * Pass up the processor state from old area into the process blk's
+	/* Pass up the processor state from old area into the process blk's
 	 * Specified old area address. Then load the pcb's specified
-	 * new area into the Process block.
-	 */
+	 * new area into the Process block. */
 	copyState(oldState, curProc->p_exceptionConfig[OLD][exceptionType]);
 	copyState(curProc->p_exceptionConfig[NEW][exceptionType], &(curProc->p_s));
 	loadState(&(curProc->p_s));
