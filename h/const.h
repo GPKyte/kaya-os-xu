@@ -59,6 +59,7 @@
 #define HIDDEN		static
 #define Bool		int
 #define EOS		'\0'
+#define EOL		0x0A
 #define NULL ((void *) 0xFFFFFFFF)
 #define MAXINT ((int *) 0x7FFFFFFF)
 #define READ    0;
