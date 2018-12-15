@@ -31,19 +31,20 @@
  *
  */
 void tlbHandler() {
+	int storageAddr;
 	/* Determine cause */
-	oldTlb = (state_PTR) TLBOLDAREA;
-	cause = oldTlb->s_cause;
-	cause = (cause << shiftBitsForCauseOffset) & someCauseMask;
+	state_PTR oldTlb = (state_PTR) TLBOLDAREA;
+	uint cause = oldTlb->s_cause;
+	uint cause = (cause << shiftBitsForCauseOffset) & someCauseMask;
 
 	/* Who am I? */
-	asid = (oldTlb->s_asid & ASIDMASK) >> 6;
-	segNum = (oldTlb->s_asid & SEGMASK) >> 30;
+	int asid = (oldTlb->s_asid & ASIDMASK) >> 6;
+	int segNum = (oldTlb->s_asid & SEGMASK) >> 30;
 	/* We store "page number" in the offset from the relevant VPN start */
-	vpn = (oldTlb->s_asid & VPNMASK) >> 12;
+	int vpn = (oldTlb->s_asid & VPNMASK) >> 12;
 
-	destPgTbl = getSegmentTableEntry(segNum, asid);
-	destPTEIndex = findPTEntryIndex(destPgTbl, vpn);
+	uPgTable_PTR destPgTbl = getSegmentTableEntry(segNum, asid);
+	int destPTEIndex = findPTEntryIndex(destPgTbl, vpn);
 
 	if(cause != PAGELOADMISS && cause != PAGESTRMISS)
 		/* Enfore zero-tolerance policy rules, only handle missing page */
@@ -58,24 +59,25 @@ void tlbHandler() {
 		loadState(oldTlb);
 	}
 
-	newFrameNum = selectFrameIndex();
-	curFPEntry = framePool.frames[newFrameNum];
-	newFrameAddr = framePool.frameAddr[newFrameNum];
+	int newFrameNum = selectFrameIndex();
+	int* curFPEntry = &(framePool.frames[newFrameNum];
+	int newFrameAddr = framePool.frameAddr[newFrameNum];
 
 	if(frameInUse(curFPEntry)) {
 		/* Find PTE for the to-be-overwritten page in order
-		 * to determine if its a dirty page */
-		curPageTable = getSegmentTableEntry(
+		 * to determine if its a dirty page/
+
+		/ * Note: this may either be an OS or User page table */
+		uPgTable_PTR curPageTable = getSegmentTableEntry(
 			(curFPEntry & SEGMASK) >> 30,
 			(curFPEntry & ASIDMASK) >> 6);
 
-		curPageIndex = findPageTableEntry(curPageTable,
+		int curPageIndex = findPageTableEntry(curPageTable,
 			(curFPEntry & VPNMASK) >> 12);
 
-		curPage = curPageTable->entries[curPageIndex];
-		curPage &= ~VALID; /* Invalidate curPage to mean "missing" */
+		ptEntry_PTR curPage = &(curPageTable->entries[curPageIndex]);
+		invalidate(curPage); /* Invalidate curPage to mean "missing" */
 
-		/* TODO: Consider keeping isDirty info in framepool entries... */
 		if(isDirty(curPage)) { /* Then write page to backing store */
 			/* Clear out TLB to avoid inconsistencies */
 			/* TODO Better: Overwrite cached page table entry */
@@ -99,12 +101,12 @@ void tlbHandler() {
 	TLBCLEAR();
 
 	/* Update relevant page table entry */
-	newPTEntry->entryLO &= ~PFNMASK /* Erase current PFN */
-	newPTEntry->entryLO |= (newFrameAddr / PAGESIZE) | VALID;
+	newPTEntry->entryLO &= ~PFNMASK; /* Erase current PFN */
+	newPTEntry->entryLO |= newFrameAddr | VALID; /* newFrameAddr is like PFN << 12 (or * 4096) */
 
 	/* End mutal exclusion of TLB Handling */
 	SYSCALL(VERHOGEN, &pager);
-	loadState(oldTlb);
+	loadState(&oldTlb);
 }
 
 
@@ -113,7 +115,7 @@ void tlbHandler() {
  *
  */
 void sysCallHandler() {
-	unsigned int asid = getASID();
+	uint asid = getASID();
 	state_PTR oldSys = &(uProcList[asid - 1].up_stateAreas[OLD][SYSTRAP]);
 
 	/* check Cause.ExcCode in uProc's SYS/BP Old area for SYS/BP */
@@ -470,7 +472,7 @@ void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
 	sys11_vVirtSem(semAddr);
 }
 
-unsigned int engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) {
+uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) {
 	int head, sect, cyl, maxHeads, maxSects, maxCyls;
 	devregtr* diskDev = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT + diskNo];
 
@@ -507,6 +509,11 @@ unsigned int engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readO
 		SYSCALL(TERMINATEPROCESS);
 
 	return status;
+}
+
+/* invalidate - mutator used to mark a page as missing from memory */
+void invalidate(ptEntry_PTR pte) {
+	pte->entryLO = pte->entryLO & ~VALID;
 }
 
 int selectFrameIndex() {
