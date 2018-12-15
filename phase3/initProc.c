@@ -30,7 +30,7 @@ static uProcEntry_t uProcList[MAXUPROC];
 segTable_t* segTable = 0x20000500;
 
 /************************ Prototypes ***********************/
-unsigned int getASID();
+uint getASID();
 
 /********************* External Methods ********************/
 /*
@@ -44,7 +44,7 @@ void test() {
 	state_t newStateList[MAXUPROC];
 
 	devregarea_t* devregarea = (devregarea_t*) RAMBASEADDR;
-	unsigned int ramtop = (devregarea->rambase) + (devregarea->ramsize);
+	uint ramtop = (devregarea->rambase) + (devregarea->ramsize);
 	masterSem = 0; /* For graceful halting of OS after test fin */
 
 	/* Set up kSegOS and kuSeg3 Segment Table entries (all the same-ish) */
@@ -172,7 +172,7 @@ HIDDEN void initUProc() {
 	state_PTR newArea; /* TODO: either this or will have to specify area */
 	state_t uProcState; /* used to update user process' new state */
 	device_PTR tape;
-	unsigned int asid = getASID();
+	uint asid = getASID();
 
 	/* the tape the data is read from */
 	tape = (device_t*) (INTDEVREGSTART + ((TAPEINT-3) * DEVREGSIZE * DEVPERINT) + ((asid-1) * DEVREGSIZE));
@@ -256,8 +256,8 @@ HIDDEN void initUProc() {
 /*
  *  getASID - returns the ASID of the currently running process
  */
-unsigned int getASID() {
-	unsigned int asid = getENTRYHI();
+uint getASID() {
+	uint asid = getENTRYHI();
 	asid = (asid & 0x00000FC0) >> 6;
 
 	return (asid);
