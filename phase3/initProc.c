@@ -175,7 +175,7 @@ HIDDEN void initUProc() {
 	unsigned int asid = getASID();
 
 	/* the tape the data is read from */
-	tape = (device_t*) (INTDEVREGSTART + ((TAPEINT-3) *DEVREGSIZE * DEVPERINT) + ((asid-1) * DEVREGSIZE));
+	tape = (device_t*) (INTDEVREGSTART + ((TAPEINT-3) * DEVREGSIZE * DEVPERINT) + ((asid-1) * DEVREGSIZE));
 
 	/* Set up the three new areas for Pass up or die
 	 *  - status: all INTs ON | LOCTIMERON | VMpON | USERMODEON
@@ -186,7 +186,7 @@ HIDDEN void initUProc() {
 	 for(i = 0; i < TRAPTYPES; i++) {
 		newArea = (&uProcList[asid-1].up_stateAreas[NEW][i]);
 		newArea->s_status =
-				INTpON | INTMASKOFF | LOCALTIMEON | VMpON | ~USERMODEON;
+				INTpON | INTMASKOFF | LOCALTIMEON | VMpON | USERMODEON;
 		newArea->s_asid = getENTRYHI();
 
 		/* TODO: pgrmTrapHandler for P3 */
@@ -238,7 +238,7 @@ HIDDEN void initUProc() {
  *    - PC = well known address from the start of kUseg2
  */
 	uProcState.s_status =
-			ALLOFF | INTpON | INTMASKOFF | LOCALTIMEON | VMpON | VMcON | ~USERMODEON;
+			ALLOFF | INTpON | INTMASKOFF | LOCALTIMEON | VMpON | VMcON | USERMODEON;
 	uProcState.s_asid = getENTRYHI();
 	uProcState.s_sp = KUSEG3START;
 	uProcState.s_pc = uProcState.s_t9 = (memaddr) KUSEG2START;
