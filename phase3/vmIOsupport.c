@@ -113,7 +113,7 @@ void tlbHandler() {
  *
  */
 void sysCallHandler() {
-	unsigned int asid = getASID(getENTRYHI());
+	unsigned int asid = getASID();
 	state_PTR oldSys = &(uProcList[asid - 1].up_stateAreas[OLD][SYSTRAP]);
 
 	/* check Cause.ExcCode in uProc's SYS/BP Old area for SYS/BP */
@@ -217,7 +217,7 @@ HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
 
 	sys11_vVirtSem(semAddr)	/* Release exclusion */
 
-	if(charReadCount > 0) /* Return successfully */
+	if(status == RECVD && charReadCount > 0) /* Return successfully */
 		return charReadCount;
 	else
 		return (-1 * status); /* Return failure */
