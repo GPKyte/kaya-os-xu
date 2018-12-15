@@ -1,2 +1,5 @@
 *.o
 *.sw*
+*machine
+*umps
+*kernel*
