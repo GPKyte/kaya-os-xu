@@ -258,9 +258,11 @@ unsigned int getASID() {
 }
 
 /*
- * newAreaSPforSYS5 - get memory page for SYS5 stack page for new area
+ * newAreaSPforSYS5 - calculate memory page for SYS5 stack page for new area
  */
 state_PTR newAreaSPforSYS5(int trapType) {
-	return
-		(TAPEBUFFERSSTART - (((TRAPTYPES-1) * PAGESIZE * (asid-1)) + (PAGESIZE * trapType)));
+	/* Calculate address of page in OS memory to act as stack for SYS 5 handling */
+	int topStackPageNo = TAPEBUFFERSSTART / PAGESIZE;
+	int downwardOffset = (TRAPTYPES * (asid - 1)) + trapType;
+	return (topStackPageNo - downwardOffset) * PAGESIZE;
 }
