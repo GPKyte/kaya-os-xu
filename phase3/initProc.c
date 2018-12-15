@@ -210,7 +210,7 @@ HIDDEN void initUProc() {
 		}
 		/* call SYS 5 for every trap type (3 times) */
 		SYSCALL(SPECTRAPVEC, i, (int)(&uProcList[asid-1].up_stateAreas[NEW][i]));
-	 }
+	}
 
 	/*  Read the contents of the tape device (asid-1) onto the
 	 *  backing store device (disk0)
@@ -224,19 +224,19 @@ HIDDEN void initUProc() {
 		 tape->d_data1 = TAPEBUFFERSSTART + (PAGESIZE * (asid-1));
 		 tape->d_command = READBLK; /* issue read block command */
 
-		 status = SYSCALL(WAITIO, TAPEINT, asid-1, 0); /* wait to be read */
+		status = SYSCALL(WAITIO, TAPEINT, asid-1, 0); /* wait to be read */
 
 		 /* check status. if Device not ready, terminate*/
 		 if(status != READY)
 		 	SYSCALL(TERMINATE, 0, 0, 0);
 	 }
 
-/*  Set up a new state for the user process
- *    - status: all INTs ON | LOCALTIMEON | VMpON | USERMODEON
- *    - asid = your asid
- *    - stack page = last page of kUseg2 (0xC000.0000)
- *    - PC = well known address from the start of kUseg2
- */
+	/*  Set up a new state for the user process
+	 *    - status: all INTs ON | LOCALTIMEON | VMpON | USERMODEON
+	 *    - asid = your asid
+	 *    - stack page = last page of kUseg2 (0xC000.0000)
+	 *    - PC = well known address from the start of kUseg2
+	 */
 	uProcState.s_status =
 			ALLOFF | INTpON | INTMASKOFF | LOCALTIMEON | VMpON | VMcON | USERMODEON;
 	uProcState.s_asid = getENTRYHI();
