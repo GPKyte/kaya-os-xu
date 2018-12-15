@@ -183,33 +183,33 @@ HIDDEN void initUProc() {
 	 *  - TODO: stack page: to be filled in later
 	 *  - PC = t9 = address of your P3 handler
 	 */
-	 for(i = 0; i < TRAPTYPES; i++) {
-		newArea = (&uProcList[asid-1].up_stateAreas[NEW][i]);
+	for(trapNo = 0; trapNo < TRAPTYPES; trapNo++) {
+		newArea = &(uProcList[asid-1].up_stateAreas[NEW][trapNo]);
 		newArea->s_status =
 				INTpON | INTMASKOFF | LOCALTIMEON | VMpON | USERMODEON;
 		newArea->s_asid = getENTRYHI();
 
 		/* TODO: pgrmTrapHandler for P3 */
 		/* TODO: stack page for New area*/
-		switch (i) {
+		switch (trapNo) {
 			case (TLBTRAP):
 				newArea->s_pc = newArea->s_t9 = (memaddr) tlbHandler;
-				/* memory page for sys5 sp */
-				newArea->s_sp = (int)newAreaSPforSYS5(TLBTRAP);
+				newArea->s_sp = newAreaSPforSYS5(TLBTRAP);
 				break;
 
 			case (PROGTRAP):
 				newArea->s_pc = newArea->s_t9 = (memaddr) pgrmTrapHandler;
-				newArea->s_sp = (int)newAreaSPforSYS5(PROGTRAP);
+				newArea->s_sp = newAreaSPforSYS5(PROGTRAP);
 				break;
 
 			case (SYSTRAP):
 				newArea->s_pc = newArea->s_t9 = (memaddr) sysCallHandler;
-				newArea->s_sp = (int)newAreaSPforSYS5(SYSTRAP);
+				newArea->s_sp = newAreaSPforSYS5(SYSTRAP);
 				break;
 		}
+
 		/* call SYS 5 for every trap type (3 times) */
-		SYSCALL(SPECTRAPVEC, i, (int)(&uProcList[asid-1].up_stateAreas[NEW][i]));
+		SYSCALL(SPECTRAPVEC, trapNo, (int) &(uProcList[asid-1].up_stateAreas[NEW][trapNo]));
 	}
 
 	/*  Read the contents of the tape device (asid-1) onto the
