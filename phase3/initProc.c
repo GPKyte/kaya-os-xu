@@ -168,11 +168,11 @@ void test() {
  *
  ****************************************************************************/
 HIDDEN void initUProc() {
-  int status, i;
-  state_PTR newArea; /* TODO: either this or will have to specify area */
+	int status, i;
+	state_PTR newArea; /* TODO: either this or will have to specify area */
 	state_t uProcState; /* used to update user process' new state */
 	device_PTR tape;
-  unsigned int asid = getASID();
+	unsigned int asid = getASID();
 
 	/* the tape the data is read from */
 	tape = (device_t*) (INTDEVREGSTART + ((TAPEINT-3) *DEVREGSIZE * DEVPERINT) + ((asid-1) * DEVREGSIZE));
@@ -185,29 +185,29 @@ HIDDEN void initUProc() {
 	 */
 	 for(i = 0; i < TRAPTYPES; i++) {
 		newArea = (&uProcList[asid-1].up_stateAreas[NEW][i]);
-    newArea->s_status =
-        INTpON | INTMASKOFF | LOCALTIMEON | VMpON | ~USERMODEON;
-    newArea->s_asid = getENTRYHI();
+		newArea->s_status =
+				INTpON | INTMASKOFF | LOCALTIMEON | VMpON | ~USERMODEON;
+		newArea->s_asid = getENTRYHI();
 
-    /* TODO: pgrmTrapHandler for P3 */
-    /* TODO: stack page for New area*/
-    switch (i) {
-      case (TLBTRAP):
-        newArea->s_pc = newArea->s_t9 = (memaddr) tlbHandler;
+		/* TODO: pgrmTrapHandler for P3 */
+		/* TODO: stack page for New area*/
+		switch (i) {
+			case (TLBTRAP):
+				newArea->s_pc = newArea->s_t9 = (memaddr) tlbHandler;
 				/* memory page for sys5 sp */
-        newArea->s_sp = (int)newAreaSPforSYS5(TLBTRAP);
-        break;
+				newArea->s_sp = (int)newAreaSPforSYS5(TLBTRAP);
+				break;
 
-      case (PROGTRAP):
-        newArea->s_pc = newArea->s_t9 = (memaddr) pgrmTrapHandler;
-        newArea->s_sp = (int)newAreaSPforSYS5(PROGTRAP);
-        break;
+			case (PROGTRAP):
+				newArea->s_pc = newArea->s_t9 = (memaddr) pgrmTrapHandler;
+				newArea->s_sp = (int)newAreaSPforSYS5(PROGTRAP);
+				break;
 
-      case (SYSTRAP):
-        newArea->s_pc = newArea->s_t9 = (memaddr) sysCallHandler;
-        newArea->s_sp = (int)newAreaSPforSYS5(SYSTRAP);
-        break;
-    }
+			case (SYSTRAP):
+				newArea->s_pc = newArea->s_t9 = (memaddr) sysCallHandler;
+				newArea->s_sp = (int)newAreaSPforSYS5(SYSTRAP);
+				break;
+		}
 		/* call SYS 5 for every trap type (3 times) */
 		SYSCALL(SPECTRAPVEC, i, (int)(&uProcList[asid-1].up_stateAreas[NEW][i]));
 	 }
@@ -237,13 +237,13 @@ HIDDEN void initUProc() {
  *    - stack page = last page of kUseg2 (0xC000.0000)
  *    - PC = well known address from the start of kUseg2
  */
-  uProcState.s_status =
-      ALLOFF | INTpON | INTMASKOFF | LOCALTIMEON | VMpON | VMcON | ~USERMODEON;
-  uProcState.s_asid = getENTRYHI();
-  uProcState.s_sp = KUSEG3START;
-  uProcState.s_pc = uProcState.s_t9 = (memaddr) KUSEG2START;
+	uProcState.s_status =
+			ALLOFF | INTpON | INTMASKOFF | LOCALTIMEON | VMpON | VMcON | ~USERMODEON;
+	uProcState.s_asid = getENTRYHI();
+	uProcState.s_sp = KUSEG3START;
+	uProcState.s_pc = uProcState.s_t9 = (memaddr) KUSEG2START;
 
-  loadState(&uProcState);
+	loadState(&uProcState);
 }
 
 /*************************** Helper Methods ****************************/
@@ -251,16 +251,16 @@ HIDDEN void initUProc() {
  *  getASID - returns the ASID of the currently running process
  */
 unsigned int getASID() {
-  unsigned int asid = getENTRYHI();
-  asid = (asid & 0x00000FC0) >> 6;
+	unsigned int asid = getENTRYHI();
+	asid = (asid & 0x00000FC0) >> 6;
 
-  return (asid);
+	return (asid);
 }
 
 /*
  * newAreaSPforSYS5 - get memory page for SYS5 stack page for new area
  */
 state_PTR newAreaSPforSYS5(int trapType) {
- return
+	return
 		(TAPEBUFFERSSTART - (((TRAPTYPES-1) * PAGESIZE * (asid-1)) + (PAGESIZE * trapType)));
 }
