@@ -146,13 +146,19 @@ typedef struct uProcEntry_t {
 	int up_pgTable;
 	int up_syncSem;
 	int up_bkgStoreAddr;
-	state_t	up_stateAreas[2][TRAPTYPES];
+	state_t	up_stateAreas[2][3];
 } uProcEntry_t, *uProcEntry_PTR;
 
 typedef struct segTable_t {
-	osPgTable_PTR kSegOS[MAXPROCID];
-	uPgTable_PTR  kuSeg2[MAXPROCID];
-	uPgTable_PTR  kuSeg3[MAXPROCID];
+	osPgTable_PTR kSegOS[64];
+	uPgTable_PTR  kuSeg2[64];
+	uPgTable_PTR  kuSeg3[64];
 } segTable_t;
+
+typedef struct delayd_t {
+	struct delayd_t*	d_next;
+	int					d_occupantID;
+	cpu_t				d_wakeTime;
+} delayd_t, *delayd_PTR;
 
 #endif

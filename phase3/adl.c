@@ -20,13 +20,6 @@ delayd_PTR nextToWake_h;
 
 /************************ Prototypes ***********************/
 
-typedef struct delayd_t {
-	delayd_PTR   d_next;
-	int          d_occupantID;
-	cpu_t        d_wakeTime;
-}
-
-
 /********************* External Methods ********************/
 
 
