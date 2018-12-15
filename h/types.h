@@ -9,6 +9,7 @@
 
 
 typedef signed int cpu_t;
+typedef unsigned int uint;
 
 
 typedef unsigned int memaddr;
