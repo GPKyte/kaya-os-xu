@@ -219,17 +219,23 @@ HIDDEN void initUProc() {
 	 *    - read block from tape and then immediately write
 	 *      it out to disk0 (backing store)
 	 */
-	 while((tape->d_data1 != EOT) && (tape->d_data1 != EOF)) {
-		 /* read contents until data1 is no longer EOB */
-		 tape->d_data1 = TAPEBUFFERSSTART + (PAGESIZE * (asid-1));
-		 tape->d_command = READBLK; /* issue read block command */
+	int pageNo = 0;
+	while((tape->d_data1 != EOT) && (tape->d_data1 != EOF)) {
+		/* read contents until data1 is no longer EOB */
+		int bufferAddr = TAPEBUFFERSSTART + (PAGESIZE * (asid-1));
+		tape->d_data1 = bufferAddr;
+		tape->d_command = READBLK; /* issue read block command */
 
 		status = SYSCALL(WAITIO, TAPEINT, asid-1, 0); /* wait to be read */
 
-		 /* check status. if Device not ready, terminate*/
-		 if(status != READY)
-		 	SYSCALL(TERMINATE, 0, 0, 0);
-	 }
+		/* check status: if tape not ready, terminate */
+		if(status != READY)
+			SYSCALL(TERMINATE, 0, 0, 0);
+
+		destAddr = calcBkgStoreAddr(asid, pageNo);
+		writePageToBackingStore(bufferAddr, destAddr)
+		pageNo++;
+	}
 
 	/*  Set up a new state for the user process
 	 *    - status: all INTs ON | LOCALTIMEON | VMpON | USERMODEON
