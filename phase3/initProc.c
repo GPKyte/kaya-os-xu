@@ -166,7 +166,7 @@ void test() {
  *
  ****************************************************************************/
 HIDDEN void initUProc() {
-  int newAreaSP, status, i;
+  int status, i;
   state_PTR newArea; /* TODO: either this or will have to specify area */
 	state_t uProcState; /* used to update user process' new state */
 	device_PTR tape;
@@ -192,17 +192,18 @@ HIDDEN void initUProc() {
     switch (i) {
       case (TLBTRAP):
         newArea->s_pc = newArea->s_t9 = (memaddr) tlbHandler;
-        newAreaSP = ; /* memory page for sys5 sp for each newArea */
+				/* memory page for sys5 sp */
+        newArea->s_sp = (int)newAreaSPforSYS5(TLBTRAP);
         break;
 
       case (PROGTRAP):
         newArea->s_pc = newArea->s_t9 = (memaddr) pgrmTrapHandler;
-        newAreaSP = ; /* memory page for sys5 sp for each newArea */
+        newArea->s_sp = (int)newAreaSPforSYS5(PROGTRAP);
         break;
 
       case (SYSTRAP):
         newArea->s_pc = newArea->s_t9 = (memaddr) sysCallHandler;
-        newAreaSP = ; /* memory page for sys5 sp for each newArea */
+        newArea->s_sp = (int)newAreaSPforSYS5(SYSTRAP);
         break;
     }
 		/* call SYS 5 for every trap type (3 times) */
@@ -252,4 +253,12 @@ unsigned int getASID() {
   asid = (asid & 0x00000FC0) >> 6;
 
   return (asid);
+}
+
+/*
+ * newAreaSPforSYS5 - get memory page for SYS5 stack page for new area
+ */
+state_PTR newAreaSPforSYS5(int trapType) {
+ return
+		(TAPEBUFFERSSTART - (((TRAPTYPES-1) * PAGESIZE * (asid-1)) + (PAGESIZE * trapType)));
 }
