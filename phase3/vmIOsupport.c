@@ -500,7 +500,7 @@ unsigned int engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readO
 
 	/* Prepare and Engage device */
 	diskDev->d_command = head << 16 | sect << 8 | readOrWrite;
-	diskDev->d_data0 = destFrameAddr; /* Move destFrameAddr into DATA0 */
+	diskDev->d_data0 = addr; /* Move srcFrameAddr or destFrameAddr into DATA0 */
 
 	status = SYSCALL(WAITIO, DISKINT, diskNo, FALSE); /* Wait for job to complete */
 	if(status != ACK)

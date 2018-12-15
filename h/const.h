@@ -134,6 +134,9 @@
 #define PRNTINT		6
 #define TERMINT		7
 
+#define INTDEVREGSTART  0x10000050
+#define INTDEVBITMAP    0x1000003c
+
 #define DEVREGLEN	4	/* device register field length in bytes & regs per dev */
 #define DEVREGSIZE	16	/* device register size in bytes */
 
@@ -162,6 +165,17 @@
 #define RESET		0
 #define ACK			1
 #define PRINTCHR  2
+
+/* disk device COMMAND codes */
+#define SEEKCYL   2
+#define READBLK   3
+#define WRITBLK   4
+
+/* tape device marker */
+#define EOT   0
+#define EOF   1
+#define EOB   2
+#define TS    3
 
 /* operations */
 #define	MIN(A,B)	((A) < (B) ? A : B)
