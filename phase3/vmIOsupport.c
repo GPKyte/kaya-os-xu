@@ -102,8 +102,8 @@ void tlbHandler() {
 	TLBCLEAR();
 
 	/* Update relevant page table entry */
-	newPTEntry->entryLO &= ~PFNMASK; /* Erase current PFN */
-	newPTEntry->entryLO |= newFrameAddr | VALID; /* newFrameAddr is like PFN << 12 (or * 4096) */
+	destPageEntry->entryLO &= ~PFNMASK; /* Erase current PFN */
+	destPageEntry->entryLO |= newFrameAddr | VALID; /* newFrameAddr is like PFN << 12 (or * 4096) */
 
 	/* End mutal exclusion of TLB Handling */
 	SYSCALL(VERHOGEN, &pager);
