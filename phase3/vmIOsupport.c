@@ -44,11 +44,11 @@ void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex);
 
 /********************* External Methods ********************/
 /*
- * tlbHandler -
+ * uTlbHandler -
  *
  *
  */
-void tlbHandler() {
+void uTlbHandler() {
 	int storageAddr, asid, segNum, vpn, destPTEIndex, newFrameNum, newFrameAddr;
 	int curPageIndex;
 	int* curFPEntry;
@@ -135,10 +135,10 @@ void tlbHandler() {
 
 
 /*
- * sysCallHandler handles SYS9 - SYS18
+ * uSysCallHandler handles SYS9 - SYS18
  *
  */
-void sysCallHandler() {
+void uSysCallHandler() {
 	int termNo, len, *semaddr, secondsToDelay, *blockAddr, diskNo, sectNo, prntNo;
 	char *addr, *virtAddr;
 	uint asid = getASID();

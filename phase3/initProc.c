@@ -198,21 +198,21 @@ HIDDEN void initUProc() {
 			INTpON | INTMASKOFF | LOCALTIMEON | VMpON | USERMODEON;
 		newArea->s_asid = getENTRYHI();
 
-		/* TODO: pgrmTrapHandler for P3 */
+		/* TODO: upgrmTrapHandler for P3 */
 		/* TODO: stack page for New area*/
 		switch (trapNo) {
 			case (TLBTRAP):
-				newArea->s_pc = newArea->s_t9 = (memaddr) tlbHandler;
+				newArea->s_pc = newArea->s_t9 = (memaddr) uTlbHandler;
 				newArea->s_sp = newAreaSPforSYS5(TLBTRAP);
 				break;
 
 			case (PROGTRAP):
-				newArea->s_pc = newArea->s_t9 = (memaddr) pgrmTrapHandler;
+				newArea->s_pc = newArea->s_t9 = (memaddr) upgrmTrapHandler;
 				newArea->s_sp = newAreaSPforSYS5(PROGTRAP);
 				break;
 
 			case (SYSTRAP):
-				newArea->s_pc = newArea->s_t9 = (memaddr) sysCallHandler;
+				newArea->s_pc = newArea->s_t9 = (memaddr) uSysCallHandler;
 				newArea->s_sp = newAreaSPforSYS5(SYSTRAP);
 				break;
 		}
