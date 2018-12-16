@@ -16,7 +16,7 @@
 #include "../h/const.h"
 #include "../h/types.h"
 #include "../e/scheduler.e"
-#include "../e/vmiosupport.e"
+#include "../e/vmIOsupport.e"
 #include "../e/adl.e"
 
 #include "usr/local/include/umps2/umps/libumps.e"
@@ -275,6 +275,6 @@ uint getASID() {
 state_PTR newAreaSPforSYS5(int trapType) {
 	/* Calculate address of page in OS memory to act as stack for SYS 5 handling */
 	int topStackPageNo = TAPEBUFFERSSTART / PAGESIZE;
-	int downwardOffset = (TRAPTYPES * (asid - 1)) + trapType;
+	int downwardOffset = (TRAPTYPES * (getASID() - 1)) + trapType;
 	return (topStackPageNo - downwardOffset) * PAGESIZE;
 }
