@@ -36,8 +36,8 @@ void tlbHandler() {
 	int* curFPEntry;
 	/* Determine cause */
 	state_PTR oldTlb = (state_PTR) TLBOLDAREA;
-	uPgTable_PTR destPgTbl,
-	ptEntry_PTR destPageEntry
+	uPgTable_PTR destPgTbl;
+	ptEntry_PTR destPageEntry;
 
 	uint cause = oldTlb->s_cause;
 	cause = (cause >> 2) & 0x1F; /* Get ExecCode */
@@ -50,7 +50,7 @@ void tlbHandler() {
 
 	destPgTbl = getSegmentTableEntry(segNum, asid);
 	destPTEIndex = findPTEntryIndex(destPgTbl, vpn);
-	destPageEntry = destPgTbl->entries[destPTEIndex];
+	destPageEntry = &(destPgTbl->entries[destPTEIndex]);
 
 	if(cause != PAGELOADMISS && cause != PAGESTRMISS)
 		/* Enfore zero-tolerance policy rules, only handle missing page */
@@ -75,11 +75,11 @@ void tlbHandler() {
 
 		/ * Note: this may either be an OS or User page table */
 		uPgTable_PTR curPageTable = getSegmentTableEntry(
-			((curFPEntry & SEGMASK) >> 30),
-			((curFPEntry & ASIDMASK) >> 6));
+			((*curFPEntry & SEGMASK) >> 30),
+			((*curFPEntry & ASIDMASK) >> 6));
 
 		curPageIndex = findPageTableEntry(curPageTable,
-			(curFPEntry & VPNMASK) >> 12);
+			(*curFPEntry & VPNMASK) >> 12);
 
 		ptEntry_PTR curPage = &(curPageTable->entries[curPageIndex]);
 		invalidate(curPage); /* Invalidate curPage to mean "missing" */
@@ -91,7 +91,7 @@ void tlbHandler() {
 
 			/* Write frame back to backing store */
 			/* TODO: Find where page offset could be found, 1:1 VPN and pageNum?? */
-			storageAddr = calcBkgStoreAddr((curFPEntry & ASIDMASK) >> 6, curPageIndex);
+			storageAddr = calcBkgStoreAddr((*curFPEntry & ASIDMASK) >> 6, curPageIndex);
 			writePageToBackingStore(newFrameAddr, storageAddr);
 		}
 	}
@@ -121,7 +121,7 @@ void tlbHandler() {
  *
  */
 void sysCallHandler() {
-	int termNo len, *semaddr, secondsToDelay, *blockAddr, diskNo, sectNo, printNo;
+	int termNo, len, *semaddr, secondsToDelay, *blockAddr, diskNo, sectNo, prntNo;
 	char *addr, *virtAddr;
 	uint asid = getASID();
 	state_PTR oldSys = &(uProcList[asid - 1].up_stateAreas[OLD][SYSTRAP]);
@@ -196,9 +196,10 @@ HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
 	int status;
 	int charReadCount = 0;
 	int semAddr = findMutex(TERMINT, termNo, TRUE);
+	char rChar;
 	Bool isReading = TRUE;
 
-	devregtr *termReg = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * TERMINT + termNo];
+	device_t *termReg = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * TERMINT + termNo]);
 
 	/* Check boundary conditions, no OS access */
 	if(addr < KUSEG2START)
@@ -217,7 +218,7 @@ HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
 		rChar = (status & 0xFF00);
 		status = (status & 0xFF);
 
-		if(status == RECVD && rChar != EOL) {
+		if(status == CRECVD && rChar != EOL) {
 			*(addr + charReadCount) = rChar;
 			charReadCount++;
 
@@ -226,9 +227,9 @@ HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
 		}
 	}
 
-	sys11_vVirtSem(semAddr)	/* Release exclusion */
+	sys11_vVirtSem(semAddr);	/* Release exclusion */
 
-	if(status == RECVD && charReadCount > 0) /* Return successfully */
+	if(status == CRECVD && charReadCount > 0) /* Return successfully */
 		return charReadCount;
 	else
 		return (-1 * status); /* Return failure */
@@ -237,11 +238,12 @@ HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
 HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 	int status, *semAddr;
 	int writeCount = 0;
+	char tChar;
 	Bool noFailure = TRUE;
-	devregtr *termReg;
+	device_t *termReg;
 
 	semAddr = findMutex(TERMINT, termNo, FALSE);
-	termReg = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * TERMINT + termNo];
+	termReg = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * TERMINT + termNo]);
 
 	/* Check boundary conditions, no OS access */
 	if(virtAddr < KUSEG2START || len < 0 || len > 128)
@@ -256,8 +258,8 @@ HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 		status = SYSCALL(WAITIO, TERMINT, termNo, FALSE);
 		enableInterrupts();
 
-		/* Respond to results TODO: Change out RECVD */
-		if((status & 0xFF) == RECVD && (status & 0xFF00 == tChar)) {
+		/* Respond to results */
+		if((status & 0xFF) == CTRANSD && (status & 0xFF00 == tChar)) {
 			writeCount++;
 
 		} else {
@@ -265,7 +267,7 @@ HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 		}
 	}
 
-	sys11_vVirtSem(semAddr)	/* Release exclusion */
+	sys11_vVirtSem(semAddr);	/* Release exclusion */
 
 	if(noFailure) /* Return successfully */
 		return writeCount;
@@ -290,13 +292,14 @@ HIDDEN void sys13_delay(int asid, int secondsToDelay) {
 		sys18_terminate();
 
 	setAlarm(asid, alarmTime);
-	sys12_pVirtSem(&(uProcList[asid - 1]->up_syncSem));
+	sys12_pVirtSem(&(uProcList[asid - 1].up_syncSem));
 }
 
 /*
  * sys14_diskPut - write to disk
  */
 HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
+	int wordIndex;
 	int *bufferAddr = DISKBUFFERSTART;
 	int *semAddr = findMutex(DISKINT, diskNo, FALSE);
 
@@ -319,6 +322,7 @@ HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
  * sys15_diskGet - read from disk
  */
 HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo) {
+	int wordIndex;
 	int *bufferAddr = DISKBUFFERSTART;
 	int *semAddr = findMutex(DISKINT, diskNo, FALSE);
 
@@ -341,7 +345,7 @@ HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
 	int *semAddr = findMutex(PRNTINT, prntNo, FALSE);
 	Bool noFailure = TRUE;
 
-	devregtr *prntReg = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * PRNTINT + prntNo];
+	device_t *prntReg = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * PRNTINT + prntNo]);
 
 	/* Check boundary conditions, no OS access */
 	if(virtAddr < KUSEG2START || len < 0 || len > 128)
@@ -352,7 +356,7 @@ HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
 		/* Prepare printer and wait for Operation */
 		disableInterrupts();
 		prntChar = *(virtAddr + prntCount);
-		prntReg->d_data = prntChar;
+		prntReg->d_data0 = prntChar;
 		prntReg->d_command = PRINTCHR;
 		status = SYSCALL(WAITIO, PRNTINT, prntNo, FALSE);
 		enableInterrupts();
@@ -365,7 +369,7 @@ HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
 		}
 	}
 
-	sys11_vVirtSem(semAddr)	/* Release exclusion */
+	sys11_vVirtSem(semAddr);	/* Release exclusion */
 
 	if(noFailure) /* Return successfully */
 		return prntCount;
@@ -383,8 +387,8 @@ HIDDEN void sys18_terminate(int asid) {
 	uProcEntry_PTR upe = &(uProcList[asid - 1]);
 	disableInterrupts(); /* New process ldst() will recover ints */
 	/* Clear page table, segment table entry & remove from the ADL & AVSL */
-	nukePageTable(upe.up_pgTable);
-	segTable.kuSeg2[asid] = NULL;
+	nukePageTable(upe->up_pgTable);
+	segTable->kuSeg2[asid] = NULL;
 	/* Could be sleeping or blocked on Mutex semaphore */
 
 	/* Halt Delay Daemon when approaching the end */
@@ -484,7 +488,7 @@ void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
 
 uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) {
 	int head, sect, cyl, maxHeads, maxSects, maxCyls;
-	devregtr* diskDev = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT + diskNo];
+	device_t *diskDev = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT + diskNo]);
 
 	int sectMask = 0x000000FF;
 	int headMask = 0x0000FF00;
