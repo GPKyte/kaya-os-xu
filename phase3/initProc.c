@@ -32,6 +32,9 @@ segTable_t* segTable = (segTable_t*) 0x20000500;
 
 /************************ Prototypes ***********************/
 uint getASID();
+void test(void);
+HIDDEN void initUProc();
+int newAreaSPforSYS5(int trapType);
 
 /********************* External Methods ********************/
 /*
@@ -137,7 +140,7 @@ void test(void) {
 		newState = newStateList[asid - 1];
 		newState.s_asid = asid;
 		newState.s_sp = (int) NULL; /* TODO: fill in later, maybe in other code block */
-		newState.s_pc = (memaddr) initUProc();
+		newState.s_pc = (memaddr) initUProc;
 
 		/* Interrupts on, Local Timer On, VM Off, Kernel mode on */
 		newState.s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
@@ -215,7 +218,7 @@ HIDDEN void initUProc() {
 		}
 
 		/* call SYS 5 for every trap type (3 times) */
-		SYSCALL(SPECTRAPVEC, trapNo, (int) &(uProcList[asid-1].up_stateAreas[NEW][trapNo], 0));
+		SYSCALL(SPECTRAPVEC, trapNo, (int) &(uProcList[asid-1].up_stateAreas[NEW][trapNo]), 0);
 	}
 
 	/*  Read the contents of the tape device (asid-1) onto the
