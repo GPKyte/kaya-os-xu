@@ -522,6 +522,14 @@ void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
 	sys11_vVirtSem(semAddr);
 }
 
+void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex) {
+	int *semAddr = findMutex(DISKINT, 0, FALSE);
+
+	sys12_pVirtSem(semAddr);
+	engageDiskDevice(0, sectIndex, srcFrameAddr, WRITE);
+	sys11_vVirtSem(semAddr);
+}
+
 uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) {
 	int head, sect, cyl, maxHeads, maxSects, maxCyls, status;
 	device_t *diskDev = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT + diskNo]);
@@ -570,12 +578,4 @@ int selectFrameIndex() {
 	framePool.indexOfLastFrameReplaced += 1;
 	framePool.indexOfLastFrameReplaced %= MAXFRAMES;
 	return (framePool.indexOfLastFrameReplaced);
-}
-
-void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex) {
-	int *semAddr = findMutex(DISKINT, 0, FALSE);
-
-	sys12_pVirtSem(semAddr);
-	engageDiskDevice(0, sectIndex, srcFrameAddr, WRITE);
-	sys11_vVirtSem(semAddr);
 }
