@@ -62,8 +62,8 @@
 #define EOL		0x0A
 #define NULL ((void *) 0xFFFFFFFF)
 #define MAXINT ((int *) 0x7FFFFFFF)
-#define READ    0;
-#define WRITE   1;
+#define READ    0
+#define WRITE   1
 
 /* Bitwise masks and constants */
 /* Turn 1 and 2 On, but 3 off: 1ON | 2ON & ~3ON */
@@ -116,6 +116,7 @@
 /* Segment Table */
 #define SEGMENTS      3
 #define MAXPROCID     64
+#define MAXUPROC      8
 
 /* vectors number and type */
 #define VECTSNUM	4
@@ -153,8 +154,8 @@
 #define TRANCOMMAND		3
 
 /* terminal success STATUS codes */
-#define CRECV    5
-#define CTRANS   5
+#define CRECVD    5
+#define CTRANSD   5
 
 /* device common STATUS codes */
 #define UNINSTALLED	0
@@ -164,12 +165,20 @@
 /* device common COMMAND codes */
 #define RESET		0
 #define ACK			1
-#define PRINTCHR  2
+#define PRINTCHR	2
 
 /* disk device COMMAND codes */
 #define SEEKCYL   2
 #define READBLK   3
 #define WRITBLK   4
+
+/* terminal COMMAND codes */
+#define RECEIVECMD	2
+#define TRANCMD		2
+
+/* TLB ERROR codes */
+#define PAGELOADMISS	2
+#define PAGESTRMISS		3
 
 /* tape device marker */
 #define EOT   0
