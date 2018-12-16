@@ -23,8 +23,9 @@
 
 uPgTable_PTR kUseg3_pte; /* shared variable among all users */
 
-static int masterSem;
-static int pager; /* Mutex for page swaping mechanism */
+static fpTable_t framePool;
+static int masterSem = 0;
+static int pager = 0; /* Mutex for page swaping mechanism */
 static int mutexSems[MAXSEMS];
 static uProcEntry_t uProcList[MAXUPROC];
 segTable_t* segTable = 0x20000500;
@@ -37,7 +38,6 @@ uint getASID();
  * test - Set up the page and segment tables for all 8 user processes
  */
 void test() {
-	static fpTable_t framePool;
 	static osPgTable_t osPgTbl;
 	static uPgTable_t sharedPgTbl, uPgTblList[MAXUPROC];
 	state_t delayDaemonState;

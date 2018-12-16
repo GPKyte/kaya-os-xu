@@ -31,11 +31,11 @@
  *
  */
 void tlbHandler() {
-	int storageAddr;
+	int storageAddr, asid, segNum, vpn, destPTEIndex;
 	/* Determine cause */
 	state_PTR oldTlb = (state_PTR) TLBOLDAREA;
 	uint cause = oldTlb->s_cause;
-	uint cause = (cause << shiftBitsForCauseOffset) & someCauseMask;
+	cause = (cause >> 2) & 0x1F; /* Get ExecCode */
 
 	/* Who am I? */
 	int asid = (oldTlb->s_asid & ASIDMASK) >> 6;
@@ -45,6 +45,7 @@ void tlbHandler() {
 
 	uPgTable_PTR destPgTbl = getSegmentTableEntry(segNum, asid);
 	int destPTEIndex = findPTEntryIndex(destPgTbl, vpn);
+	ptEntry_PTR destPageEntry = destPgTbl->entries[destPTEIndex];
 
 	if(cause != PAGELOADMISS && cause != PAGESTRMISS)
 		/* Enfore zero-tolerance policy rules, only handle missing page */
@@ -69,8 +70,8 @@ void tlbHandler() {
 
 		/ * Note: this may either be an OS or User page table */
 		uPgTable_PTR curPageTable = getSegmentTableEntry(
-			(curFPEntry & SEGMASK) >> 30,
-			(curFPEntry & ASIDMASK) >> 6);
+			((curFPEntry & SEGMASK) >> 30),
+			((curFPEntry & ASIDMASK) >> 6));
 
 		int curPageIndex = findPageTableEntry(curPageTable,
 			(curFPEntry & VPNMASK) >> 12);
@@ -85,8 +86,8 @@ void tlbHandler() {
 
 			/* Write frame back to backing store */
 			/* TODO: Find where page offset could be found, 1:1 VPN and pageNum?? */
-			storageAddr = calcBkgStoreAddr(curFPEntry->fp_asid, curPageIndex);
-			writePageToBackingStore(newFrame, storageAddr);
+			storageAddr = calcBkgStoreAddr((curFPEntry & ASIDMASK) >> 6, curPageIndex);
+			writePageToBackingStore(newFrameAddr, storageAddr);
 		}
 	}
 
@@ -200,7 +201,8 @@ HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
 	while(isReading) {
 		/* Prepare terminal and wait for Operation */
 		disableInterrupts();
-		termReg->t_recv_command = RECEIVECHAR;
+		termReg->t_recv_command = RECEIVECMD;
+
 		status = SYSCALL(WAITIO, TERMINT, termNo, TRUE);
 		enableInterrupts();
 
@@ -242,7 +244,7 @@ HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 		/* Prepare terminal and wait for Operation */
 		disableInterrupts();
 		tChar = *(virtAddr + writeCount);
-		termReg->t_transm_command = (tChar << 8 | TRANCOMMAND);
+		termReg->t_transm_command = (tChar << 8 | TRANCMD);
 		status = SYSCALL(WAITIO, TERMINT, termNo, FALSE);
 		enableInterrupts();
 
