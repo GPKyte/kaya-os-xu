@@ -19,7 +19,7 @@
 #include "../e/vmIOsupport.e"
 #include "../e/adl.e"
 
-#include "usr/local/include/umps2/umps/libumps.e"
+#include "/usr/local/include/umps2/umps/libumps.e"
 
 uPgTable_PTR kUseg3_pte; /* shared variable among all users */
 
@@ -28,7 +28,7 @@ static int masterSem = 0;
 static int pager = 0; /* Mutex for page swaping mechanism */
 static int mutexSems[MAXSEMS];
 static uProcEntry_t uProcList[MAXUPROC];
-segTable_t* segTable = 0x20000500;
+segTable_t* segTable = (segTable_t*) 0x20000500;
 
 /************************ Prototypes ***********************/
 uint getASID();
@@ -100,11 +100,11 @@ void test(void) {
 	/* Set up the delay daemon:
 	 *   Daemon will have unique ASID in kernel-mode
 	 *   with VMc on and all interrupts enabled */
-	initADL();
-	delayDaemonState.s_asid = delayDaemonID; /* TODO: decide ASID for DD */
+	/* Skip for now TODO: initADL();
+	delayDaemonState.s_asid = delayDaemonID = MAXASID - 1;
 	delayDaemonState.s_pc = (memaddr) summonSandmanTheDelayDemon();
 	delayDaemonState.s_status = (VMpON | INTpON | INTMASKOFF) & ~USERMODEON;
-	SYSCALL(CREATEPROCESS, &delayDaemonState);
+	SYSCALL(CREATEPROCESS, &delayDaemonState); */
 
 	/* Set up user processes */
 	for(asid = 1; asid < MAXUPROC; asid++) {
@@ -137,14 +137,14 @@ void test(void) {
 		newState = newStateList[asid - 1];
 		newState.s_asid = asid;
 		newState.s_sp = NULL; /* TODO: fill in later, maybe in other code block */
-		newState.s_pc = (memaddr) initProc();
+		newState.s_pc = (memaddr) initUProc();
 
 		/* Interrupts on, Local Timer On, VM Off, Kernel mode on */
 		newState.s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
 			& ~VMpON & ~USERMODEON;
 
-		SYSCALL(PASSEREN, &masterSem);
-		SYSCALL(CREATEPROCESS, &newState); /* SYSCALLs are Main reason for kernel mode */
+		SYSCALL(PASSEREN, (int) &masterSem);
+		SYSCALL(CREATEPROCESS, (int) &newState); /* SYSCALLs are Main reason for kernel mode */
 	}
 }
 
@@ -272,7 +272,7 @@ uint getASID() {
 /*
  * newAreaSPforSYS5 - calculate memory page for SYS5 stack page for new area
  */
-state_PTR newAreaSPforSYS5(int trapType) {
+int newAreaSPforSYS5(int trapType) {
 	/* Calculate address of page in OS memory to act as stack for SYS 5 handling */
 	int topStackPageNo = TAPEBUFFERSSTART / PAGESIZE;
 	int downwardOffset = (TRAPTYPES * (getASID() - 1)) + trapType;
