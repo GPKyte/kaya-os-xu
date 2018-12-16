@@ -273,6 +273,13 @@ uint getASID() {
 }
 
 /*
+ * loadState - generate a context switch. Must be in Kernel mode to use!
+ */
+void loadState(state_PTR newContext) {
+	LDST(newContext);
+}
+
+/*
  * newAreaSPforSYS5 - calculate memory page for SYS5 stack page for new area
  */
 int newAreaSPforSYS5(int trapType) {
