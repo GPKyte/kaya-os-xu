@@ -399,21 +399,19 @@ HIDDEN void sys18_terminate(int asid) {
 }
 
 int calcBkgStoreAddr(int asid, int pageOffset) {
-	int pageIndex;
-	return pageIndex = (asid * MAXPAGES) + pageOffset;
+	return ((asid * MAXPAGES) + pageOffset);
 }
 
-HIDDEN int findPTEntryIndex(uPgTbl_PTR pageTable, int vpn) {
+HIDDEN int findPTEntryIndex(uPgTable_PTR pageTable, int vpn) {
 	Bool isAMatch;
 	int vpnToMatch, loopVar = 0;
 	int indexOfMatch = NULL; /* If not found, this indicates error condition */
 	int numEntries = pageTable->magicPtHeaderWord & ENTRYCNTMASK;
 
-	while(loopVar < numEntries && indexOfMatch == NULL) {
-		vpnToMatch = ((pageTable->entries[loopVar] & VPNMASK) >> 12);
-		isAMatch = (vpn == vpnToMatch);
+	while((loopVar < numEntries) && (indexOfMatch == NULL)) {
+		vpnToMatch = ((pageTable->entries[loopVar].entryHI & VPNMASK) >> 12);
 
-		indexOfMatch = (isAMatch) ? loopVar : NULL;
+		indexOfMatch = (vpn == vpnToMatch) ? loopVar : NULL;
 		loopVar++;
 	}
 
@@ -440,17 +438,17 @@ int* findMutex(int lineNum, int deviceNum, Bool isReadTerm) {
  *   because doing otherwise has little practical advantages
  *   and would complicate otherwise simple logic
  * PARAM: int segment to look in, int asid to choose a process
- * RETURN: ~uPgTbl_PTR to a USER OR OS page table
+ * RETURN: ~uPgTable_PTR to a USER OR OS page table
  */
-uPgTbl_PTR getSegmentTableEntry(int segment, int asid) {
+uPgTable_PTR getSegmentTableEntry(int segment, int asid) {
 	if(segment == KSEGOS || segment == 1)
 		return segTable->kSegOS[asid];
 
 	else if (segment == KUSEG2)
-		return segTable->KUSEG2[asid];
+		return segTable->kuSeg2[asid];
 
 	else if (segment == KUSEG3)
-		return segTable->KUSEG3[asid];
+		return segTable->kuSeg3[asid];
 
 	else
 		return NULL; /* This is an error condition */
@@ -460,22 +458,22 @@ Bool isDirty(ptEntry_PTR pageDesc) {
 	return TRUE; /* (*pageDesc & DIRTY) ? TRUE : FALSE; */
 }
 
-void nukePageTable(uPgTbl_PTR pageTable) {
+void nukePageTable(uPgTable_PTR pageTable) {
 	int loopVar, entries;
 
 	/* Is this a page table or small island city? */
-	if(pageTable.magicPtHeaderWord & MAGICNUMMASK != MAGICNUM)
+	if(pageTable->magicPtHeaderWord & MAGICNUMMASK != MAGICNUM)
 		SYSCALL(TERMINATEPROCESS);
 
-	entries = pageTable.magicPtHeaderWord & ENTRYCNTMASK;
+	entries = pageTable->magicPtHeaderWord & ENTRYCNTMASK;
 	for(loopVar = 0; loopVar < entries; loopVar++) {
 		/* TODO: Check if NULL is an appropriate value, is 0 better? */
-		pageTable.entries[loopVar]->entryHI = NULL;
-		pageTable.entries[loopVar]->entryLO = NULL;
+		pageTable->entries[loopVar]->entryHI = NULL;
+		pageTable->entries[loopVar]->entryLO = NULL;
 	}
 
 	/* Reset Header Word Entry Count */
-	pageTable.magicPtHeaderWord = MAGICNUM;
+	pageTable->magicPtHeaderWord = MAGICNUM;
 }
 
 void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
@@ -487,7 +485,7 @@ void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
 }
 
 uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) {
-	int head, sect, cyl, maxHeads, maxSects, maxCyls;
+	int head, sect, cyl, maxHeads, maxSects, maxCyls, status;
 	device_t *diskDev = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT + diskNo]);
 
 	int sectMask = 0x000000FF;
@@ -505,7 +503,7 @@ uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) 
 	if(cyl >= maxCyls) { SYSCALL(TERMINATEPROCESS); }
 
 	/* Move boom to the correct disk cylinder */
- 	desDev->d_command = cyl << 8 | SEEKCYL;
+ 	diskDev->d_command = cyl << 8 | SEEKCYL;
 	status = SYSCALL(WAITIO, DISKINT, diskNo, FALSE);
 
 	if(status != ACK) { SYSCALL(TERMINATEPROCESS); }
