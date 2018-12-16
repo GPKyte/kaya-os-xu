@@ -38,10 +38,11 @@ uint getASID();
  * test - Set up the page and segment tables for all 8 user processes
  */
 void test() {
-	static osPgTable_t osPgTbl;
+	static osPgTbl_t osPgTbl;
 	static uPgTable_t sharedPgTbl, uPgTblList[MAXUPROC];
 	state_t delayDaemonState;
 	state_t newStateList[MAXUPROC];
+	ptEntry_PTR newPTEntry;
 
 	devregarea_t* devregarea = (devregarea_t*) RAMBASEADDR;
 	uint ramtop = (devregarea->rambase) + (devregarea->ramsize);
@@ -49,15 +50,15 @@ void test() {
 
 	/* Set up kSegOS and kuSeg3 Segment Table entries (all the same-ish) */
 	for(loopVar = 0; loopVar < MAXPROCID; loopVar++) {
-		segTable->kSegOS[loopVar] = &osPgTbl);
-		segTable->kuSeg3[loopVar] = &sharedPgTbl);
+		segTable->kSegOS[loopVar] = &osPgTbl;
+		segTable->kuSeg3[loopVar] = &sharedPgTbl;
 		/* kuSeg2 handled for each unique process later */
 	}
 
 	/* Set up kSegOS page table entries */
-	osPgTable.magicPtHeaderWord = MAGICNUM;
+	osPgTbl.magicPtHeaderWord = MAGICNUM;
 	for(loopVar = 0; loopVar < MAXOSPTENTRIES; loopVar++) {
-		newPTEntry = &(osPgTable.entries[loopVar]);
+		newPTEntry = &(osPgTbl.entries[loopVar]);
 
 		/* TODO: Should we add segment number or asid at all here? (both 0) */
 		newPTEntry->entryHI = (KSEGOSVPN + loopVar) << 12;
@@ -106,7 +107,7 @@ void test() {
 		uPgTblList[asid - 1].magicPtHeaderWord = MAGICNUM;
 
 		/* Make Segment Table Entry for uProc's new Page Table */
-		segTable->kuSeg2[asid] = &(uPgTblList[asid - 1]));
+		segTable->kuSeg2[asid] = &(uPgTblList[asid - 1]);
 
 		/* Fill in default page table entries */
 		for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
@@ -119,7 +120,7 @@ void test() {
 		}
 
 		/* Correct last entry to act as a stack page */
-		newPTEntry->entryHI = (KUSEG3VPN << 12) | (asid << 6)
+		newPTEntry->entryHI = (KUSEG3VPN << 12) | (asid << 6);
 
 		/* Fill entry for user process tracking */
 		newProcDesc = uProcList[asid - 1];
@@ -171,7 +172,7 @@ HIDDEN void initUProc() {
 	int status, i;
 	state_PTR newArea; /* TODO: either this or will have to specify area */
 	state_t uProcState; /* used to update user process' new state */
-	device_PTR tape;
+	device_t* tape;
 	uint asid = getASID();
 
 	/* the tape the data is read from */
@@ -230,7 +231,7 @@ HIDDEN void initUProc() {
 
 		/* check status: if tape not ready, terminate */
 		if(status != READY)
-			SYSCALL(TERMINATE, 0, 0, 0);
+			SYSCALL(TERMINATEPROCESS, 0, 0, 0);
 
 		destAddr = calcBkgStoreAddr(asid, pageNo);
 		writePageToBackingStore(bufferAddr, destAddr)
@@ -244,7 +245,7 @@ HIDDEN void initUProc() {
 	 *    - PC = well known address from the start of kUseg2
 	 */
 	uProcState.s_status =
-			ALLOFF | INTpON | INTMASKOFF | LOCALTIMEON | VMpON | VMcON | USERMODEON;
+			ALLOFF | INTpON | INTMASKOFF | LOCALTIMEON | VMpON | USERMODEON;
 	uProcState.s_asid = getENTRYHI();
 	uProcState.s_sp = KUSEG3START;
 	uProcState.s_pc = uProcState.s_t9 = (memaddr) KUSEG2START;
