@@ -428,6 +428,18 @@ int calcBkgStoreAddr(int asid, int pageOffset) {
 	return ((asid * MAXPAGES) + pageOffset);
 }
 
+void disableInterrupts() {
+	uint status = getSTATUS();
+	status = status & ~INTMASKOFF & ~INTcON;
+	setSTATUS(status);
+}
+
+void enableInterrupts() {
+	uint status = getSTATUS();
+	status = status | INTMASKOFF | INTcON;
+	setSTATUS()
+}
+
 HIDDEN int findPTEntryIndex(uPgTable_PTR pageTable, int vpn) {
 	Bool isAMatch;
 	int vpnToMatch, loopVar = 0;
