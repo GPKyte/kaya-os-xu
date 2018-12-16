@@ -19,7 +19,6 @@ extern uProcEntry_t uProcList[MAXUPROC];
 extern segTable_t* segTable;
 
 extern void test();
-extern void initUProc();
 
 /***************************************************************/
 

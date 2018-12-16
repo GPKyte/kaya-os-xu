@@ -144,7 +144,7 @@ typedef struct fpTable_t {
 } fpTable_t;
 
 typedef struct uProcEntry_t {
-	int *up_pgTable;
+	uPgTable_PTR up_pgTable;
 	int up_syncSem;
 	int up_bkgStoreAddr;
 	state_t	up_stateAreas[2][3];

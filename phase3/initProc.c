@@ -136,15 +136,15 @@ void test(void) {
 		/* Create default kernel level state starting in init code */
 		newState = newStateList[asid - 1];
 		newState.s_asid = asid;
-		newState.s_sp = NULL; /* TODO: fill in later, maybe in other code block */
+		newState.s_sp = (int) NULL; /* TODO: fill in later, maybe in other code block */
 		newState.s_pc = (memaddr) initUProc();
 
 		/* Interrupts on, Local Timer On, VM Off, Kernel mode on */
 		newState.s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
 			& ~VMpON & ~USERMODEON;
 
-		SYSCALL(PASSEREN, (int) &masterSem);
-		SYSCALL(CREATEPROCESS, (int) &newState); /* SYSCALLs are Main reason for kernel mode */
+		SYSCALL(PASSEREN, (int) &masterSem, 0, 0);
+		SYSCALL(CREATEPROCESS, (int) &newState, 0, 0); /* SYSCALLs are Main reason for kernel mode */
 	}
 }
 
@@ -215,7 +215,7 @@ HIDDEN void initUProc() {
 		}
 
 		/* call SYS 5 for every trap type (3 times) */
-		SYSCALL(SPECTRAPVEC, trapNo, (int) &(uProcList[asid-1].up_stateAreas[NEW][trapNo]));
+		SYSCALL(SPECTRAPVEC, trapNo, (int) &(uProcList[asid-1].up_stateAreas[NEW][trapNo], 0));
 	}
 
 	/*  Read the contents of the tape device (asid-1) onto the
