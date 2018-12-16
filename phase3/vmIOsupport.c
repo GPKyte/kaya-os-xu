@@ -422,7 +422,7 @@ HIDDEN int findPTEntryIndex(uPgTable_PTR pageTable, int vpn) {
 	Bool isAMatch;
 	int vpnToMatch, loopVar = 0;
 	int indexOfMatch = NULL; /* If not found, this indicates error condition */
-	int numEntries = pageTable->magicPtHeaderWord & ENTRYCNTMASK;
+	int numEntries = pageTable->header & ENTRYCNTMASK;
 
 	while((loopVar < numEntries) && (indexOfMatch == NULL)) {
 		vpnToMatch = ((pageTable->entries[loopVar].entryHI & VPNMASK) >> 12);
@@ -478,10 +478,10 @@ void nukePageTable(uPgTable_PTR pageTable) {
 	int loopVar, entries;
 
 	/* Is this a page table or small island city? */
-	if(pageTable->magicPtHeaderWord & MAGICNUMMASK != MAGICNUM)
+	if(pageTable->header & MAGICNUMMASK != MAGICNUM)
 		sys18_terminateProcess(getASID());
 
-	entries = pageTable->magicPtHeaderWord & ENTRYCNTMASK;
+	entries = pageTable->header & ENTRYCNTMASK;
 	for(loopVar = 0; loopVar < entries; loopVar++) {
 		/* TODO: Check if NULL is an appropriate value, is 0 better? */
 		pageTable->entries[loopVar].entryHI = NULL;
@@ -489,7 +489,7 @@ void nukePageTable(uPgTable_PTR pageTable) {
 	}
 
 	/* Reset Header Word Entry Count */
-	pageTable->magicPtHeaderWord = MAGICNUM;
+	pageTable->header = MAGICNUM;
 }
 
 void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
