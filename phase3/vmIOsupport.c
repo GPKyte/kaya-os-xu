@@ -31,21 +31,26 @@
  *
  */
 void tlbHandler() {
-	int storageAddr, asid, segNum, vpn, destPTEIndex;
+	int storageAddr, asid, segNum, vpn, destPTEIndex, newFrameNum, newFrameAddr;
+	int curPageIndex,
+	int* curFPEntry;
 	/* Determine cause */
 	state_PTR oldTlb = (state_PTR) TLBOLDAREA;
+	uPgTable_PTR destPgTbl,
+	ptEntry_PTR destPageEntry
+
 	uint cause = oldTlb->s_cause;
 	cause = (cause >> 2) & 0x1F; /* Get ExecCode */
 
 	/* Who am I? */
-	int asid = (oldTlb->s_asid & ASIDMASK) >> 6;
-	int segNum = (oldTlb->s_asid & SEGMASK) >> 30;
+	asid = (oldTlb->s_asid & ASIDMASK) >> 6;
+	segNum = (oldTlb->s_asid & SEGMASK) >> 30;
 	/* We store "page number" in the offset from the relevant VPN start */
-	int vpn = (oldTlb->s_asid & VPNMASK) >> 12;
+	vpn = (oldTlb->s_asid & VPNMASK) >> 12;
 
-	uPgTable_PTR destPgTbl = getSegmentTableEntry(segNum, asid);
-	int destPTEIndex = findPTEntryIndex(destPgTbl, vpn);
-	ptEntry_PTR destPageEntry = destPgTbl->entries[destPTEIndex];
+	destPgTbl = getSegmentTableEntry(segNum, asid);
+	destPTEIndex = findPTEntryIndex(destPgTbl, vpn);
+	destPageEntry = destPgTbl->entries[destPTEIndex];
 
 	if(cause != PAGELOADMISS && cause != PAGESTRMISS)
 		/* Enfore zero-tolerance policy rules, only handle missing page */
@@ -60,9 +65,9 @@ void tlbHandler() {
 		loadState(oldTlb);
 	}
 
-	int newFrameNum = selectFrameIndex();
-	int* curFPEntry = &(framePool.frames[newFrameNum];
-	int newFrameAddr = framePool.frameAddr[newFrameNum];
+	newFrameNum = selectFrameIndex();
+	curFPEntry = &(framePool.frames[newFrameNum];
+	newFrameAddr = framePool.frameAddr[newFrameNum];
 
 	if(frameInUse(curFPEntry)) {
 		/* Find PTE for the to-be-overwritten page in order
@@ -73,7 +78,7 @@ void tlbHandler() {
 			((curFPEntry & SEGMASK) >> 30),
 			((curFPEntry & ASIDMASK) >> 6));
 
-		int curPageIndex = findPageTableEntry(curPageTable,
+		curPageIndex = findPageTableEntry(curPageTable,
 			(curFPEntry & VPNMASK) >> 12);
 
 		ptEntry_PTR curPage = &(curPageTable->entries[curPageIndex]);
@@ -116,6 +121,8 @@ void tlbHandler() {
  *
  */
 void sysCallHandler() {
+	int termNo len, *semaddr, secondsToDelay, *blockAddr, diskNo, sectNo, printNo;
+	char *addr, *virtAddr;
 	uint asid = getASID();
 	state_PTR oldSys = &(uProcList[asid - 1].up_stateAreas[OLD][SYSTRAP]);
 
@@ -131,18 +138,18 @@ void sysCallHandler() {
 	/* switch cases for each sysCall */
 	switch(oldSys->s_a0) {
 		case 9:
-			int termNo = asid - 1;
-			char *addr = oldSys->s_a1;
+			termNo = asid - 1;
+			addr = oldSys->s_a1;
 			oldSys->s_v0 = sys9_readFromTerminal(termNo, addr);
 
 		case 10:
 			termNo = asid - 1;
-			char *virtAddr = oldSys->s_a1;
-			int len = oldSys->s_a2;
+			virtAddr = oldSys->s_a1;
+			len = oldSys->s_a2;
 			oldSys->s_v0 = sys10_writeToTerminal(termNo, virtAddr, len);
 
 		case 11:
-			int *semaddr = oldSys->s_a1;
+			semaddr = oldSys->s_a1;
 			sys11_vVirtSem(semaddr);
 
 		case 12:
@@ -150,13 +157,13 @@ void sysCallHandler() {
 			sys12_pVirtSem(semaddr);
 
 		case 13:
-			int secondsToDelay = oldSys->s_a1;
+			secondsToDelay = oldSys->s_a1;
 			sys13_delay(asid, secondsToDelay);
 
 		case 14:
-			int *blockAddr = oldSys->s_a1;
-			int diskNo = oldSys->s_a2;
-			int sectNo = oldSys->s_a3;
+			blockAddr = oldSys->s_a1;
+			diskNo = oldSys->s_a2;
+			sectNo = oldSys->s_a3;
 			oldSys->s_v0 = sys14_diskPut(blockAddr, diskNo, sectNo);
 
 		case 15:
@@ -166,7 +173,7 @@ void sysCallHandler() {
 			oldSys->s_v0 = sys15_diskGet(blockAddr, diskNo,sectNo);
 
 		case 16:
-			int prntNo = asid - 1;
+			prntNo = asid - 1;
 			virtAddr = oldSys->s_a1;
 			len = oldSys->s_a2;
 			oldSys->s_v0 = sys16_writeToPrinter(prntNo, virtAddr, len);
