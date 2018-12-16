@@ -37,12 +37,17 @@ uint getASID();
 /*
  * test - Set up the page and segment tables for all 8 user processes
  */
-void test() {
-	static osPgTbl_t osPgTbl;
-	static uPgTable_t sharedPgTbl, uPgTblList[MAXUPROC];
-	state_t delayDaemonState;
+void test(void) {
+	static osPgTable_t osPgTable;
+	static uPgTable_t sharedPgTable, uPgTableList[MAXUPROC];
+	state_t delayDaemonState, newState;
 	state_t newStateList[MAXUPROC];
 	ptEntry_PTR newPTEntry;
+	int loopVar, trapNo, destAddr, asid, delayDaemonID;
+	memaddr frameLoc;
+	uProcEntry_PTR newProcDesc;
+
+
 
 	devregarea_t* devregarea = (devregarea_t*) RAMBASEADDR;
 	uint ramtop = (devregarea->rambase) + (devregarea->ramsize);
@@ -50,15 +55,15 @@ void test() {
 
 	/* Set up kSegOS and kuSeg3 Segment Table entries (all the same-ish) */
 	for(loopVar = 0; loopVar < MAXPROCID; loopVar++) {
-		segTable->kSegOS[loopVar] = &osPgTbl;
-		segTable->kuSeg3[loopVar] = &sharedPgTbl;
+		segTable->kSegOS[loopVar] = &osPgTable;
+		segTable->kuSeg3[loopVar] = &sharedPgTable;
 		/* kuSeg2 handled for each unique process later */
 	}
 
 	/* Set up kSegOS page table entries */
-	osPgTbl.magicPtHeaderWord = MAGICNUM;
+	osPgTable.header = MAGICNUM;
 	for(loopVar = 0; loopVar < MAXOSPTENTRIES; loopVar++) {
-		newPTEntry = &(osPgTbl.entries[loopVar]);
+		newPTEntry = &(osPgTable.entries[loopVar]);
 
 		/* TODO: Should we add segment number or asid at all here? (both 0) */
 		newPTEntry->entryHI = (KSEGOSVPN + loopVar) << 12;
@@ -66,9 +71,9 @@ void test() {
 	}
 
 	/* Set up kSeg3 page table entries */
-	sharedPgTbl.magicPtHeaderWord = MAGICNUM;
+	sharedPgTable.header = MAGICNUM;
 	for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
-		newPTEntry = &(sharedPgTbl.entries[loopVar]);
+		newPTEntry = &(sharedPgTable.entries[loopVar]);
 
 		newPTEntry->entryHI = (KUSEG3 << 30)
 			| ((KUSEG3VPN + loopVar) << 12)
@@ -89,7 +94,7 @@ void test() {
 
 	/* Init device mutex semaphore array; set each to 1 */
 	for(loopVar = 0; loopVar < MAXSEMS; loopVar++) {
-		devSemList[loopVar] = 1;
+		mutexSems[loopVar] = 1;
 	}
 
 	/* Set up the delay daemon:
@@ -98,20 +103,20 @@ void test() {
 	initADL();
 	delayDaemonState.s_asid = delayDaemonID; /* TODO: decide ASID for DD */
 	delayDaemonState.s_pc = (memaddr) summonSandmanTheDelayDemon();
- 	delayDaemonState.s_status = (VMpON | INTpON | INTMASKOFF) & ~USERMODEON;
+	delayDaemonState.s_status = (VMpON | INTpON | INTMASKOFF) & ~USERMODEON;
 	SYSCALL(CREATEPROCESS, &delayDaemonState);
 
 	/* Set up user processes */
 	for(asid = 1; asid < MAXUPROC; asid++) {
 		/* Set up new page table for process */
-		uPgTblList[asid - 1].magicPtHeaderWord = MAGICNUM;
+		uPgTableList[asid - 1].header = MAGICNUM;
 
 		/* Make Segment Table Entry for uProc's new Page Table */
-		segTable->kuSeg2[asid] = &(uPgTblList[asid - 1]);
+		segTable->kuSeg2[asid] = &(uPgTableList[asid - 1]);
 
 		/* Fill in default page table entries */
 		for(loopVar = 0; loopVar < MAXPTENTRIES; loopVar++) {
-			newPTEntry = &(uPgTblList[asid - 1].entries[loopVar]);
+			newPTEntry = &(uPgTableList[asid - 1].entries[loopVar]);
 
 			newPTEntry->entryHI = (KUSEG2 << 30)
 				| ((KUSEG2VPN + loopVar) << 12)
@@ -123,23 +128,23 @@ void test() {
 		newPTEntry->entryHI = (KUSEG3VPN << 12) | (asid << 6);
 
 		/* Fill entry for user process tracking */
-		newProcDesc = uProcList[asid - 1];
+		newProcDesc = &(uProcList[asid - 1]);
 		newProcDesc->up_syncSem = 0;
-		newProcDesc->up_pgTable = &(uPgTblList[asid - 1]);
+		newProcDesc->up_pgTable = &(uPgTableList[asid - 1]);
 		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid, 0);
 
 		/* Create default kernel level state starting in init code */
-		newState = &(newStateList[asid - 1]);
-		newState->s_asid = asid;
-		newState->s_sp = NULL; /* TODO: fill in later, maybe in other code block */
-		newState->s_pc = (memaddr) initProc();
+		newState = newStateList[asid - 1];
+		newState.s_asid = asid;
+		newState.s_sp = NULL; /* TODO: fill in later, maybe in other code block */
+		newState.s_pc = (memaddr) initProc();
 
 		/* Interrupts on, Local Timer On, VM Off, Kernel mode on */
-		newState->s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
+		newState.s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
 			& ~VMpON & ~USERMODEON;
 
 		SYSCALL(PASSEREN, &masterSem);
-		SYSCALL(CREATEPROCESS, newState); /* SYSCALLs are Main reason for kernel mode */
+		SYSCALL(CREATEPROCESS, &newState); /* SYSCALLs are Main reason for kernel mode */
 	}
 }
 
@@ -169,7 +174,7 @@ void test() {
  *
  ****************************************************************************/
 HIDDEN void initUProc() {
-	int status, i;
+	int status, trapNo, pageNo, bufferAddr, destAddr;
 	state_PTR newArea; /* TODO: either this or will have to specify area */
 	state_t uProcState; /* used to update user process' new state */
 	device_t* tape;
@@ -187,7 +192,7 @@ HIDDEN void initUProc() {
 	for(trapNo = 0; trapNo < TRAPTYPES; trapNo++) {
 		newArea = &(uProcList[asid-1].up_stateAreas[NEW][trapNo]);
 		newArea->s_status =
-				INTpON | INTMASKOFF | LOCALTIMEON | VMpON | USERMODEON;
+			INTpON | INTMASKOFF | LOCALTIMEON | VMpON | USERMODEON;
 		newArea->s_asid = getENTRYHI();
 
 		/* TODO: pgrmTrapHandler for P3 */
@@ -220,10 +225,10 @@ HIDDEN void initUProc() {
 	 *    - read block from tape and then immediately write
 	 *      it out to disk0 (backing store)
 	 */
-	int pageNo = 0;
+	pageNo = 0;
 	while((tape->d_data1 != EOT) && (tape->d_data1 != EOF)) {
 		/* read contents until data1 is no longer EOB */
-		int bufferAddr = TAPEBUFFERSSTART + (PAGESIZE * (asid-1));
+		bufferAddr = TAPEBUFFERSSTART + (PAGESIZE * (asid-1));
 		tape->d_data1 = bufferAddr;
 		tape->d_command = READBLK; /* issue read block command */
 
@@ -234,7 +239,7 @@ HIDDEN void initUProc() {
 			SYSCALL(TERMINATEPROCESS, 0, 0, 0);
 
 		destAddr = calcBkgStoreAddr(asid, pageNo);
-		writePageToBackingStore(bufferAddr, destAddr)
+		writePageToBackingStore(bufferAddr, destAddr);
 		pageNo++;
 	}
 
