@@ -12,9 +12,9 @@
 *
 ***************************************************************************/
 
-extern void tlbHandler(void);
-extern void sysCallHandler(void);
-extern void pgrmTrapHandler(void);
+extern void uTlbHandler(void);
+extern void uSysCallHandler(void);
+extern void uPgrmTrapHandler(void);
 extern int calcBkgStoreAddr(int asid, int pageOffset);
 extern int* findMutex(int lineNum, int deviceNum, Bool isReadTerm);
 extern uPgTable_PTR getSegmentTableEntry(int segment, int asid);

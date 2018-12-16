@@ -44,6 +44,14 @@ void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex);
 
 /********************* External Methods ********************/
 /*
+ * uPgrmTrapHandler -
+ *
+ */
+void uPgrmTrapHandler(void) {
+	sys18_terminate(getASID()); /* No faulty programs here. Off with their head! */
+}
+
+/*
  * uTlbHandler -
  *
  *
@@ -72,7 +80,7 @@ void uTlbHandler() {
 
 	if(cause != PAGELOADMISS && cause != PAGESTRMISS)
 		/* Enfore zero-tolerance policy rules, only handle missing page */
-		sys18_terminateProcess(asid);
+		sys18_terminate(asid);
 
 	/* Gain mutal exclusion of pager to avoid inconsistent states */
 	SYSCALL(PASSEREN, &pager, 0, 0);
@@ -130,7 +138,7 @@ void uTlbHandler() {
 
 	/* End mutal exclusion of TLB Handling */
 	SYSCALL(VERHOGEN, &pager, 0, 0);
-	loadState(&oldTlb);
+	loadState(oldTlb);
 }
 
 
@@ -481,7 +489,7 @@ void nukePageTable(uPgTable_PTR pageTable) {
 
 	/* Is this a page table or small island city? */
 	if(pageTable->header & MAGICNUMMASK != MAGICNUM)
-		sys18_terminateProcess(getASID());
+		sys18_terminate(getASID());
 
 	entries = pageTable->header & ENTRYCNTMASK;
 	for(loopVar = 0; loopVar < entries; loopVar++) {
@@ -518,13 +526,13 @@ uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) 
 	cyl = sectIndex / (maxHeads * maxSects);
 
 	/* TODO: disable interrupts?? */
-	if(cyl >= maxCyls) { sys18_terminateProcess(getASID()); }
+	if(cyl >= maxCyls) { sys18_terminate(getASID()); }
 
 	/* Move boom to the correct disk cylinder */
  	diskDev->d_command = cyl << 8 | SEEKCYL;
 	status = SYSCALL(WAITIO, DISKINT, diskNo, FALSE);
 
-	if(status != ACK) { sys18_terminateProcess(getASID()); }
+	if(status != ACK) { sys18_terminate(getASID()); }
 
 	/* Calc position within cylinder */
 	head = (sectIndex / maxSects) % maxHeads;
@@ -536,7 +544,7 @@ uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) 
 
 	status = SYSCALL(WAITIO, DISKINT, diskNo, FALSE); /* Wait for job to complete */
 	if(status != ACK)
-		sys18_terminateProcess(getASID());
+		sys18_terminate(getASID());
 
 	return status;
 }

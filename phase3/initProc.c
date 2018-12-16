@@ -207,7 +207,7 @@ HIDDEN void initUProc() {
 				break;
 
 			case (PROGTRAP):
-				newArea->s_pc = newArea->s_t9 = (memaddr) upgrmTrapHandler;
+				newArea->s_pc = newArea->s_t9 = (memaddr) uPgrmTrapHandler;
 				newArea->s_sp = newAreaSPforSYS5(PROGTRAP);
 				break;
 
