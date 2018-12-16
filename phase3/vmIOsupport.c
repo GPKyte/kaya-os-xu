@@ -158,7 +158,7 @@ void uSysCallHandler() {
 
 	/* check for invalid SYSCALL */
 	/* if invalid, avadaKedavra */
-	if(oldSys <= 0 || oldSys > 18)
+	if(oldSys->s_a0 < 9 || (int) oldSys->s_a0 > 18)
 		sys18_terminate(asid);
 
 	/* switch cases for each sysCall */
@@ -221,14 +221,14 @@ void uSysCallHandler() {
 HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
 	int status;
 	int charReadCount = 0;
-	int semAddr = findMutex(TERMINT, termNo, TRUE);
+	int *semAddr = findMutex(TERMINT, termNo, TRUE);
 	char rChar;
 	Bool isReading = TRUE;
 
 	device_t *termReg = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * TERMINT + termNo]);
 
 	/* Check boundary conditions, no OS access */
-	if(addr < KUSEG2START)
+	if((int) addr < KUSEG2START)
 		sys18_terminate(getASID());
 
 	sys12_pVirtSem(semAddr); /* Gain mutual exclusion of term device */
@@ -284,8 +284,8 @@ HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 		status = SYSCALL(WAITIO, TERMINT, termNo, FALSE);
 		enableInterrupts();
 
-		/* Respond to results */
-		if((status & 0xFF) == CTRANSD && (status & 0xFF00 == tChar)) {
+		/* React to results */
+		if(((status & 0xFF) == CTRANSD) && (status & 0xFF00 == tChar)) {
 			writeCount++;
 
 		} else {
@@ -295,10 +295,10 @@ HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 
 	sys11_vVirtSem(semAddr);	/* Release exclusion */
 
-	if(noFailure) /* Return successfully */
+	if(noFailure) /* Return count of successfully written characters */
 		return writeCount;
 	else
-		return (-1 * status); /* Return failure */
+		return (-1 * status); /* Return failure code */
 }
 
 HIDDEN void sys11_vVirtSem(int *semaddr) {
@@ -310,14 +310,14 @@ HIDDEN void sys12_pVirtSem(int *semaddr) {
 }
 
 HIDDEN void sys13_delay(int asid, int secondsToDelay) {
-	cpu_t startTime;
+	cpu_t startTime, alarmTime;
 	STCK(startTime);
-	cpu_t alarmTime = startTime + secondsToDelay;
 
+	alarmTime = startTime + secondsToDelay;
 	if(alarmTime <= 0) /* Invalid operation, "delay" forever */
 		sys18_terminate(asid);
 
-	setAlarm(asid, alarmTime);
+	/* TODO: setAlarm(asid, alarmTime); */
 	sys12_pVirtSem(&(uProcList[asid - 1].up_syncSem));
 }
 
@@ -326,12 +326,12 @@ HIDDEN void sys13_delay(int asid, int secondsToDelay) {
  */
 HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
 	int wordIndex;
-	int *bufferAddr = DISKBUFFERSTART;
+	memaddr bufferAddr = (memaddr) DISKBUFFERSTART;
 	int *semAddr = findMutex(DISKINT, diskNo, FALSE);
 
 	/* check for invalid blockAddr. if addr is in ksegOS, terminate */
 	/* TODO: check for diskNo, if writing to disk0, terminate */
-	if((bufferAddr <= KSEGOSEND) || diskNo == 0)
+	if(((int) bufferAddr <= KSEGOSEND) || diskNo == 0)
 		sys18_terminate(getASID());
 
 	sys12_pVirtSem(semAddr);
@@ -349,7 +349,7 @@ HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
  */
 HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo) {
 	int wordIndex;
-	int *bufferAddr = DISKBUFFERSTART;
+	memaddr bufferAddr = (memaddr) DISKBUFFERSTART;
 	int *semAddr = findMutex(DISKINT, diskNo, FALSE);
 
 	if(blockAddr < KUSEG2START || diskNo == 0)
@@ -420,7 +420,7 @@ HIDDEN void sys18_terminate(int asid) {
 	/* Halt Delay Daemon when approaching the end */
 	if(masterSem == 1) { banishDaemon(); }
 	/* Count down to death */
-	SYSCALL(VERHOGEN, &masterSem, 0, 0);
+	SYSCALL(VERHOGEN, (int) &masterSem, 0, 0);
 	SYSCALL(TERMINATEPROCESS, 0, 0, 0);
 }
 
@@ -443,13 +443,13 @@ void enableInterrupts() {
 HIDDEN int findPTEntryIndex(uPgTable_PTR pageTable, int vpn) {
 	Bool isAMatch;
 	int vpnToMatch, loopVar = 0;
-	int indexOfMatch = NULL; /* If not found, this indicates error condition */
+	int indexOfMatch = -1; /* If not found, this indicates error condition */
 	int numEntries = pageTable->header & ENTRYCNTMASK;
 
-	while((loopVar < numEntries) && (indexOfMatch == NULL)) {
+	while((loopVar < numEntries) && (indexOfMatch == -1)) {
 		vpnToMatch = ((pageTable->entries[loopVar].entryHI & VPNMASK) >> 12);
 
-		indexOfMatch = (vpn == vpnToMatch) ? loopVar : NULL;
+		indexOfMatch = (vpn == vpnToMatch) ? loopVar : -1;
 		loopVar++;
 	}
 
@@ -479,7 +479,7 @@ int* findMutex(int lineNum, int deviceNum, Bool isReadTerm) {
  * RETURN: ~uPgTable_PTR to a USER OR OS page table
  */
 uPgTable_PTR getSegmentTableEntry(int segment, int asid) {
-	if(segment == KSEGOS || segment == 1)
+	if((segment == KSEGOS) || (segment == 1))
 		return segTable->kSegOS[asid];
 
 	else if (segment == KUSEG2)

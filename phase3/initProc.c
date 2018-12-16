@@ -3,8 +3,8 @@
  *
  * This module is used to make kernel-level
  *   specifications to new processes and the main
- *   method, ******, should generally be the
- *   starting PC value.
+ *   method, initUProc, should generally be the
+ *   starting PC value of user processes.
  *
  * One major kernal action is 3x sys5 calls.
  *
@@ -17,7 +17,7 @@
 #include "../h/types.h"
 #include "../e/scheduler.e"
 #include "../e/vmIOsupport.e"
-#include "../e/adl.e"
+/* #include "../e/adl.e" */
 
 #include "/usr/local/include/umps2/umps/libumps.e"
 
@@ -43,7 +43,7 @@ int newAreaSPforSYS5(int trapType);
 void test(void) {
 	static osPgTable_t osPgTable;
 	static uPgTable_t sharedPgTable, uPgTableList[MAXUPROC];
-	state_t delayDaemonState, newState;
+	state_t delayDaemonState, *newState;
 	state_t newStateList[MAXUPROC];
 	ptEntry_PTR newPTEntry;
 	int loopVar, trapNo, destAddr, asid, delayDaemonID;
@@ -137,13 +137,13 @@ void test(void) {
 		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid, 0);
 
 		/* Create default kernel level state starting in init code */
-		newState = newStateList[asid - 1];
-		newState.s_asid = asid;
-		newState.s_sp = (int) NULL; /* TODO: fill in later, maybe in other code block */
-		newState.s_pc = (memaddr) initUProc;
+		newState = &(newStateList[asid - 1]);
+		newState->s_asid = asid;
+		newState->s_sp = (int) NULL; /* TODO: fill in later, maybe in other code block */
+		newState->s_pc = (memaddr) initUProc;
 
 		/* Interrupts on, Local Timer On, VM Off, Kernel mode on */
-		newState.s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
+		newState->s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
 			& ~VMpON & ~USERMODEON;
 
 		SYSCALL(PASSEREN, (int) &masterSem, 0, 0);
