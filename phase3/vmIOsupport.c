@@ -20,6 +20,7 @@
 #include "/usr/local/include/umps2/umps/libumps.e"
 
 /************************ Prototypes ***********************/
+
 HIDDEN int sys9_readFromTerminal(int termNo, char *addr);
 HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len);
 HIDDEN void sys11_vVirtSem(int *semaddr);
@@ -28,6 +29,7 @@ HIDDEN void sys13_delay(int asid, int secondsToDelay);
 HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo);
 HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo);
 HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len);
+HIDDEN cpu_t sys17_getTOD(void);
 HIDDEN void sys18_terminate(int asid);
 int calcBkgStoreAddr(int asid, int pageOffset);
 HIDDEN int findPTEntryIndex(uPgTable_PTR pageTable, int vpn);
@@ -393,7 +395,7 @@ HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
 		return (-1 * status); /* Return failure */
 }
 
-HIDDEN cpu_t sys17_getTOD() {
+HIDDEN cpu_t sys17_getTOD(void) {
 	cpu_t tod;
 	STCK(tod);
 	return tod;
