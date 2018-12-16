@@ -468,8 +468,8 @@ void nukePageTable(uPgTable_PTR pageTable) {
 	entries = pageTable->magicPtHeaderWord & ENTRYCNTMASK;
 	for(loopVar = 0; loopVar < entries; loopVar++) {
 		/* TODO: Check if NULL is an appropriate value, is 0 better? */
-		pageTable->entries[loopVar]->entryHI = NULL;
-		pageTable->entries[loopVar]->entryLO = NULL;
+		pageTable->entries[loopVar].entryHI = NULL;
+		pageTable->entries[loopVar].entryLO = NULL;
 	}
 
 	/* Reset Header Word Entry Count */
@@ -550,11 +550,11 @@ void setSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
 
 	/* Overwrite current entry of segTable with address of page table */
 	if (segment == KUSEG2)
-		segTable->KUSEG2[asid] = addr;
+		segTable->kuSeg2[asid] = addr;
 	else if(segment == KSEGOS)
 		segTable->kSegOS[asid] = (osPgTable_PTR) addr;
 	else /* (segment == KUSEG3) */
-		segTable->KUSEG3[asid] = addr;
+		segTable->kuSeg3[asid] = addr;
 }
 
 void setSegmentTableEntry(int segment, int asid, osPgTable_PTR addr) {
