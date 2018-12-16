@@ -20,9 +20,25 @@
 #include "usr/local/include/umps2/umps/libumps.e"
 
 /************************ Prototypes ***********************/
-
-
-
+HIDDEN int sys9_readFromTerminal(int termNo, char *addr);
+HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len);
+HIDDEN void sys11_vVirtSem(int *semaddr);
+HIDDEN void sys12_pVirtSem(int *semaddr);
+HIDDEN void sys13_delay(int asid, int secondsToDelay);
+HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo);
+HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo);
+HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len);
+HIDDEN void sys18_terminate(int asid);
+int calcBkgStoreAddr(int asid, int pageOffset);
+HIDDEN int findPTEntryIndex(uPgTable_PTR pageTable, int vpn);
+int* findMutex(int lineNum, int deviceNum, Bool isReadTerm);
+uPgTable_PTR getSegmentTableEntry(int segment, int asid);
+Bool isDirty(ptEntry_PTR pageDesc);
+void nukePageTable(uPgTable_PTR pageTable);
+void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr);
+uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite);
+void invalidate(ptEntry_PTR pte);
+void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex);
 
 /********************* External Methods ********************/
 /*
