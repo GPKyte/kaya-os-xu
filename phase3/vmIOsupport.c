@@ -235,12 +235,13 @@ HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
 }
 
 HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
-	int status;
+	int status, *semAddr;
 	int writeCount = 0;
-	int semAddr = findMutex(TERMINT, termNo, FALSE);
 	Bool noFailure = TRUE;
+	devregtr *termReg;
 
-	devregtr *termReg = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * TERMINT + termNo];
+	semAddr = findMutex(TERMINT, termNo, FALSE);
+	termReg = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * TERMINT + termNo];
 
 	/* Check boundary conditions, no OS access */
 	if(virtAddr < KUSEG2START || len < 0 || len > 128)
@@ -283,7 +284,7 @@ HIDDEN void sys12_pVirtSem(int *semaddr) {
 HIDDEN void sys13_delay(int asid, int secondsToDelay) {
 	cpu_t startTime;
 	STCK(startTime);
-	alarmTime = startTime + secondsToDelay;
+	cpu_t alarmTime = startTime + secondsToDelay;
 
 	if(alarmTime <= 0) /* Invalid operation, "delay" forever */
 		sys18_terminate();
@@ -337,7 +338,7 @@ HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo) {
 HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
 	int status, prntCount;
 	int prntChar = 0;
-	int semAddr = findMutex(PRNTINT, prntNo, FALSE);
+	int *semAddr = findMutex(PRNTINT, prntNo, FALSE);
 	Bool noFailure = TRUE;
 
 	devregtr *prntReg = ((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * PRNTINT + prntNo];
