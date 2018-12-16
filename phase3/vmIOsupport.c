@@ -32,7 +32,7 @@
  */
 void tlbHandler() {
 	int storageAddr, asid, segNum, vpn, destPTEIndex, newFrameNum, newFrameAddr;
-	int curPageIndex,
+	int curPageIndex;
 	int* curFPEntry;
 	/* Determine cause */
 	state_PTR oldTlb = (state_PTR) TLBOLDAREA;
@@ -66,7 +66,7 @@ void tlbHandler() {
 	}
 
 	newFrameNum = selectFrameIndex();
-	curFPEntry = &(framePool.frames[newFrameNum];
+	curFPEntry = &(framePool.frames[newFrameNum]);
 	newFrameAddr = framePool.frameAddr[newFrameNum];
 
 	if(frameInUse(curFPEntry)) {
