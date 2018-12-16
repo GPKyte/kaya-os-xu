@@ -126,9 +126,9 @@ void sysCallHandler() {
 	uint asid = getASID();
 	state_PTR oldSys = &(uProcList[asid - 1].up_stateAreas[OLD][SYSTRAP]);
 
-	/* check Cause.ExcCode in uProc's SYS/BP Old area for SYS/BP */
+	/* check Cause.ExcCode in uProc's SYS/BP Old area for SYS/BP
 	if(((oldSys->s_cause & 127) >> 2) == _BP_)
-		??
+		??*/
 
 	/* check for invalid SYSCALL */
 	/* if invalid, avadaKedavra */
