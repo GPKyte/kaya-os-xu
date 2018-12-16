@@ -534,33 +534,6 @@ int selectFrameIndex() {
 	return (framePool.indexOfLastFrameReplaced);
 }
 
-/* TODO: Remove the setSegmentTableEntry abstractions for lack of use */
-void setSegmentTableEntry(int segment, int asid, uPgTable_PTR addr) {
-	/* First, boundary check segment and asid, but not address */
-	/*	TLB exception already covers bad address to some extent */
-	if(segment < 0 || segment > 3)
-		gameOver(99);
-
-	if(asid < 0 || asid > 63)
-		gameOver(99);
-
-	/* Is it actually a page table? */
-	if((addr->magicPtHeaderWord & MAGICNUMMASK) != MAGICNUM)
-		gameOver(99); /* Magic is a lie */
-
-	/* Overwrite current entry of segTable with address of page table */
-	if (segment == KUSEG2)
-		segTable->kuSeg2[asid] = addr;
-	else if(segment == KSEGOS)
-		segTable->kSegOS[asid] = (osPgTable_PTR) addr;
-	else /* (segment == KUSEG3) */
-		segTable->kuSeg3[asid] = addr;
-}
-
-void setSegmentTableEntry(int segment, int asid, osPgTable_PTR addr) {
-	setSegmentTableEntry(segment, asid, (uPgTable_PTR) addr);
-}
-
 void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex) {
 	int *semAddr = findMutex(DISKINT, 0, FALSE);
 
