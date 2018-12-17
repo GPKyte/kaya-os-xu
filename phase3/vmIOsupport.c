@@ -52,6 +52,7 @@ HIDDEN int debugVM(int a, int b, int c, int d) {
  * in which users should not be dealing with, so terminate!
  */
 void uPgrmTrapHandler(void) {
+	debugVM(55, (int) getASID(), 0, 0);
 	sys18_terminate(getASID()); /* No faulty programs here. Off with their head! */
 }
 
