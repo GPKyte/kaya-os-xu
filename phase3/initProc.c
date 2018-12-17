@@ -1,12 +1,21 @@
-/*********************** INITPROC.C ************************
- * Initialize process
+/************************ INITPROC.C ************************
+ * initProc module is used to make kernel-level specifications
+ * to new processes and the main method. It implements test()
+ * and all the U-Proc initialization routines. IT also exports
+ * the VM/IO support level's global variables (e.g. swap-pool
+ * data structure, mutual exclusion semaphore, etc).
  *
- * This module is used to make kernel-level
- *   specifications to new processes and the main
- *   method, ******, should generally be the
- *   starting PC value.
+ * This module also implements initUProc to hold two major
+ * steps in launching a U-Proc:
  *
- * One major kernal action is 3x sys5 calls.
+ *   step 1 is variable initialization where each U-Proc
+ *   is assigned a unique ID (ASID), as well as U-Proc's
+ *   kUseg2 PTE, private sema4, segment table, and three new
+ *   areas are initialized, and then perform SYS1.
+ *
+ *	 In step 2, SYS5 is issued three times (one for each
+ *   new area) and writing to backing store for every block
+ *   of tape read.
  *
  * AUTHORS: Ploy Sithisakulrat & Gavin Kyte
  * ADVISOR/CONTRIBUTER: Michael Goldweber
@@ -18,6 +27,7 @@
 #include "../e/scheduler.e"
 #include "../e/vmiosupport.e"
 #include "../e/adl.e"
+#include "../e/avsl.e"
 
 #include "usr/local/include/umps2/umps/libumps.e"
 
@@ -32,6 +42,7 @@ segTable_t* segTable = 0x20000500;
 
 /************************ Prototypes ***********************/
 uint getASID();
+state_PTR newAreaSPforSYS5(int trapType);
 
 /********************* External Methods ********************/
 /*
@@ -143,32 +154,12 @@ void test() {
 }
 
 /*****************************************************************************
- * initUProc - loads a user process from the tape drive
- * and copy it to the backing store on disk 0, then start
- * that specific user process.
- *
- * Set up the three new areas for Pass up or die
- *  - status: all INTs ON | LOCTIMERON | VMpON | USERMODEON
- *  - ASID = your asid value
- *  - stack page: to be filled in later
- *  - PC = t9 = address of your P3 handler
- *
- *  Read the contents of the tape device (asid-1) onto the
- *  backing store device (disk0)
- *  - keep reading until the tape block marker (data1) is
- *    no longer ENDOFBLOCK
- *    - read block from tape and then immediately write
- *      it out to disk0
- *
- *  Set up a new state for the user process
- *    - status: all INTs ON | LOCALTIMEON | VMpON | USERMODEON
- *    - asid = your asid
- *    - stack page = last page of kUseg2 (0xC000.0000)
- *    - PC = well known address from the start of kUseg2
- *
+ * initUProc - assigns each process a unique ASID, set up new areas, and
+ * loads a user process from the tape drive and copy it to the backing store
+ * on disk 0, then start that specific user process.
  ****************************************************************************/
 HIDDEN void initUProc() {
-	int status, i;
+	int status, trapNo;
 	state_PTR newArea; /* TODO: either this or will have to specify area */
 	state_t uProcState; /* used to update user process' new state */
 	device_PTR tape;
@@ -177,12 +168,7 @@ HIDDEN void initUProc() {
 	/* the tape the data is read from */
 	tape = (device_t*) (INTDEVREGSTART + ((TAPEINT-3) * DEVREGSIZE * DEVPERINT) + ((asid-1) * DEVREGSIZE));
 
-	/* Set up the three new areas for Pass up or die
-	 *  - status: all INTs ON | LOCTIMERON | VMpON | USERMODEON
-	 *  - ASID = your asid value
-	 *  - TODO: stack page: to be filled in later
-	 *  - PC = t9 = address of your P3 handler
-	 */
+	/* Set up the three new areas for Pass up or die */
 	for(trapNo = 0; trapNo < TRAPTYPES; trapNo++) {
 		newArea = &(uProcList[asid-1].up_stateAreas[NEW][trapNo]);
 		newArea->s_status =
@@ -190,7 +176,6 @@ HIDDEN void initUProc() {
 		newArea->s_asid = getENTRYHI();
 
 		/* TODO: pgrmTrapHandler for P3 */
-		/* TODO: stack page for New area*/
 		switch (trapNo) {
 			case (TLBTRAP):
 				newArea->s_pc = newArea->s_t9 = (memaddr) tlbHandler;
@@ -212,13 +197,7 @@ HIDDEN void initUProc() {
 		SYSCALL(SPECTRAPVEC, trapNo, (int) &(uProcList[asid-1].up_stateAreas[NEW][trapNo]));
 	}
 
-	/*  Read the contents of the tape device (asid-1) onto the
-	 *  backing store device (disk0)
-	 *  - keep reading until the tape block marker (data1) is
-	 *    no longer EOB
-	 *    - read block from tape and then immediately write
-	 *      it out to disk0 (backing store)
-	 */
+	/* Read the contents of the tape device onto the backing store device */
 	int pageNo = 0;
 	while((tape->d_data1 != EOT) && (tape->d_data1 != EOF)) {
 		/* read contents until data1 is no longer EOB */
@@ -232,17 +211,13 @@ HIDDEN void initUProc() {
 		if(status != READY)
 			SYSCALL(TERMINATE, 0, 0, 0);
 
+		/* write page to backing store */
 		destAddr = calcBkgStoreAddr(asid, pageNo);
 		writePageToBackingStore(bufferAddr, destAddr)
 		pageNo++;
 	}
 
-	/*  Set up a new state for the user process
-	 *    - status: all INTs ON | LOCALTIMEON | VMpON | USERMODEON
-	 *    - asid = your asid
-	 *    - stack page = last page of kUseg2 (0xC000.0000)
-	 *    - PC = well known address from the start of kUseg2
-	 */
+	/*  Set up a new state for the user process */
 	uProcState.s_status =
 			ALLOFF | INTpON | INTMASKOFF | LOCALTIMEON | VMpON | VMcON | USERMODEON;
 	uProcState.s_asid = getENTRYHI();
@@ -254,7 +229,9 @@ HIDDEN void initUProc() {
 
 /*************************** Helper Methods ****************************/
 /*
- *  getASID - returns the ASID of the currently running process
+ * getASID - returns the ASID of the currently running process
+ *
+ * RETURN: ASID - Address Space Identifier for current process
  */
 uint getASID() {
 	uint asid = getENTRYHI();
@@ -265,10 +242,13 @@ uint getASID() {
 
 /*
  * newAreaSPforSYS5 - calculate memory page for SYS5 stack page for new area
+ *
+ * PARAM:		trapType - type of exception handler
+ * RETURN:	memory stack page for SYS5 for new area
  */
 state_PTR newAreaSPforSYS5(int trapType) {
 	/* Calculate address of page in OS memory to act as stack for SYS 5 handling */
 	int topStackPageNo = TAPEBUFFERSSTART / PAGESIZE;
 	int downwardOffset = (TRAPTYPES * (asid - 1)) + trapType;
-	return (topStackPageNo - downwardOffset) * PAGESIZE;
+	return (state_PTR)(topStackPageNo - downwardOffset) * PAGESIZE;
 }
