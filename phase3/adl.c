@@ -23,7 +23,7 @@ delayd_PTR openBeds_h; /* Active Delay Free List */
 delayd_PTR nextToWake_h; /* ADL */
 
 /************************ Prototypes ***********************/
-HIDDEN void freeBed(delayd_t bed);
+HIDDEN void freeBed(delayd_PTR bed);
 HIDDEN delayd_PTR allocBed (void);
 HIDDEN delayd_PTR searchBeds (int wakeTime);
 /********************* External Methods ********************/
@@ -43,7 +43,7 @@ void initADL(void) {
 	}
 
 	/* Set boundary beds for ADL to simplify condition checking */
-	bedFactory[MAXUPROC].s_wakeTime = 0;
+	bedFactory[MAXUPROC].d_wakeTime = 0;
 	nextToWake_h = &(bedFactory[MAXUPROC]);
 	bedFactory[MAXUPROC + 1].d_wakeTime = (cpu_t) MAXINT;
 	nextToWake_h->d_next = &(bedFactory[MAXUPROC + 1]);
@@ -116,7 +116,7 @@ Bool setAlarm(int asid, cpu_t wakeTime) {
  * PARAM: bed - a pointer to a delay-node to be added to the
  *              active delay free list.
  */
-HIDDEN void freeBed(delayd_t bed) {
+HIDDEN void freeBed(delayd_PTR bed) {
 	bed->d_next = openBeds_h;
 	openBeds_h = bed;
 }
@@ -129,15 +129,15 @@ HIDDEN void freeBed(delayd_t bed) {
  *                a pointer to the removed node
  */
 HIDDEN delayd_PTR allocBed (void) {
-	if(bedFree_h == NULL) {
+	if(openBeds_h == NULL) {
 		return (NULL);
 	} else {
-		delayd_PTR cleanBed = bedFree_h;
-		bedFree_h = cleanBed->d_next;
+		delayd_PTR cleanBed = openBeds_h;
+		openBeds_h = cleanBed->d_next;
 
 		/* Clean bed */
 		cleanBed->d_next = NULL;
-		cleanBed->d_wakeTime = NULL;
+		cleanBed->d_wakeTime = (cpu_t) NULL;
 		return (cleanBed);
 	}
 }
