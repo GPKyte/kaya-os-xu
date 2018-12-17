@@ -18,10 +18,10 @@
 
 HIDDEN int sys9_readFromTerminal(int termNo, char *addr);
 HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len);
-HIDDEN void sys11_vVirtSem(int *semaddr);
-HIDDEN void sys12_pVirtSem(int *semaddr);
+HIDDEN void sys11_vVirtSem(int *semAddr);
+HIDDEN void sys12_pVirtSem(int *semAddr);
 HIDDEN void sys13_delay(int asid, int secondsToDelay);
-HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo);
+HIDDEN int sys14_diskPut(memaddr blockAddr, int diskNo, int sectNo);
 HIDDEN int sys15_diskGet(memaddr blockAddr, int diskNo, int sectNo);
 HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len);
 HIDDEN cpu_t sys17_getTOD(void);
@@ -31,10 +31,12 @@ void disableInterrupts(void);
 void enableInterrupts(void);
 HIDDEN int findPTEntryIndex(uPgTable_PTR pageTable, int vpn);
 int* findMutex(int lineNum, int deviceNum, Bool isReadTerm);
+Bool frameInUse(uint frameDescriptor);
 uPgTable_PTR getSegmentTableEntry(int segment, int asid);
 Bool isDirty(ptEntry_PTR pageDesc);
 void nukePageTable(uPgTable_PTR pageTable);
 void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr);
+int selectFrameIndex(void);
 uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite);
 void invalidate(ptEntry_PTR pte);
 void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex);
@@ -54,13 +56,14 @@ void uPgrmTrapHandler(void) {
 void uTlbHandler() {
 	int storageAddr, asid, segNum, vpn, destPTEIndex, newFrameNum, newFrameAddr;
 	int curPageIndex;
-	int* curFPEntry;
+	uint cause, *curFPEntry,
+	uPgTable_PTR destPgTbl;
+	ptEntry_PTR destPageEntry, curPage;
+
 	/* Determine cause */
 	state_PTR oldTlb = (state_PTR) TLBOLDAREA;
-	uPgTable_PTR destPgTbl;
-	ptEntry_PTR destPageEntry;
 
-	uint cause = oldTlb->s_cause;
+	cause = oldTlb->s_cause;
 	cause = (cause >> 2) & 0x1F; /* Get ExecCode */
 
 	/* Who am I? */
@@ -78,11 +81,11 @@ void uTlbHandler() {
 		sys18_terminate(asid);
 
 	/* Gain mutal exclusion of pager to avoid inconsistent states */
-	SYSCALL(PASSEREN, &pager, 0, 0);
+	sys12_pVirtSem(&pager);
 
 	/* Check shared table to see if it's already been brought in */
 	if(segNum == KUSEG3 && ((destPageEntry->entryLO & VALID) == TRUE)) {
-		SYSCALL(VERHOGEN, &pager, 0, 0);
+		sys11_vVirtSem(&pager);
 		contextSwitch(oldTlb);
 	}
 
@@ -90,7 +93,7 @@ void uTlbHandler() {
 	curFPEntry = &(framePool.frames[newFrameNum]);
 	newFrameAddr = framePool.frameAddr[newFrameNum];
 
-	if(frameInUse(curFPEntry)) {
+	if(frameInUse((int) curFPEntry)) {
 		/* Find PTE for the to-be-overwritten page in order
 		 * to determine if its a dirty page/
 
@@ -102,7 +105,7 @@ void uTlbHandler() {
 		curPageIndex = findPTEntryIndex(curPageTable,
 			(*curFPEntry & VPNMASK) >> 12);
 
-		ptEntry_PTR curPage = &(curPageTable->entries[curPageIndex]);
+		curPage = &(curPageTable->entries[curPageIndex]);
 		invalidate(curPage); /* Invalidate curPage to mean "missing" */
 
 		if(isDirty(curPage)) { /* Then write page to backing store */
@@ -132,7 +135,7 @@ void uTlbHandler() {
 	destPageEntry->entryLO |= newFrameAddr | VALID; /* newFrameAddr is like PFN << 12 (or * 4096) */
 
 	/* End mutal exclusion of TLB Handling */
-	SYSCALL(VERHOGEN, &pager, 0, 0);
+	sys11_vVirtSem(&pager);
 	contextSwitch(oldTlb);
 }
 
@@ -141,8 +144,9 @@ void uTlbHandler() {
  * uSysCallHandler - handles SYS9 - SYS18 when requested
  */
 void uSysCallHandler() {
-	int termNo, len, *semaddr, secondsToDelay, *blockAddr, diskNo, sectNo, prntNo;
-	char *addr, *virtAddr;
+	int *semAddr, termNo, len, secondsToDelay, diskNo, sectNo, prntNo;
+	char *charAddr, *virtCharAddr;
+	memaddr blockAddr;
 	uint asid = getASID();
 	state_PTR oldSys = &(uProcList[asid - 1].up_stateAreas[OLD][SYSTRAP]);
 
@@ -159,44 +163,44 @@ void uSysCallHandler() {
 	switch(oldSys->s_a0) {
 		case 9:
 			termNo = asid - 1;
-			addr = oldSys->s_a1;
-			oldSys->s_v0 = sys9_readFromTerminal(termNo, addr);
+			charAddr = (char*) oldSys->s_a1;
+			oldSys->s_v0 = sys9_readFromTerminal(termNo, charAddr);
 
 		case 10:
 			termNo = asid - 1;
-			virtAddr = oldSys->s_a1;
+			virtCharAddr = (char*) oldSys->s_a1;
 			len = oldSys->s_a2;
-			oldSys->s_v0 = sys10_writeToTerminal(termNo, virtAddr, len);
+			oldSys->s_v0 = sys10_writeToTerminal(termNo, virtCharAddr, len);
 
 		case 11:
-			semaddr = oldSys->s_a1;
-			sys11_vVirtSem(semaddr);
+			semAddr = (int*) oldSys->s_a1;
+			sys11_vVirtSem(semAddr);
 
 		case 12:
-			semaddr = oldSys->s_a1;
-			sys12_pVirtSem(semaddr);
+			semAddr = (int*) oldSys->s_a1;
+			sys12_pVirtSem(semAddr);
 
 		case 13:
 			secondsToDelay = oldSys->s_a1;
 			sys13_delay(asid, secondsToDelay);
 
 		case 14:
-			blockAddr = oldSys->s_a1;
+			blockAddr = (memaddr) oldSys->s_a1;
 			diskNo = oldSys->s_a2;
 			sectNo = oldSys->s_a3;
 			oldSys->s_v0 = sys14_diskPut(blockAddr, diskNo, sectNo);
 
 		case 15:
-			blockAddr = oldSys->s_a1;
+			blockAddr = (memaddr) oldSys->s_a1;
 			diskNo = oldSys->s_a2;
 			sectNo = oldSys->s_a3;
-			oldSys->s_v0 = sys15_diskGet(blockAddr, diskNo,sectNo);
+			oldSys->s_v0 = sys15_diskGet(blockAddr, diskNo, sectNo);
 
 		case 16:
 			prntNo = asid - 1;
-			virtAddr = oldSys->s_a1;
+			virtCharAddr = (char*) oldSys->s_a1;
 			len = oldSys->s_a2;
-			oldSys->s_v0 = sys16_writeToPrinter(prntNo, virtAddr, len);
+			oldSys->s_v0 = sys16_writeToPrinter(prntNo, virtCharAddr, len);
 
 		case 17:
 			oldSys->s_v0 = sys17_getTOD();
@@ -324,10 +328,10 @@ HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
  * interpreted by the nucleus as a request to perform a V op
  * on a virtual semaphore.
  *
- * PARAM: *semaddr - a pointer to a semaphore address
+ * PARAM: *semAddr - a pointer to a semaphore address
  *					to be signaled
  */
-HIDDEN void sys11_vVirtSem(int *semaddr) {
+HIDDEN void sys11_vVirtSem(int *semAddr) {
 
 }
 
@@ -336,10 +340,10 @@ HIDDEN void sys11_vVirtSem(int *semaddr) {
  * interpreted by the nuclus as a request to perform a P op
  * on a virtual semaphore.
  *
- * PARAM: *semaddr - a pointer to a semaphore address
+ * PARAM: *semAddr - a pointer to a semaphore address
  *					to be put on wait
  */
-HIDDEN void sys12_pVirtSem(int *semaddr) {
+HIDDEN void sys12_pVirtSem(int *semAddr) {
 
 }
 
@@ -377,8 +381,8 @@ HIDDEN void sys13_delay(int asid, int secondsToDelay) {
  * RETURN: if write successfully, returns a completion status.
  *				If not, return the negative of the completion status
  */
-HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
-	int wordIndex;
+HIDDEN int sys14_diskPut(memaddr blockAddr, int diskNo, int sectNo) {
+	uint wordIndex;
 	memaddr bufferAddr = (memaddr) DISKBUFFERSTART;
 	int *semAddr = findMutex(DISKINT, diskNo, FALSE);
 
