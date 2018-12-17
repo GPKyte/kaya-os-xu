@@ -1,2 +1,2 @@
 #!/bin/bash
-cat ${*} | egrep --only-match '^(HIDDEN )?\w.* ..*\(..*\)'
+cat ${*} | egrep --only-match '^(HIDDEN )?\w.* ..*\(.*\)'

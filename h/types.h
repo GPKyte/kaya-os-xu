@@ -124,7 +124,7 @@ typedef struct ptEntry_t {
 /* User type page table */
 #define MAXPTENTRIES 32
 typedef struct uPgTable_t {
-	int					magicPtHeaderWord; /* Cache to ID object as PTbl and current entry # */
+	int				header; /* Cache to ID object as PTbl and current entry # */
 	ptEntry_t		entries[MAXPTENTRIES];
 } uPgTable_t, *uPgTable_PTR;
 
@@ -144,7 +144,7 @@ typedef struct fpTable_t {
 } fpTable_t;
 
 typedef struct uProcEntry_t {
-	int up_pgTable;
+	uPgTable_PTR up_pgTable;
 	int up_syncSem;
 	int up_bkgStoreAddr;
 	state_t	up_stateAreas[2][3];

@@ -67,6 +67,7 @@
 
 /* Bitwise masks and constants */
 /* Turn 1 and 2 On, but 3 off: 1ON | 2ON & ~3ON */
+#define ALLOFF		0
 #define VMpON		(1 << 25)
 #define INTpON		(1 << 2)
 #define INTcON		(1)

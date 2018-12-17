@@ -19,7 +19,8 @@ extern uProcEntry_t uProcList[MAXUPROC];
 extern segTable_t* segTable;
 
 extern void test();
-extern void initUProc();
+extern uint getASID();
+extern void loadState(state_PTR newStatePTR);
 
 /***************************************************************/
 
