@@ -6,8 +6,8 @@
 /* level 1 SYS calls */
 #define READTERMINAL	9
 #define WRITETERMINAL 	10
-#define VMVERHOGEN		11
-#define VMPASSEREN		12
+#define VSEMVIRT		11
+#define PSEMVIRT		12
 #define DELAY			13
 #define DISK_PUT		14
 #define DISK_GET		15
