@@ -106,7 +106,7 @@ void uTlbHandler() {
 			((*curFPEntry & SEGMASK) >> 30),
 			((*curFPEntry & ASIDMASK) >> 6));
 
-		curPageIndex = findPageTableEntry(curPageTable,
+		curPageIndex = findPTEntryIndex(curPageTable,
 			(*curFPEntry & VPNMASK) >> 12);
 
 		ptEntry_PTR curPage = &(curPageTable->entries[curPageIndex]);
@@ -420,7 +420,7 @@ HIDDEN void sys18_terminate(int asid) {
 	/* Could be sleeping or blocked on Mutex semaphore */
 
 	/* Halt Delay Daemon when approaching the end */
-	if(masterSem == 1) { banishDaemon(); }
+	/* if(masterSem == 1) { banishDaemon(); } */
 	/* Count down to death */
 	SYSCALL(VERHOGEN, (int) &masterSem, 0, 0);
 	SYSCALL(TERMINATEPROCESS, 0, 0, 0);
@@ -492,6 +492,11 @@ uPgTable_PTR getSegmentTableEntry(int segment, int asid) {
 
 	else
 		return NULL; /* This is an error condition */
+}
+
+Bool frameInUse(uint frameDescriptor) {
+	Bool isUsed = (frameDescriptor & 1) ? TRUE : FALSE;
+	return isUsed;
 }
 
 Bool isDirty(ptEntry_PTR pageDesc) {
