@@ -288,7 +288,7 @@ HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 	termReg = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * TERMINT + termNo]);
 
 	/* Check boundary conditions, no OS access */
-	if(virtAddr < KUSEG2START || len < 0 || len > 128)
+	if((int) virtAddr < KUSEG2START || len < 0 || len > 128)
 		sys18_terminate(getASID());
 
 	sys12_pVirtSem(semAddr); /* Gain mutual exclusion of term device */
@@ -301,7 +301,7 @@ HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 		enableInterrupts();
 
 		/* React to results */
-		if(((status & 0xFF) == CTRANSD) && (status & 0xFF00 == tChar)) {
+		if(((status & 0xFF) == CTRANSD) && ((status & 0xFF00) == tChar)) {
 			writeCount++;
 
 		} else {
@@ -388,7 +388,7 @@ HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
 	sys12_pVirtSem(semAddr);
 	/* Transfer data from virtual address into physically located buffer */
 	for(wordIndex = 0; wordIndex < PAGESIZE; wordIndex++) {
-		*(bufferAddr + wordIndex) = *(blockAddr + wordIndex);
+		*(int*)(bufferAddr + wordIndex) = *(int*)(blockAddr + wordIndex);
 	}
 
 	engageDiskDevice(diskNo, sectNo, bufferAddr, WRITE);
@@ -405,12 +405,12 @@ HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
  * RETURN: if read successfully, returns a completion status.
  *				If not, return the negative of the completion status
  */
-HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo) {
-	int wordIndex;
+HIDDEN int sys15_diskGet(memaddr blockAddr, int diskNo, int sectNo) {
+	uint wordIndex;
 	memaddr bufferAddr = (memaddr) DISKBUFFERSTART;
 	int *semAddr = findMutex(DISKINT, diskNo, FALSE);
 
-	if(blockAddr < KUSEG2START || diskNo == 0)
+	if((int) blockAddr < KUSEG2START || diskNo == 0)
 		sys18_terminate(getASID()); /* illegal access, kill process */
 
 	sys12_pVirtSem(semAddr);
@@ -418,7 +418,7 @@ HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo) {
 
 	/* Transfer data from physically located buffer into virtual address */
 	for(wordIndex = 0; wordIndex < PAGESIZE; wordIndex++) {
-		*(blockAddr + wordIndex) = *(bufferAddr + wordIndex);
+		*(int*)(blockAddr + wordIndex) = *(int*)(bufferAddr + wordIndex);
 	}
 	sys11_vVirtSem(semAddr);
 }
@@ -444,7 +444,7 @@ HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
 	device_t *prntReg = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * PRNTINT + prntNo]);
 
 	/* Check boundary conditions, no OS access */
-	if(virtAddr < KUSEG2START || len < 0 || len > 128)
+	if((int) virtAddr < KUSEG2START || len < 0 || len > 128)
 		sys18_terminate(getASID());
 
 	sys12_pVirtSem(semAddr); /* Gain mutual exclusion of printer device */
@@ -539,7 +539,6 @@ void enableInterrupts() {
  * RETURN: an index of the page table entry
  */
 HIDDEN int findPTEntryIndex(uPgTable_PTR pageTable, int vpn) {
-	Bool isAMatch;
 	int vpnToMatch, loopVar = 0;
 	int indexOfMatch = -1; /* If not found, this indicates error condition */
 	int numEntries = pageTable->header & ENTRYCNTMASK;
@@ -578,7 +577,7 @@ int* findMutex(int lineNum, int deviceNum, Bool isReadTerm) {
  */
 uPgTable_PTR getSegmentTableEntry(int segment, int asid) {
 	if((segment == KSEGOS) || (segment == 1))
-		return segTable->kSegOS[asid];
+		return (uPgTable_PTR) segTable->kSegOS[asid];
 
 	else if (segment == KUSEG2)
 		return segTable->kuSeg2[asid];
@@ -608,14 +607,13 @@ void nukePageTable(uPgTable_PTR pageTable) {
 	int loopVar, entries;
 
 	/* Is this a page table or small island city? */
-	if(pageTable->header & MAGICNUMMASK != MAGICNUM)
+	if((pageTable->header & MAGICNUMMASK) != MAGICNUM)
 		sys18_terminate(getASID());
 
 	entries = pageTable->header & ENTRYCNTMASK;
 	for(loopVar = 0; loopVar < entries; loopVar++) {
-		/* TODO: Check if NULL is an appropriate value, is 0 better? */
-		pageTable->entries[loopVar].entryHI = NULL;
-		pageTable->entries[loopVar].entryLO = NULL;
+		pageTable->entries[loopVar].entryHI = -1;
+		pageTable->entries[loopVar].entryLO = -1;
 	}
 
 	/* Reset Header Word Entry Count */
