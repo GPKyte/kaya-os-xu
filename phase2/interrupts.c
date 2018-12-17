@@ -40,7 +40,7 @@
 
 /************************* Prototypes ************************/
 void intHandler();
-HIDDEN int ack(int lineNumber, device_t* device);
+HIDDEN unsigned int ack(int lineNumber, device_t* device);
 HIDDEN device_t* findDevice(int lineNum, int deviceNum);
 HIDDEN int findDeviceIndex(int intLine);
 HIDDEN int findLineIndex(unsigned int causeRegister);
@@ -157,8 +157,8 @@ void intHandler() {
  * PARAM: line of interrupt (to handleTerminal), and PTR to device
  * RETURN: unaltered status of interrupt from device
  */
-HIDDEN int ack(int lineNumber, device_t* device) {
-	int status;
+HIDDEN unsigned int ack(int lineNumber, device_t* device) {
+	unsigned int status;
 
 	if(lineNumber == TERMINT) {
 		status = handleTerminal(device);

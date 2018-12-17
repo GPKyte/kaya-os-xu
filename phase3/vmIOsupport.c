@@ -16,14 +16,14 @@
 
 /************************ Prototypes ***********************/
 
-HIDDEN int sys9_readFromTerminal(int termNo, char *addr);
-HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len);
+HIDDEN uint sys9_readFromTerminal(int termNo, char *addr);
+HIDDEN uint sys10_writeToTerminal(int termNo, char *virtAddr, int len);
 HIDDEN void sys11_vVirtSem(int *semAddr);
 HIDDEN void sys12_pVirtSem(int *semAddr);
 HIDDEN void sys13_delay(int asid, int secondsToDelay);
-HIDDEN int sys14_diskPut(memaddr blockAddr, int diskNo, int sectNo);
-HIDDEN int sys15_diskGet(memaddr blockAddr, int diskNo, int sectNo);
-HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len);
+HIDDEN uint sys14_diskPut(memaddr blockAddr, int diskNo, int sectNo);
+HIDDEN uint sys15_diskGet(memaddr blockAddr, int diskNo, int sectNo);
+HIDDEN uint sys16_writeToPrinter(int prntNo, char *virtAddr, int len);
 HIDDEN cpu_t sys17_getTOD(void);
 HIDDEN void sys18_terminate(int asid);
 int calcBkgStoreAddr(int asid, int pageOffset);
@@ -54,9 +54,8 @@ void uPgrmTrapHandler(void) {
  * uTlbHandler - handles the user-level TLB exception handler.
  */
 void uTlbHandler() {
-	int storageAddr, asid, segNum, vpn, destPTEIndex, newFrameNum, newFrameAddr;
-	int curPageIndex;
-	uint cause, *curFPEntry,
+	int storageAddr, asid, segNum, vpn, destPTEIndex, newFrameNum, newFrameAddr, curPageIndex;
+	uint cause, *curFPEntry;
 	uPgTable_PTR destPgTbl;
 	ptEntry_PTR destPageEntry, curPage;
 
@@ -228,8 +227,8 @@ void uSysCallHandler() {
  *					the terminal device, if read successfully.
  *					If not, return the negative of devic's statis value
  */
-HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
-	int status;
+HIDDEN uint sys9_readFromTerminal(int termNo, char *addr) {
+	uint status;
 	int charReadCount = 0;
 	int *semAddr = findMutex(TERMINT, termNo, TRUE);
 	char rChar;
@@ -283,10 +282,10 @@ HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
  *					if write sucessfully. If not, return the negative
  *					of the device's status value
  */
-HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
-	int status, *semAddr;
-	int writeCount = 0;
+HIDDEN uint sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
+	uint status;
 	char tChar;
+	int *semAddr, writeCount = 0;
 	Bool noFailure = TRUE;
 	device_t *termReg;
 
@@ -381,8 +380,8 @@ HIDDEN void sys13_delay(int asid, int secondsToDelay) {
  * RETURN: if write successfully, returns a completion status.
  *				If not, return the negative of the completion status
  */
-HIDDEN int sys14_diskPut(memaddr blockAddr, int diskNo, int sectNo) {
-	uint wordIndex;
+HIDDEN uint sys14_diskPut(memaddr blockAddr, int diskNo, int sectNo) {
+	uint wordIndex, status;
 	memaddr bufferAddr = (memaddr) DISKBUFFERSTART;
 	int *semAddr = findMutex(DISKINT, diskNo, FALSE);
 
@@ -397,8 +396,10 @@ HIDDEN int sys14_diskPut(memaddr blockAddr, int diskNo, int sectNo) {
 		*(int*)(bufferAddr + wordIndex) = *(int*)(blockAddr + wordIndex);
 	}
 
-	engageDiskDevice(diskNo, sectNo, bufferAddr, WRITE);
+	status = engageDiskDevice(diskNo, sectNo, bufferAddr, WRITE);
 	sys11_vVirtSem(semAddr);
+
+	return status;
 }
 
 /*
@@ -411,8 +412,8 @@ HIDDEN int sys14_diskPut(memaddr blockAddr, int diskNo, int sectNo) {
  * RETURN: if read successfully, returns a completion status.
  *				If not, return the negative of the completion status
  */
-HIDDEN int sys15_diskGet(memaddr blockAddr, int diskNo, int sectNo) {
-	uint wordIndex;
+HIDDEN uint sys15_diskGet(memaddr blockAddr, int diskNo, int sectNo) {
+	uint wordIndex, status;
 	memaddr bufferAddr = (memaddr) DISKBUFFERSTART;
 	int *semAddr = findMutex(DISKINT, diskNo, FALSE);
 
@@ -420,13 +421,15 @@ HIDDEN int sys15_diskGet(memaddr blockAddr, int diskNo, int sectNo) {
 		sys18_terminate(getASID()); /* illegal access, kill process */
 
 	sys12_pVirtSem(semAddr);
-	engageDiskDevice(diskNo, sectNo, bufferAddr, READ);
+	status = engageDiskDevice(diskNo, sectNo, bufferAddr, READ);
 
 	/* Transfer data from physically located buffer into virtual address */
 	for(wordIndex = 0; wordIndex < PAGESIZE; wordIndex++) {
 		*(int*)(blockAddr + wordIndex) = *(int*)(bufferAddr + wordIndex);
 	}
 	sys11_vVirtSem(semAddr);
+
+	return status;
 }
 
 /*
@@ -441,9 +444,10 @@ HIDDEN int sys15_diskGet(memaddr blockAddr, int diskNo, int sectNo) {
  *					actually being written to the printer device.
  *					It not, return the negative of the device's status value
  */
-HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
-	int status, prntCount;
-	int prntChar = 0;
+HIDDEN uint sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
+	uint status;
+	char prntChar;
+	int prntCount = 0;
 	int *semAddr = findMutex(PRNTINT, prntNo, FALSE);
 	Bool noFailure = TRUE;
 
