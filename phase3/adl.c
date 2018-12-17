@@ -25,6 +25,16 @@
 delayd_PTR openBeds_h; /* Active Delay Free List */
 delayd_PTR nextToWake_h; /* ADL */
 
+/*
+ * debugAdl for debugging ADL
+ */
+int debugAdl (int a, int b) {
+    int i;
+    i = a+b;
+
+    return i;
+}
+
 /************************ Prototypes ***********************/
 HIDDEN void freeBed(delayd_PTR bed);
 HIDDEN delayd_PTR allocBed (void);
@@ -72,7 +82,7 @@ void summonSandmanTheDelayDemon() {
 		while(nextToWake_h->d_wakeTime <= alarmTime) {
 			/* Wake up processes by calling V on their semaphore */
 			semAdd = &(uProcList[nextToWake_h->d_asid - 1].up_syncSem);
-			SYSCALL(VMVERHOGEN, (int)semAdd, 0, 0); /* Wake up proc */
+			SYSCALL(VSEMVIRT, (int)semAdd, 0, 0); /* Wake up proc */
 
 			/* Kick out proc */
 			napNeighbor = nextToWake_h->d_next;
