@@ -1,12 +1,11 @@
 /************************** ADL.C **************************
- * ADL module implements the Active Delay List module.
- *
- *
- *
- *
- *
- *
- *
+ * ADL module implements the Active Delay List module to
+ * store and keep track of the "sleeping" U-proc's,
+ * which is maintained as a sorted NULL-terminated
+ * single linearly linked list. Similarly, the free list,
+ * that holds the unused delay-node descriptors, is also
+ * maintained as a NULL-terminated single linearly linked
+ * list.
  *
  * AUTHORS: Ploy Sithisakulrat & Gavin Kyte
  * ADVISOR/CONTRIBUTER: Michael Goldweber
@@ -20,14 +19,19 @@
  #include "../e/initProc.e"
  #include "../e/vmIOsupport.e"
 
-delayd_PTR openBeds_h;
-delayd_PTR nextToWake_h;
+delayd_PTR openBeds_h; /* Active Delay Free List */
+delayd_PTR nextToWake_h; /* ADL */
 
 /************************ Prototypes ***********************/
-
+HIDDEN void freeBed(delayd_t bed);
+HIDDEN delayd_PTR allocBed (void);
+HIDDEN delayd_PTR searchBeds (int wakeTime);
 /********************* External Methods ********************/
 
-
+/*
+ * initADL - initializes the active delay list (ADL) to store
+ * and keep track of the "sleeping" U-proc's
+ */
 void initADL(void) {
 	int i;
 	static delayd_t bedFactory[MAXUPROC + 2]; /* +2 for dummy nodes */
@@ -46,6 +50,13 @@ void initADL(void) {
 	nextToWake_h->d_next->d_next = NULL;
 }
 
+/*
+ * summonSandmanTheDelayDemon - this process determines if a
+ * U-Proc's wake-time has passed. For each delay-node that
+ * wake-time has passed, perform a V operation on the
+ * indicated U-Proc's private semaphore, remove it from
+ * the ADL and return it to the free list.
+ */
 void summonSandmanTheDelayDemon() {
 	cpu_t alarmTime;
 	int *semAdd;
@@ -98,11 +109,25 @@ Bool setAlarm(int asid, cpu_t wakeTime) {
 }
 
 /********************** Helper Methods *********************/
+/*
+ * freeBed - a mutator used to insert a delay-node into the
+ * active delay free list.
+ *
+ * PARAM: bed - a pointer to a delay-node to be added to the
+ *              active delay free list.
+ */
 HIDDEN void freeBed(delayd_t bed) {
 	bed->d_next = openBeds_h;
 	openBeds_h = bed;
 }
 
+/*
+ * allocBed - an accessor to remove a delay-node from the
+ * free list and return to the active delay list.
+ *
+ * RETURN: NULL - if the free list is empty, else return
+ *                a pointer to the removed node
+ */
 HIDDEN delayd_PTR allocBed (void) {
 	if(bedFree_h == NULL) {
 		return (NULL);
