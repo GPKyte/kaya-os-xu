@@ -162,4 +162,11 @@ typedef struct delayd_t {
 	cpu_t				d_wakeTime;
 } delayd_t, *delayd_PTR;
 
+typedef struct virtSemd_t {
+	struct virtSemd_t *vs_next,		/* next element on the AVSL */
+							*vs_prev;			/* previous element on the AVSL */
+	int					*vs_semd;		/* a pointer to a virtual semaphore */
+	uint				vs_asid;		/* asid to identify each blocked vs on AVSL */
+} virtSemd_t, *virtSemd_PTR;
+
 #endif
