@@ -46,6 +46,7 @@
 #define GETCPUTIME				6
 #define WAITCLOCK				7
 #define WAITIO					8
+#define GETTIME					17
 
 /* utility constants */
 #define TRUE		1
