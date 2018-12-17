@@ -33,6 +33,8 @@ virtSemd_PTR trafficJam_h; /* pointer to the head of AVSL;
 HIDDEN void freeTraffic (virtSemd_PTR car);
 HIDDEN virtSemd_PTR allocTraffic (void);
 HIDDEN virtSemd_PTR searchTraffic (int *nextToRelease);
+void addCarToTraffic (virtSemd_PTR *head, virtSemd_PTR vs);
+virtSemd_PTR removeCarFromTraffic (virtSemd_PTR *head);
 
 /********************* External Methods ********************/
 /*
