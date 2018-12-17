@@ -204,7 +204,7 @@ HIDDEN void initUProc() {
 	}
 
 	/* Read the contents of the tape device onto the backing store device */
-	int pageNo = 0;
+	pageNo = 0;
 	while((tape->d_data1 != EOT) && (tape->d_data1 != EOF)) {
 		/* read contents until data1 is no longer EOB */
 		bufferAddr = TAPEBUFFERSSTART + (PAGESIZE * (asid-1));
