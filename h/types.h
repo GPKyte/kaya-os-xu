@@ -160,6 +160,7 @@ typedef struct delayd_t {
 	struct delayd_t*	d_next;
 	int					d_occupantID;
 	cpu_t				d_wakeTime;
+	uint				d_asid
 } delayd_t, *delayd_PTR;
 
 typedef struct virtSemd_t {
