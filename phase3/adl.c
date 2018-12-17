@@ -14,10 +14,13 @@
 
  #include "../h/const.h"
  #include "../h/types.h"
+ #include "testers/h/tconst.h"
 
  #include "../e/pcb.e"
  #include "../e/initProc.e"
  #include "../e/vmIOsupport.e"
+
+ #include "/usr/local/include/umps2/umps/libumps.e"
 
 delayd_PTR openBeds_h; /* Active Delay Free List */
 delayd_PTR nextToWake_h; /* ADL */
@@ -68,8 +71,8 @@ void summonSandmanTheDelayDemon() {
 		/* Find beds to wake up */
 		while(nextToWake_h->d_wakeTime <= alarmTime) {
 			/* Wake up processes by calling V on their semaphore */
-			semAdd = &(uProcList[nextToWake_h->d_asid - 1]->up_syncSem);
-			SYSCALL(VMVERHOGEN, semAdd); /* Wake up proc */
+			semAdd = &(uProcList[nextToWake_h->d_asid - 1].up_syncSem);
+			SYSCALL(VMVERHOGEN, (int)semAdd, 0, 0); /* Wake up proc */
 
 			/* Kick out proc */
 			napNeighbor = nextToWake_h->d_next;
@@ -78,7 +81,7 @@ void summonSandmanTheDelayDemon() {
 		}
 
 		/* Take micronap */
-		SYSCALL(WAITCLOCK);
+		SYSCALL(WAITCLOCK, 0, 0, 0);
 	}
 }
 
