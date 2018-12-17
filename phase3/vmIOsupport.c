@@ -22,7 +22,7 @@ HIDDEN void sys11_vVirtSem(int *semaddr);
 HIDDEN void sys12_pVirtSem(int *semaddr);
 HIDDEN void sys13_delay(int asid, int secondsToDelay);
 HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo);
-HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo);
+HIDDEN int sys15_diskGet(memaddr blockAddr, int diskNo, int sectNo);
 HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len);
 HIDDEN cpu_t sys17_getTOD(void);
 HIDDEN void sys18_terminate(int asid);
