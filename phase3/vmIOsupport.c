@@ -32,6 +32,8 @@ HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len);
 HIDDEN cpu_t sys17_getTOD(void);
 HIDDEN void sys18_terminate(int asid);
 int calcBkgStoreAddr(int asid, int pageOffset);
+void disableInterrupts(void);
+void enableInterrupts(void);
 HIDDEN int findPTEntryIndex(uPgTable_PTR pageTable, int vpn);
 int* findMutex(int lineNum, int deviceNum, Bool isReadTerm);
 uPgTable_PTR getSegmentTableEntry(int segment, int asid);
@@ -285,7 +287,7 @@ HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 		enableInterrupts();
 
 		/* React to results */
-		if(((status & 0xFF) == CTRANSD) && (status & 0xFF00 == tChar)) {
+		if(((status & 0xFF) == CTRANSD) && ((status & 0xFF00) == tChar)) {
 			writeCount++;
 
 		} else {
@@ -337,7 +339,7 @@ HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
 	sys12_pVirtSem(semAddr);
 	/* Transfer data from virtual address into physically located buffer */
 	for(wordIndex = 0; wordIndex < PAGESIZE; wordIndex++) {
-		*(bufferAddr + wordIndex) = *(blockAddr + wordIndex);
+		*(int*)(bufferAddr + wordIndex) = *(int*)(blockAddr + wordIndex);
 	}
 
 	engageDiskDevice(diskNo, sectNo, bufferAddr, WRITE);
@@ -360,7 +362,7 @@ HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo) {
 
 	/* Transfer data from physically located buffer into virtual address */
 	for(wordIndex = 0; wordIndex < PAGESIZE; wordIndex++) {
-		*(blockAddr + wordIndex) = *(bufferAddr + wordIndex);
+		*(int*)(blockAddr + wordIndex) = *(int*)(bufferAddr + wordIndex);
 	}
 	sys11_vVirtSem(semAddr);
 }
@@ -437,7 +439,7 @@ void disableInterrupts() {
 void enableInterrupts() {
 	uint status = getSTATUS();
 	status = status | INTMASKOFF | INTcON;
-	setSTATUS()
+	setSTATUS(status);
 }
 
 HIDDEN int findPTEntryIndex(uPgTable_PTR pageTable, int vpn) {

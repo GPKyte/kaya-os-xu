@@ -15,7 +15,6 @@
 
 #include "../h/const.h"
 #include "../h/types.h"
-#include "../e/scheduler.e"
 #include "../e/vmIOsupport.e"
 /* #include "../e/adl.e" */
 
