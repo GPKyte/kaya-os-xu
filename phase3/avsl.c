@@ -151,7 +151,7 @@ HIDDEN virtSemd_PTR allocTraffic (void) {
 
     /* clear traffic */
     car->vs_next = NULL;
-    car->vs_semAdd = NULL;
+    car->vs_semd = NULL;
     return (car);
   }
 }
