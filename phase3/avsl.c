@@ -29,6 +29,16 @@ virtSemd_PTR openRoutes_h; /* pointer to the head of virtSemdFree list */
 virtSemd_PTR trafficJam_h; /* pointer to the head of AVSL;
                               holds blocked U-Proc's*/
 
+/* 
+ * debugAvsl for debugging  
+ */
+int debugAvsl (int a, int b) {
+    int i;
+    i = a+b;
+
+    return i;
+}
+
 /************************ Prototypes ***********************/
 HIDDEN void freeTraffic (virtSemd_PTR car);
 HIDDEN virtSemd_PTR allocTraffic (void);
