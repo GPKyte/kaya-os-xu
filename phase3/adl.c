@@ -1,5 +1,5 @@
 /************************** ADL.C **************************
- *
+ * ADL module implements the Active Delay List module.
  *
  *
  *
@@ -13,7 +13,12 @@
  * DATE PUBLISHED:
  ***********************************************************/
 
-#include
+ #include "../h/const.h"
+ #include "../h/types.h"
+
+ #include "../e/pcb.e"
+ #include "../e/initProc.e"
+ #include "../e/vmIOsupport.e"
 
 delayd_PTR openBeds_h;
 delayd_PTR nextToWake_h;
@@ -25,7 +30,7 @@ delayd_PTR nextToWake_h;
 
 void initADL(void) {
 	int i;
-	static semd_t bedFactory[MAXUPROC + 2]; /* +2 for dummy nodes */
+	static delayd_t bedFactory[MAXUPROC + 2]; /* +2 for dummy nodes */
 
 	openBeds_h = NULL; /* Init delay list */
 
@@ -107,7 +112,6 @@ HIDDEN delayd_PTR allocBed (void) {
 
 		/* Clean bed */
 		cleanBed->d_next = NULL;
-		cleanBed->d_procQ = mkEmptyProcQ();
 		cleanBed->d_wakeTime = NULL;
 		return (cleanBed);
 	}
