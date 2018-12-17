@@ -41,6 +41,11 @@ uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite);
 void invalidate(ptEntry_PTR pte);
 void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex);
 
+HIDDEN int debugVM(int a, int b, int c, int d) {
+	int debugVarToKeepFromDisappearing = a + b + c + d;
+	return debugVarToKeepFromDisappearing;
+}
+
 /********************* External Methods ********************/
 /*
  * uPgrmTrapHandler - handles user-level program trap handler,

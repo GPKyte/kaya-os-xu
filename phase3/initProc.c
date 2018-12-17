@@ -44,6 +44,11 @@ HIDDEN void initUProc();
 void contextSwitch(state_PTR newContext);
 int newAreaSPforSYS5(int trapType);
 
+HIDDEN int debugIP(int a, int b, int c, int d) {
+	int debugVarToKeepFromDisappearing = a + b + c + d;
+	return debugVarToKeepFromDisappearing;
+}
+
 /********************* External Methods ********************/
 /*
  * test - Set up the page and segment tables for all 8 user processes
