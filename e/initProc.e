@@ -20,7 +20,7 @@ extern segTable_t* segTable;
 
 extern void test();
 extern uint getASID();
-extern void loadState(state_PTR newStatePTR);
+extern void contextSwitch(state_PTR newStatePTR);
 
 /***************************************************************/
 

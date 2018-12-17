@@ -23,17 +23,18 @@
 
 uPgTable_PTR kUseg3_pte; /* shared variable among all users */
 
-static fpTable_t framePool;
-static int masterSem = 0;
-static int pager = 0; /* Mutex for page swaping mechanism */
-static int mutexSems[MAXSEMS];
-static uProcEntry_t uProcList[MAXUPROC];
+fpTable_t framePool;
+int masterSem = 0;
+int pager = 0; /* Mutex for page swaping mechanism */
+int mutexSems[MAXSEMS];
+uProcEntry_t uProcList[MAXUPROC];
 segTable_t* segTable = (segTable_t*) 0x20000500;
 
 /************************ Prototypes ***********************/
 uint getASID();
 void test(void);
 HIDDEN void initUProc();
+void contextSwitch(state_PTR newContext);
 int newAreaSPforSYS5(int trapType);
 
 /********************* External Methods ********************/
@@ -258,7 +259,7 @@ HIDDEN void initUProc() {
 	uProcState.s_sp = KUSEG3START;
 	uProcState.s_pc = uProcState.s_t9 = (memaddr) KUSEG2START;
 
-	loadState(&uProcState);
+	contextSwitch(&uProcState);
 }
 
 /*************************** Helper Methods ****************************/
@@ -273,9 +274,9 @@ uint getASID() {
 }
 
 /*
- * loadState - generate a context switch. Must be in Kernel mode to use!
+ * contextSwitch - generate a context switch. Must be in Kernel mode to use!
  */
-void loadState(state_PTR newContext) {
+void contextSwitch(state_PTR newContext) {
 	LDST(newContext);
 }
 

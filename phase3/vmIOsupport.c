@@ -88,7 +88,7 @@ void uTlbHandler() {
 	/* Check shared table to see if it's already been brought in */
 	if(segNum == KUSEG3 && ((destPageEntry->entryLO & VALID) == TRUE)) {
 		SYSCALL(VERHOGEN, &pager, 0, 0);
-		loadState(oldTlb);
+		contextSwitch(oldTlb);
 	}
 
 	newFrameNum = selectFrameIndex();
@@ -113,7 +113,7 @@ void uTlbHandler() {
 		if(isDirty(curPage)) { /* Then write page to backing store */
 			/* Clear out TLB to avoid inconsistencies */
 			/* TODO Better: Overwrite cached page table entry */
-			TLBCLEAR();
+			TLBCLR();
 
 			/* Write frame back to backing store */
 			/* TODO: Find where page offset could be found, 1:1 VPN and pageNum?? */
@@ -130,7 +130,7 @@ void uTlbHandler() {
 	framePool.frames[newFrameNum] = destPageEntry->entryHI + 1; /* +1 for "in use" */
 
 	/* Resynch TLB Cache */
-	TLBCLEAR();
+	TLBCLR();
 
 	/* Update relevant page table entry */
 	destPageEntry->entryLO &= ~PFNMASK; /* Erase current PFN */
@@ -138,7 +138,7 @@ void uTlbHandler() {
 
 	/* End mutal exclusion of TLB Handling */
 	SYSCALL(VERHOGEN, &pager, 0, 0);
-	loadState(oldTlb);
+	contextSwitch(oldTlb);
 }
 
 
@@ -214,7 +214,7 @@ void uSysCallHandler() {
 			sys18_terminate(asid);
 	}
 
-	loadState(oldSys);
+	contextSwitch(oldSys);
 }
 
 /********************** Helper Methods *********************/
