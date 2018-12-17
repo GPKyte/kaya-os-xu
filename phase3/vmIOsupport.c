@@ -1,12 +1,7 @@
 /********************** VMIOSUPPORT.C **********************
- *
- *
- *
- *
- *
- *
- *
- *
+ * vmIOsupport module implements the VM-I/O support level
+ * SYS/Bp and PgmTrap exception handlers, which are
+ * SYSCALLs 9-18.
  *
  * AUTHORS: Ploy Sithisakulrat & Gavin Kyte
  * ADVISOR/CONTRIBUTER: Michael Goldweber
@@ -44,17 +39,15 @@ void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex);
 
 /********************* External Methods ********************/
 /*
- * uPgrmTrapHandler -
- *
+ * uPgrmTrapHandler - handles user-level program trap handler,
+ * in which users should not be dealing with, so terminate!
  */
 void uPgrmTrapHandler(void) {
 	sys18_terminate(getASID()); /* No faulty programs here. Off with their head! */
 }
 
 /*
- * uTlbHandler -
- *
- *
+ * uTlbHandler - handles the user-level TLB exception handler.
  */
 void uTlbHandler() {
 	int storageAddr, asid, segNum, vpn, destPTEIndex, newFrameNum, newFrameAddr;
@@ -143,8 +136,7 @@ void uTlbHandler() {
 
 
 /*
- * uSysCallHandler handles SYS9 - SYS18
- *
+ * uSysCallHandler - handles SYS9 - SYS18 when requested
  */
 void uSysCallHandler() {
 	int termNo, len, *semaddr, secondsToDelay, *blockAddr, diskNo, sectNo, prntNo;
@@ -218,6 +210,18 @@ void uSysCallHandler() {
 }
 
 /********************** Helper Methods *********************/
+/*
+ * sys9_readFromTerminal - when requested, this service causes
+ * the requesting U-proc to be suspended until a line of input
+ * (string of chars) has been transmitted from the terminal
+ * device associated with the U-Proc.
+ *
+ * PARAM: termNo - terminal number being read from
+ *				*addr - a pointer to string of char address
+ * RETURN: the number of characters actually transmitted to
+ *					the terminal device, if read successfully.
+ *					If not, return the negative of devic's statis value
+ */
 HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
 	int status;
 	int charReadCount = 0;
@@ -261,6 +265,18 @@ HIDDEN int sys9_readFromTerminal(int termNo, char *addr) {
 		return (-1 * status); /* Return failure */
 }
 
+/*
+ * sys10_writeToTerminal - when requested, this service causes
+ * the requesting U-Proc to be suspended until a line of output
+ * (string of chars) has been transmitted to the terminal device
+ * associated with the U-Proc
+ *
+ * PARAM: termNo - terminal number bein written to
+ *				*virtAddr - a pointer to string of char address
+ * RETURN: the number of character written to the terminal device,
+ *					if write sucessfully. If not, return the negative
+ *					of the device's status value
+ */
 HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 	int status, *semAddr;
 	int writeCount = 0;
@@ -301,14 +317,42 @@ HIDDEN int sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 		return (-1 * status); /* Return failure code */
 }
 
+/*
+ * sys11_vVirtSem - when this service is requested, it is
+ * interpreted by the nucleus as a request to perform a V op
+ * on a virtual semaphore.
+ *
+ * PARAM: *semaddr - a pointer to a semaphore address
+ *					to be signaled
+ */
 HIDDEN void sys11_vVirtSem(int *semaddr) {
 
 }
 
+/*
+ * sys12_pVirtSem - when this service is requested, it is
+ * interpreted by the nuclus as a request to perform a P op
+ * on a virtual semaphore.
+ *
+ * PARAM: *semaddr - a pointer to a semaphore address
+ *					to be put on wait
+ */
 HIDDEN void sys12_pVirtSem(int *semaddr) {
 
 }
 
+/*
+ * sys13_delay - causes the executing U-Proc to be delayed
+ * for at least n seconds and not substantially longer.
+ * Since the nucleus controls low-level scheduling devicions,
+ * all the VM-I/O support level can ensure is that the
+ * requesting U-Proc not be "sechdulable" until n seconds
+ * has elapsed and that it becomes schedulable shortly thereafter
+ *
+ * PARAM: asid - id of the requesting U-Proc
+ *				secondsToDelay - an integer of senconds to delay
+ *						the executing U-Proc
+ */
 HIDDEN void sys13_delay(int asid, int secondsToDelay) {
 	cpu_t startTime, alarmTime;
 	STCK(startTime);
@@ -322,7 +366,14 @@ HIDDEN void sys13_delay(int asid, int secondsToDelay) {
 }
 
 /*
- * sys14_diskPut - write to disk
+ * sys14_diskPut - the requesting U-Proc is suspended until
+ * the disk write operation has ended
+ *
+ * PARAM: *blockAddr - a pointer to a block address being written to
+ *				diskNo - disk number being written to
+ *				sectNo - sector number being written to
+ * RETURN: if write successfully, returns a completion status.
+ *				If not, return the negative of the completion status
  */
 HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
 	int wordIndex;
@@ -345,7 +396,14 @@ HIDDEN int sys14_diskPut(int *blockAddr, int diskNo, int sectNo) {
 }
 
 /*
- * sys15_diskGet - read from disk
+ * sys15_diskGet - the requesting U-Proc is suspended until
+ * the disk read operation has ended
+ *
+ * PARAM: *blockAddr - a pointer to a block address being read from
+ *				diskNo - disk number being read from
+ *				sectNo - sector number being read from
+ * RETURN: if read successfully, returns a completion status.
+ *				If not, return the negative of the completion status
  */
 HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo) {
 	int wordIndex;
@@ -365,6 +423,18 @@ HIDDEN int sys15_diskGet(int *blockAddr, int diskNo, int sectNo) {
 	sys11_vVirtSem(semAddr);
 }
 
+/*
+ * sys16_writeToPrinter - the requesting U-Proc is suspended until
+ * a line of output (string of char) has been written to the printer
+ * device associated with the U-Proc successfully.
+ *
+ * PARAM: prntNo - printer device number
+ *				*virtAddr - a pointer to virtual address
+ *				len - length of the string of characters
+ * RETURN: If write successfully, return the number of characters
+ *					actually being written to the printer device.
+ *					It not, return the negative of the device's status value
+ */
 HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
 	int status, prntCount;
 	int prntChar = 0;
@@ -403,12 +473,26 @@ HIDDEN int sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
 		return (-1 * status); /* Return failure */
 }
 
+/*
+ * sys17_getTOD - place/return the number of microseconds since
+ * the system was last botted/reset into the U-Proc's v0
+ *
+ * RETURN: time in microseconds since the system was last booted
+ */
 HIDDEN cpu_t sys17_getTOD(void) {
 	cpu_t tod;
 	STCK(tod);
 	return tod;
 }
 
+/*
+ * sys18_terminate - terminated the executing U-Proc, which will
+ * cause Kaya to "shut down." This means all the system processes
+ * created in the VM-I/O support level will be terminated as well.
+ * Eventually, the nucleus scheduler will invoke HALT ROM service
+ *
+ * PARAM: asid - ID of the U-Proc to terminate
+ */
 HIDDEN void sys18_terminate(int asid) {
 	uProcEntry_PTR upe = &(uProcList[asid - 1]);
 	disableInterrupts(); /* New process ldst() will recover ints */
@@ -424,6 +508,13 @@ HIDDEN void sys18_terminate(int asid) {
 	SYSCALL(TERMINATEPROCESS, 0, 0, 0);
 }
 
+/*
+ * calcBkgStoreAddr - calculates the address of the backing store
+ *
+ * PARAM: asid - id of a page entry
+ *				pageOffset - page offset
+ * RETURN: address of backing store
+ */
 int calcBkgStoreAddr(int asid, int pageOffset) {
 	return ((asid * MAXPAGES) + pageOffset);
 }
@@ -440,6 +531,13 @@ void enableInterrupts() {
 	setSTATUS()
 }
 
+/*
+ * findPTEntryIndex - finds index of page table entry
+ *
+ * PARAM: pageTable - a pointer to a page table entry to search for
+ *				vpn - virtual page number
+ * RETURN: an index of the page table entry
+ */
 HIDDEN int findPTEntryIndex(uPgTable_PTR pageTable, int vpn) {
 	Bool isAMatch;
 	int vpnToMatch, loopVar = 0;
@@ -492,10 +590,20 @@ uPgTable_PTR getSegmentTableEntry(int segment, int asid) {
 		return NULL; /* This is an error condition */
 }
 
+/*
+ * isDirty - returns TRUE if the page descriptor is dirty
+ *
+ * PARAM: pageDesc - a pointer to a page descriptor
+ */
 Bool isDirty(ptEntry_PTR pageDesc) {
 	return TRUE; /* (*pageDesc & DIRTY) ? TRUE : FALSE; */
 }
 
+/*
+ * nukePageTable -
+ *
+ * PARAM: pageTable - a pointer to page table entry
+ */
 void nukePageTable(uPgTable_PTR pageTable) {
 	int loopVar, entries;
 
@@ -514,6 +622,12 @@ void nukePageTable(uPgTable_PTR pageTable) {
 	pageTable->header = MAGICNUM;
 }
 
+/*
+ * readPageFromBackingStore - reads page from the backing store
+ *
+ * PARAM: sectIndex - sector index
+ *				destFrameAddr - memory address to read from
+ */
 void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
 	int *semAddr = findMutex(DISKINT, 0, FALSE);
 
@@ -522,6 +636,12 @@ void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
 	sys11_vVirtSem(semAddr);
 }
 
+/*
+ * writePageToBackingStore - writes page to the backing store
+ *
+ * PARAM: srcFrameAddr - memory address to write to
+ *				sectIndex - sector index
+ */
 void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex) {
 	int *semAddr = findMutex(DISKINT, 0, FALSE);
 
@@ -530,6 +650,14 @@ void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex) {
 	sys11_vVirtSem(semAddr);
 }
 
+/*
+ * engageDiskDevice -
+ *
+ * PARAM: diskNo - disk number
+ *				sectIndex - sector index
+ *				addr - memory address
+ *				readOrWrite - read or write command code
+ */
 uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) {
 	int head, sect, cyl, maxHeads, maxSects, maxCyls, status;
 	device_t *diskDev = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT + diskNo]);
@@ -569,11 +697,20 @@ uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) 
 	return status;
 }
 
-/* invalidate - mutator used to mark a page as missing from memory */
+/*
+ * invalidate - mutator used to mark a page as missing from memory
+ *
+ * PARAM: pte - page table entry to be marked as missing
+ */
 void invalidate(ptEntry_PTR pte) {
 	pte->entryLO = pte->entryLO & ~VALID;
 }
 
+/*
+ * selectFrameIndex -
+ *
+ * RETURN:
+ */
 int selectFrameIndex() {
 	framePool.indexOfLastFrameReplaced += 1;
 	framePool.indexOfLastFrameReplaced %= MAXFRAMES;
