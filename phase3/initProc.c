@@ -139,7 +139,7 @@ void test(void) {
 		}
 
 		/* Correct last entry to act as a stack page */
-		newPTEntry->entryHI = (KUSEG3VPN << 12) | (asid << 6);
+		newPTEntry->entryHI = ((KUSEG3VPN - 1) << 12) | (asid << 6);
 
 		/* Fill entry for user process tracking */
 		newProcDesc = &(uProcList[asid - 1]);
@@ -147,16 +147,18 @@ void test(void) {
 		newProcDesc->up_pgTable = &(uPgTableList[asid - 1]);
 		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid, 0);
 
-		/* Create default kernel level state starting in init code */
+		STST(newState);
+		debugIP(151, newState->s_sp, 0, 0);
+		/* Create default kernel level state starting in init code, fill in s_sp later */
 		newState = &(newStateList[asid - 1]);
 		newState->s_asid = asid << 6;
-		newState->s_sp = (int) NULL;
-		newState->s_pc = (memaddr) initUProc;
+		newState->s_pc = newState->s_t9 = (memaddr) initUProc;
 
 		/* Interrupts on, Local Timer On, VM Off, Kernel mode on */
 		newState->s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
 			& ~VMpON & ~USERMODEON;
 
+		debugIP(159, (int) initUProc, (int) getASID, newState->s_sp);
 		if(masterSem >= 6) debugIP(160,masterSem,newState->s_asid,newState->s_status);
 		/* SYSCALL(PASSEREN, (int) &masterSem, 0, 0); */
 		masterSem++;
@@ -174,11 +176,15 @@ HIDDEN void initUProc() {
 	state_PTR newArea; /* TODO: either this or will have to specify area */
 	state_t uProcState; /* used to update user process' new state */
 	device_t* tape;
-	uint asid = getASID();
+	uint asid;
+	
+	debugIP(177, 0,0,0);
+	asid = getASID();
 
 	/* the tape the data is read from */
 	tape = (device_t*) (INTDEVREGSTART + ((TAPEINT-3) * DEVREGSIZE * DEVPERINT) + ((asid-1) * DEVREGSIZE));
 
+	debugIP(182, asid ,0,0);
 	/* Set up the three new areas for Pass up or die */
 	for(trapNo = 0; trapNo < TRAPTYPES; trapNo++) {
 		newArea = &(uProcList[asid-1].up_stateAreas[NEW][trapNo]);
@@ -186,6 +192,7 @@ HIDDEN void initUProc() {
 			INTpON | INTMASKOFF | LOCALTIMEON | VMpON | USERMODEON;
 		newArea->s_asid = getENTRYHI();
 
+		debugIP(190, newArea->s_status, newArea->s_asid, asid);
 		/* TODO: pgrmTrapHandler for P3 */
 		switch (trapNo) {
 			case (TLBTRAP):
