@@ -42,7 +42,7 @@ uint getASID();
 void test(void);
 HIDDEN void initUProc();
 void contextSwitch(state_PTR newContext);
-int newAreaSPforSYS5(int trapType);
+int newAreaSPforSYS5(int trapType, int asid);
 
 HIDDEN int debugIP(int a, int b, int c, int d) {
 	int debugVarToKeepFromDisappearing = a + b + c + d;
@@ -147,11 +147,11 @@ void test(void) {
 		newProcDesc->up_pgTable = &(uPgTableList[asid - 1]);
 		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid, 0);
 
-		STST(newState);
 		debugIP(151, newState->s_sp, 0, 0);
 		/* Create default kernel level state starting in init code, fill in s_sp later */
 		newState = &(newStateList[asid - 1]);
 		newState->s_asid = asid << 6;
+		newState->s_sp = newAreaSPforSYS5(0, asid);
 		newState->s_pc = newState->s_t9 = (memaddr) initUProc;
 
 		/* Interrupts on, Local Timer On, VM Off, Kernel mode on */
@@ -176,8 +176,8 @@ HIDDEN void initUProc() {
 	state_PTR newArea; /* TODO: either this or will have to specify area */
 	state_t uProcState; /* used to update user process' new state */
 	device_t* tape;
-	uint asid;
-	
+	int asid;
+
 	debugIP(177, 0,0,0);
 	asid = getASID();
 
@@ -197,17 +197,17 @@ HIDDEN void initUProc() {
 		switch (trapNo) {
 			case (TLBTRAP):
 				newArea->s_pc = newArea->s_t9 = (memaddr) uTlbHandler;
-				newArea->s_sp = newAreaSPforSYS5(TLBTRAP);
+				newArea->s_sp = newAreaSPforSYS5(TLBTRAP, asid);
 				break;
 
 			case (PROGTRAP):
 				newArea->s_pc = newArea->s_t9 = (memaddr) uPgrmTrapHandler;
-				newArea->s_sp = newAreaSPforSYS5(PROGTRAP);
+				newArea->s_sp = newAreaSPforSYS5(PROGTRAP, asid);
 				break;
 
 			case (SYSTRAP):
 				newArea->s_pc = newArea->s_t9 = (memaddr) uSysCallHandler;
-				newArea->s_sp = newAreaSPforSYS5(SYSTRAP);
+				newArea->s_sp = newAreaSPforSYS5(SYSTRAP, asid);
 				break;
 		}
 
@@ -272,9 +272,9 @@ void contextSwitch(state_PTR newContext) {
  * PARAM:		trapType - type of exception handler
  * RETURN:	memory stack page for SYS5 for new area
  */
-int newAreaSPforSYS5(int trapType) {
+int newAreaSPforSYS5(int trapType, int asid) {
 	/* Calculate address of page in OS memory to act as stack for SYS 5 handling */
 	int topStackPageNo = TAPEBUFFERSSTART / PAGESIZE;
-	int downwardOffset = (TRAPTYPES * (getASID() - 1)) + trapType;
+	int downwardOffset = 2 * (asid - 1) + ((trapType == SYSTRAP)? 1 : 0);
 	return (topStackPageNo - downwardOffset) * PAGESIZE;
 }
