@@ -44,6 +44,11 @@ HIDDEN void initUProc();
 void contextSwitch(state_PTR newContext);
 int newAreaSPforSYS5(int trapType);
 
+HIDDEN int debugIP(int a, int b, int c, int d) {
+	int debugVarToKeepFromDisappearing = a + b + c + d;
+	return debugVarToKeepFromDisappearing;
+}
+
 /********************* External Methods ********************/
 /*
  * test - Set up the page and segment tables for all 8 user processes
@@ -57,8 +62,6 @@ void test(void) {
 	int loopVar, trapNo, destAddr, asid, delayDaemonID;
 	memaddr frameLoc;
 	uProcEntry_PTR newProcDesc;
-
-
 
 	devregarea_t* devregarea = (devregarea_t*) RAMBASEADDR;
 	uint ramtop = (devregarea->rambase) + (devregarea->ramsize);
@@ -146,16 +149,18 @@ void test(void) {
 
 		/* Create default kernel level state starting in init code */
 		newState = &(newStateList[asid - 1]);
-		newState->s_asid = asid;
-		newState->s_sp = (int) NULL; /* TODO: fill in later, maybe in other code block */
+		newState->s_asid = asid << 6;
+		newState->s_sp = (int) NULL;
 		newState->s_pc = (memaddr) initUProc;
 
 		/* Interrupts on, Local Timer On, VM Off, Kernel mode on */
 		newState->s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
 			& ~VMpON & ~USERMODEON;
 
-		SYSCALL(PASSEREN, (int) &masterSem, 0, 0);
-		SYSCALL(CREATEPROCESS, (int) &newState, 0, 0); /* SYSCALLs are Main reason for kernel mode */
+		if(masterSem >= 6) debugIP(160,masterSem,newState->s_asid,newState->s_status);
+		/* SYSCALL(PASSEREN, (int) &masterSem, 0, 0); */
+		masterSem++;
+		SYSCALL(CREATEPROCESS, (int) newState, 0, 0); /* SYSCALLs are Main reason for kernel mode */
 	}
 }
 
@@ -205,6 +210,7 @@ HIDDEN void initUProc() {
 
 	/* Read the contents of the tape device onto the backing store device */
 	pageNo = 0;
+	/* TODO: Skip header space */
 	while((tape->d_data1 != EOT) && (tape->d_data1 != EOF)) {
 		/* read contents until data1 is no longer EOB */
 		bufferAddr = TAPEBUFFERSSTART + (PAGESIZE * (asid-1));

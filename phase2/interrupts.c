@@ -47,6 +47,11 @@ HIDDEN int findLineIndex(unsigned int causeRegister);
 HIDDEN unsigned int handleTerminal(device_t* device);
 HIDDEN Bool isReadTerm(int lineNum, device_t* dev);
 
+HIDDEN int debugI(int a, int b, int c, int d) {
+	int placeHolder = a + b + c + d;
+	return placeHolder;
+}
+
 /********************** External Methods *********************/
 /*
  * intHandler - the entry point method to respond to device
@@ -75,6 +80,7 @@ void intHandler() {
 	oldInt = (state_PTR) INTOLDAREA;
 	lineNumber = findLineIndex(oldInt->s_cause);
 
+	debugI(lineNumber, 0,0,0);
 	if(lineNumber == 0) { /* Handle inter-processor interrupt (not now) */
 		gameOver(INTER);
 
@@ -146,6 +152,7 @@ void intHandler() {
 	if(stopTOD - startTOD < QUANTUMTIME)
 		setTIMER(QUANTUMTIME - (stopTOD - startTOD));
 
+	debugI(oldInt->s_asid, 0,0,0);
 	loadState(oldInt);
 }
 

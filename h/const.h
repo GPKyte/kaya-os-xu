@@ -34,7 +34,7 @@
 #define TODLOADDR     0x1000001C
 #define INTERVALTMR   0x10000020
 #define TIMESCALEADDR 0x10000024
-#define QUANTUMTIME   5000 /* microseconds, 5 milliseconds */
+#define QUANTUMTIME   50000000 /* microseconds, 5 milliseconds */
 #define INTERVALTIME  100000
 
 /* System call constants */

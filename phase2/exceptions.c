@@ -42,6 +42,11 @@ HIDDEN cpu_t sys6_getCPUTime();
 HIDDEN void sys7_waitForClock();
 HIDDEN void sys8_waitForIODevice(int lineNum, int deviceNum, Bool isReadTerm);
 
+HIDDEN int debugX(int a, int b, int c, int d) {
+	int placeholder = a + b + c + d;
+	return placeholder;
+}
+
 /********************* External Methods *********************/
 /*
  * copyState - A utility method to deep copy states from orig to dest
@@ -237,9 +242,11 @@ HIDDEN int sys1_createProcess(state_PTR birthState) {
 	if(child == NULL)
 		return NOCHILD;
 
+	debugX(245, (int) birthState->s_asid, (int) birthState->s_status, 0); 
 	copyState(birthState, &(child->p_s));
 	insertChild(curProc, child);
 
+	debugX(249, (int) birthState->s_asid, (int) birthState->s_status, 0); 
 	putInPool(child); /* insert child to the deathRowLine */
 	procCount++;
 	return CHILD;
