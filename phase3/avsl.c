@@ -29,8 +29,8 @@ virtSemd_PTR openRoutes_h; /* pointer to the head of virtSemdFree list */
 virtSemd_PTR trafficJam_h; /* pointer to the head of AVSL;
                               holds blocked U-Proc's*/
 
-/* 
- * debugAvsl for debugging  
+/*
+ * debugAvsl for debugging
  */
 int debugAvsl (int a, int b) {
     int i;
@@ -74,14 +74,14 @@ void initAVSL (void) {
  * sema4 descriptor into the ordered double circularly
  * Active Virtual Sema4 Linked list (once the P op is called)
  *
- * PARAM: driverID - a pointer to the virtSemd address
+ * PARAM: driverID - a pointer to the virtSem address
  *        asid - an id for a blocked U-Proc to be added to AVSL
  * RETURN:  TRUE - if a U-proc is blocked successfully on the AVSL.
  *          Otherwise, return FALSE.
  */
-Bool anotherCrash (int *driverID, int asid, virtSemd_PTR vs) {
+Bool anotherCrash (int *driverID, int asid) {
   /* search for appropriate location to insert the blocked vs */
-  virtSemd_PTR nearbyDriver = searchTraffic(driverID, vs);
+  virtSemd_PTR nearbyDriver = searchTraffic(driverID);
   virtSemd_PTR target;
 
   if(nearbyDriver->vs_prev->vs_semd == driverID && nearbyDriver->vs_prev->vs_asid == asid) {
@@ -102,8 +102,8 @@ Bool anotherCrash (int *driverID, int asid, virtSemd_PTR vs) {
     }
   }
 
-  vs->vs_semd = driverID;
-  addCarToTraffic(&target, vs);
+  target->vs_semd = driverID;
+  addCarToTraffic(&trafficJam_h, target);
   return (TRUE);
 }
 
@@ -111,7 +111,7 @@ Bool anotherCrash (int *driverID, int asid, virtSemd_PTR vs) {
  * clearCrash - a mutator method to remove/unblock the requested
  * virtual semaphore from the AVSL.
  *
- * PARAM: *driverID - a pointer to virtSemd address
+ * PARAM: *driverID - a pointer to virtSem address
  *        vs - a pointer to virtSemd-node to be removed from AVSL
  * RETURN: a tail pointer to a removed virtual sema4. Otherwise, NULL
  */
@@ -171,13 +171,12 @@ HIDDEN virtSemd_PTR allocTraffic (void) {
  * and return the predecessor/proper location of the desired
  * virtual semaphore, regardless of whether it exists yet.
  *
- * PARAM: nextToRelease - a pointer to a virtSemd address
- *        vs - a pointer to a virtSemd-node
+ * PARAM: nextToRelease - a pointer to a virtSem address
  */
-HIDDEN virtSemd_PTR searchTraffic (int *nextToRelease, virtSemd_PTR vs) {
+HIDDEN virtSemd_PTR searchTraffic (int *nextToRelease) {
   virtSemd_PTR crash = trafficJam_h;
 
-  while(crash->vs_next->vs_semd < nextToRelease && crash->vs_semd == vs->vs_semd) {
+  while(crash->vs_next->vs_semd < nextToRelease) {
     crash = crash->vs_next;
   }
   return (crash);
