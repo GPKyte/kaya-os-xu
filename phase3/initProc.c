@@ -24,7 +24,8 @@
 #include "../h/const.h"
 #include "../h/types.h"
 #include "../e/vmIOsupport.e"
-/* #include "../e/adl.e" */
+#include "../e/adl.e"
+#include "../e/avsl.e"
 
 #include "/usr/local/include/umps2/umps/libumps.e"
 

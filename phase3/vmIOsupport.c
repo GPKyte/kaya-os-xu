@@ -11,6 +11,8 @@
 #include "../h/types.h"
 #include "../h/const.h"
 #include "../e/initProc.e"
+#include "../e/avsl.e"
+#include "../e/adl.e"
 
 #include "/usr/local/include/umps2/umps/libumps.e"
 
@@ -18,8 +20,8 @@
 
 HIDDEN uint sys9_readFromTerminal(int termNo, char *addr);
 HIDDEN uint sys10_writeToTerminal(int termNo, char *virtAddr, int len);
-HIDDEN void sys11_vVirtSem(int *semAddr);
-HIDDEN void sys12_pVirtSem(int *semAddr);
+HIDDEN void sys11_vVirtSem(int asid, int *semAddr);
+HIDDEN void sys12_pVirtSem(int asid, int *semAddr);
 HIDDEN void sys13_delay(int asid, int secondsToDelay);
 HIDDEN uint sys14_diskPut(memaddr blockAddr, int diskNo, int sectNo);
 HIDDEN uint sys15_diskGet(memaddr blockAddr, int diskNo, int sectNo);
@@ -86,11 +88,11 @@ void uTlbHandler() {
 		sys18_terminate(asid);
 
 	/* Gain mutal exclusion of pager to avoid inconsistent states */
-	sys12_pVirtSem(&pager);
+	sys12_pVirtSem(asid, &pager);
 
 	/* Check shared table to see if it's already been brought in */
 	if(segNum == KUSEG3 && ((destPageEntry->entryLO & VALID) == TRUE)) {
-		sys11_vVirtSem(&pager);
+		sys11_vVirtSem(asid, &pager);
 		contextSwitch(oldTlb);
 	}
 
@@ -140,7 +142,7 @@ void uTlbHandler() {
 	destPageEntry->entryLO |= newFrameAddr | VALID; /* newFrameAddr is like PFN << 12 (or * 4096) */
 
 	/* End mutal exclusion of TLB Handling */
-	sys11_vVirtSem(&pager);
+	sys11_vVirtSem(asid, &pager);
 	contextSwitch(oldTlb);
 }
 
@@ -179,11 +181,11 @@ void uSysCallHandler() {
 
 		case 11:
 			semAddr = (int*) oldSys->s_a1;
-			sys11_vVirtSem(semAddr);
+			sys11_vVirtSem(asid, semAddr);
 
 		case 12:
 			semAddr = (int*) oldSys->s_a1;
-			sys12_pVirtSem(semAddr);
+			sys12_pVirtSem(asid, semAddr);
 
 		case 13:
 			secondsToDelay = oldSys->s_a1;
@@ -246,7 +248,7 @@ HIDDEN uint sys9_readFromTerminal(int termNo, char *addr) {
 	if((int) addr < KUSEG2START)
 		sys18_terminate(getASID());
 
-	sys12_pVirtSem(semAddr); /* Gain mutual exclusion of term device */
+	sys12_pVirtSem(getASID(), semAddr); /* Gain mutual exclusion of term device */
 	while(isReading) {
 		/* Prepare terminal and wait for Operation */
 		disableInterrupts();
@@ -268,7 +270,7 @@ HIDDEN uint sys9_readFromTerminal(int termNo, char *addr) {
 		}
 	}
 
-	sys11_vVirtSem(semAddr);	/* Release exclusion */
+	sys11_vVirtSem(getASID(), semAddr);	/* Release exclusion */
 
 	if(status == CRECVD && charReadCount > 0) /* Return successfully */
 		return charReadCount;
@@ -302,7 +304,7 @@ HIDDEN uint sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 	if((int) virtAddr < KUSEG2START || len < 0 || len > 128)
 		sys18_terminate(getASID());
 
-	sys12_pVirtSem(semAddr); /* Gain mutual exclusion of term device */
+	sys12_pVirtSem(getASID(), semAddr); /* Gain mutual exclusion of term device */
 	while(noFailure && writeCount < len) {
 		/* Prepare terminal and wait for Operation */
 		disableInterrupts();
@@ -320,7 +322,7 @@ HIDDEN uint sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 		}
 	}
 
-	sys11_vVirtSem(semAddr);	/* Release exclusion */
+	sys11_vVirtSem(getASID(), semAddr);	/* Release exclusion */
 
 	if(noFailure) /* Return count of successfully written characters */
 		return writeCount;
@@ -336,8 +338,9 @@ HIDDEN uint sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
  * PARAM: *semAddr - a pointer to a semaphore address
  *					to be signaled
  */
-HIDDEN void sys11_vVirtSem(int *semAddr) {
-
+HIDDEN void sys11_vVirtSem(int asid, int *semAddr) {
+	anotherCrash(semAddr, asid);
+	SYSCALL(VERHOGEN, semAddr, 0, 0);
 }
 
 /*
@@ -348,8 +351,9 @@ HIDDEN void sys11_vVirtSem(int *semAddr) {
  * PARAM: *semAddr - a pointer to a semaphore address
  *					to be put on wait
  */
-HIDDEN void sys12_pVirtSem(int *semAddr) {
-
+HIDDEN void sys12_pVirtSem(int asid, int *semAddr) {
+	clearCrash(semAddr, asid);
+	SYSCALL(PASSEREN, semAddr, 0, 0);
 }
 
 /*
@@ -372,8 +376,8 @@ HIDDEN void sys13_delay(int asid, int secondsToDelay) {
 	if(alarmTime <= 0) /* Invalid operation, "delay" forever */
 		sys18_terminate(asid);
 
-	/* TODO: setAlarm(asid, alarmTime); */
-	sys12_pVirtSem(&(uProcList[asid - 1].up_syncSem));
+	setAlarm(asid, alarmTime);
+	sys12_pVirtSem(asid, &(uProcList[asid - 1].up_syncSem));
 }
 
 /*
@@ -396,14 +400,14 @@ HIDDEN uint sys14_diskPut(memaddr blockAddr, int diskNo, int sectNo) {
 	if(((int) bufferAddr <= KSEGOSEND) || diskNo == 0)
 		sys18_terminate(getASID());
 
-	sys12_pVirtSem(semAddr);
+	sys12_pVirtSem(getASID(), semAddr);
 	/* Transfer data from virtual address into physically located buffer */
 	for(wordIndex = 0; wordIndex < PAGESIZE; wordIndex++) {
 		*(int*)(bufferAddr + wordIndex) = *(int*)(blockAddr + wordIndex);
 	}
 
 	status = engageDiskDevice(diskNo, sectNo, bufferAddr, WRITE);
-	sys11_vVirtSem(semAddr);
+	sys11_vVirtSem(getASID(), semAddr);
 
 	return status;
 }
@@ -426,14 +430,14 @@ HIDDEN uint sys15_diskGet(memaddr blockAddr, int diskNo, int sectNo) {
 	if((int) blockAddr < KUSEG2START || diskNo == 0)
 		sys18_terminate(getASID()); /* illegal access, kill process */
 
-	sys12_pVirtSem(semAddr);
+	sys12_pVirtSem(getASID(), semAddr);
 	status = engageDiskDevice(diskNo, sectNo, bufferAddr, READ);
 
 	/* Transfer data from physically located buffer into virtual address */
 	for(wordIndex = 0; wordIndex < PAGESIZE; wordIndex++) {
 		*(int*)(blockAddr + wordIndex) = *(int*)(bufferAddr + wordIndex);
 	}
-	sys11_vVirtSem(semAddr);
+	sys11_vVirtSem(getASID(), semAddr);
 
 	return status;
 }
@@ -463,7 +467,7 @@ HIDDEN uint sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
 	if((int) virtAddr < KUSEG2START || len < 0 || len > 128)
 		sys18_terminate(getASID());
 
-	sys12_pVirtSem(semAddr); /* Gain mutual exclusion of printer device */
+	sys12_pVirtSem(getASID(), semAddr); /* Gain mutual exclusion of printer device */
 	while(noFailure && prntCount < len) {
 		/* Prepare printer and wait for Operation */
 		disableInterrupts();
@@ -481,7 +485,7 @@ HIDDEN uint sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
 		}
 	}
 
-	sys11_vVirtSem(semAddr);	/* Release exclusion */
+	sys11_vVirtSem(getASID(), semAddr);	/* Release exclusion */
 
 	if(noFailure) /* Return successfully */
 		return prntCount;
@@ -650,9 +654,9 @@ void nukePageTable(uPgTable_PTR pageTable) {
 void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
 	int *semAddr = findMutex(DISKINT, 0, FALSE);
 
-	sys12_pVirtSem(semAddr);
+	sys12_pVirtSem(getASID(), semAddr);
 	engageDiskDevice(0, sectIndex, destFrameAddr, READ);
-	sys11_vVirtSem(semAddr);
+	sys11_vVirtSem(getASID(), semAddr);
 }
 
 /*
@@ -664,9 +668,9 @@ void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
 void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex) {
 	int *semAddr = findMutex(DISKINT, 0, FALSE);
 
-	sys12_pVirtSem(semAddr);
+	sys12_pVirtSem(getASID(), semAddr);
 	engageDiskDevice(0, sectIndex, srcFrameAddr, WRITE);
-	sys11_vVirtSem(semAddr);
+	sys11_vVirtSem(getASID(), semAddr);
 }
 
 /*
