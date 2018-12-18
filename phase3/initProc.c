@@ -45,11 +45,6 @@ HIDDEN void initUProc();
 void contextSwitch(state_PTR newContext);
 int newAreaSPforSYS5(int trapType, int asid);
 
-HIDDEN int debugIP(int a, int b, int c, int d) {
-	int debugVarToKeepFromDisappearing = a + b + c + d;
-	return debugVarToKeepFromDisappearing;
-}
-
 /********************* External Methods ********************/
 /*
  * test - Set up the page and segment tables for all 8 user processes
@@ -225,8 +220,6 @@ HIDDEN void initUProc() {
 		if(status != READY)
 			SYSCALL(TERMINATEPROCESS, 0, 0, 0);
 
-		debugIP(232, asid, status, tape->d_data1);
-
 		/* write page to backing store */
 		destAddr = calcBkgStoreAddr(asid, pageNo);
 		writePageToBackingStore(bufferAddr, destAddr);
@@ -239,8 +232,6 @@ HIDDEN void initUProc() {
 	uProcState.s_asid = getENTRYHI();
 	uProcState.s_sp = KUSEG3START;
 	uProcState.s_pc = uProcState.s_t9 = (memaddr) KUSEG2START;
-
-	debugIP(247, asid, uProcState.s_asid, 0);
 
 	contextSwitch(&uProcState);
 }
