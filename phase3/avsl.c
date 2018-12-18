@@ -29,16 +29,6 @@ virtSemd_PTR openRoutes_h; /* pointer to the head of virtSemdFree list */
 virtSemd_PTR trafficJam_h; /* pointer to the head of AVSL;
                               holds blocked U-Proc's*/
 
-/*
- * debugAvsl for debugging
- */
-int debugAvsl (int a, int b) {
-    int i;
-    i = a+b;
-
-    return i;
-}
-
 /************************ Prototypes ***********************/
 HIDDEN void freeTraffic (virtSemd_PTR car);
 HIDDEN virtSemd_PTR allocTraffic (void);
@@ -84,7 +74,6 @@ Bool anotherCrash (int *driverID, int asid) {
   virtSemd_PTR nearbyDriver = searchTraffic(driverID);
   virtSemd_PTR target;
 
-  debugAvsl(87, asid);
   /* get vs from the free list */
   target = allocTraffic();
   
@@ -116,8 +105,6 @@ virtSemd_PTR clearCrash (int *driverID) {
 	/* search for a vs with a matching vs_semd */
 	virtSemd_PTR debris;
 	virtSemd_PTR nearbyDriver = searchTraffic(driverID); /* head pointer */
-
-	debugAvsl(123, nearbyDriver);
 
 	if(nearbyDriver->vs_next->vs_semd == driverID) {
 		virtSemd_PTR target = nearbyDriver->vs_next;

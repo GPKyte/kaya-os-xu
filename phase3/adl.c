@@ -25,16 +25,6 @@
 delayd_PTR openBeds_h; /* Active Delay Free List */
 delayd_PTR nextToWake_h; /* ADL */
 
-/*
- * debugAdl for debugging ADL
- */
-int debugAdl (int a, int b) {
-    int i;
-    i = a+b;
-
-    return i;
-}
-
 /************************ Prototypes ***********************/
 HIDDEN void freeBed(delayd_PTR bed);
 HIDDEN delayd_PTR allocBed (void);
