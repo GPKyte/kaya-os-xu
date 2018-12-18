@@ -12,7 +12,9 @@
 *
 ****************************************************************/
 
-
+extern void initADL(void);
+extern void summonSandmanTheDelayDemon(void);
+extern Bool setAlarm(int asid, cpu_t wakeTime);
 
 /***************************************************************/
 

@@ -60,7 +60,7 @@ void test(void) {
 	state_t delayDaemonState, *newState;
 	state_t newStateList[MAXUPROC];
 	ptEntry_PTR newPTEntry;
-	int loopVar, trapNo, destAddr, asid, delayDaemonID;
+	int loopVar, asid, delayDaemonID;
 	memaddr frameLoc;
 	uProcEntry_PTR newProcDesc;
 
@@ -115,14 +115,13 @@ void test(void) {
 	/* Set up the delay daemon:
 	 *   Daemon will have unique ASID in kernel-mode
 	 *   with VMc on and all interrupts enabled */
-	/* Skip for now TODO: initADL();
-	delayDaemonState.s_asid = delayDaemonID = MAXASID - 1;
-	delayDaemonState.s_pc = (memaddr) summonSandmanTheDelayDemon();
+	/*delayDaemonState.s_asid = delayDaemonID = MAXPROCID - 1;
+	delayDaemonState.s_pc = delayDaemonState.s_t9 = (memaddr) summonSandmanTheDelayDemon;
 	delayDaemonState.s_status = (VMpON | INTpON | INTMASKOFF) & ~USERMODEON;
-	SYSCALL(CREATEPROCESS, &delayDaemonState); */
+	SYSCALL(CREATEPROCESS, (int) &delayDaemonState, 0, 0);*/
 
 	/* Set up user processes */
-	for(asid = 1; asid < MAXUPROC; asid++) {
+	for(asid = 1; asid <= MAXUPROC; asid++) {
 		/* Set up new page table for process */
 		uPgTableList[asid - 1].header = MAGICNUM;
 
@@ -148,7 +147,6 @@ void test(void) {
 		newProcDesc->up_pgTable = &(uPgTableList[asid - 1]);
 		newProcDesc->up_bkgStoreAddr = calcBkgStoreAddr(asid, 0);
 
-		debugIP(151, newState->s_sp, 0, 0);
 		/* Create default kernel level state starting in init code, fill in s_sp later */
 		newState = &(newStateList[asid - 1]);
 		newState->s_asid = asid << 6;
@@ -159,12 +157,11 @@ void test(void) {
 		newState->s_status = (INTMASKOFF | INTpON | LOCALTIMEON)
 			& ~VMpON & ~USERMODEON;
 
-		debugIP(159, (int) initUProc, (int) getASID, newState->s_sp);
-		if(masterSem >= 6) debugIP(160,masterSem,newState->s_asid,newState->s_status);
-		/* SYSCALL(PASSEREN, (int) &masterSem, 0, 0); */
 		masterSem++;
 		SYSCALL(CREATEPROCESS, (int) newState, 0, 0); /* SYSCALLs are Main reason for kernel mode */
 	}
+	masterSem--;
+	SYSCALL(PASSEREN, (int) &masterSem, 0, 0);
 }
 
 /*****************************************************************************
@@ -179,13 +176,8 @@ HIDDEN void initUProc() {
 	device_t* tape;
 	int asid;
 
-	debugIP(177, 0,0,0);
 	asid = getASID();
 
-	/* the tape the data is read from */
-	tape = (device_t*) (INTDEVREGSTART + ((TAPEINT-3) * DEVREGSIZE * DEVPERINT) + ((asid-1) * DEVREGSIZE));
-
-	debugIP(182, asid ,0,0);
 	/* Set up the three new areas for Pass up or die */
 	for(trapNo = 0; trapNo < TRAPTYPES; trapNo++) {
 		newArea = &(uProcList[asid-1].up_stateAreas[NEW][trapNo]);
@@ -193,7 +185,6 @@ HIDDEN void initUProc() {
 			INTpON | INTMASKOFF | LOCALTIMEON | VMpON | USERMODEON;
 		newArea->s_asid = getENTRYHI();
 
-		debugIP(190, newArea->s_status, newArea->s_asid, asid);
 		/* TODO: pgrmTrapHandler for P3 */
 		switch (trapNo) {
 			case (TLBTRAP):
@@ -216,13 +207,16 @@ HIDDEN void initUProc() {
 		SYSCALL(SPECTRAPVEC, trapNo, (int) &(uProcList[asid-1].up_stateAreas[NEW][trapNo]), 0);
 	}
 
-	/* Read the contents of the tape device onto the backing store device */
+
+	/* the tape the data is read from */
+	tape = (device_t*) (INTDEVREGSTART + ((TAPEINT-3) * DEVREGSIZE * DEVPERINT) + ((asid-1) * DEVREGSIZE));
+
 	pageNo = 0;
-	/* TODO: Skip header space */
+	/* Read the contents of the tape device onto the backing store device */
 	while((tape->d_data1 != EOT) && (tape->d_data1 != EOF)) {
 		/* read contents until data1 is no longer EOB */
 		bufferAddr = TAPEBUFFERSSTART + (PAGESIZE * (asid-1));
-		tape->d_data1 = bufferAddr;
+		tape->d_data0 = bufferAddr;
 		tape->d_command = READBLK; /* issue read block command */
 
 		status = SYSCALL(WAITIO, TAPEINT, asid-1, 0); /* wait to be read */
@@ -230,6 +224,8 @@ HIDDEN void initUProc() {
 		/* check status: if tape not ready, terminate */
 		if(status != READY)
 			SYSCALL(TERMINATEPROCESS, 0, 0, 0);
+
+		debugIP(232, asid, status, tape->d_data1);
 
 		/* write page to backing store */
 		destAddr = calcBkgStoreAddr(asid, pageNo);
@@ -243,6 +239,8 @@ HIDDEN void initUProc() {
 	uProcState.s_asid = getENTRYHI();
 	uProcState.s_sp = KUSEG3START;
 	uProcState.s_pc = uProcState.s_t9 = (memaddr) KUSEG2START;
+
+	debugIP(247, asid, uProcState.s_asid, 0);
 
 	contextSwitch(&uProcState);
 }

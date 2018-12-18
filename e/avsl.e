@@ -11,8 +11,8 @@
 *****************************************************************/
 
 extern void initAVSL (void);
-extern Bool anotherCrash (int *driverID, int asid, virtSemd_PTR vs);
-extern virtSemd_PTR clearCrash (int *driverID, virtSemd_PTR vs);
+extern Bool anotherCrash (int *driverID, int asid);
+extern virtSemd_PTR clearCrash (int *driverID);
 
 /****************************************************************/
 

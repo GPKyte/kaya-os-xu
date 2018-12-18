@@ -42,7 +42,7 @@ int debugAvsl (int a, int b) {
 /************************ Prototypes ***********************/
 HIDDEN void freeTraffic (virtSemd_PTR car);
 HIDDEN virtSemd_PTR allocTraffic (void);
-HIDDEN virtSemd_PTR searchTraffic (int *nextToRelease, virtSemd_PTR vs);
+HIDDEN virtSemd_PTR searchTraffic (int *nextToRelease);
 void addCarToTraffic (virtSemd_PTR *head, virtSemd_PTR vs);
 virtSemd_PTR removeCarFromTraffic (virtSemd_PTR *head);
 
@@ -58,7 +58,7 @@ void initAVSL (void) {
   openRoutes_h = NULL; /* Init virtSemdFree list */
 
   for(i=0; i < MAXPROC; i++) {
-  freeTraffic(&(accidents[i]));
+    freeTraffic(&(accidents[i]));
   }
 
   /* Set crash boundary for AVSL */
@@ -84,23 +84,20 @@ Bool anotherCrash (int *driverID, int asid) {
   virtSemd_PTR nearbyDriver = searchTraffic(driverID);
   virtSemd_PTR target;
 
-  if(nearbyDriver->vs_prev->vs_semd == driverID && nearbyDriver->vs_prev->vs_asid == asid) {
-    target = nearbyDriver->vs_prev;
-  } else {
-    /* get vs from the free list */
-    target = allocTraffic();
+  debugAvsl(87, asid);
+  /* get vs from the free list */
+  target = allocTraffic();
+  
+  if(target == NULL)
+    /* check if freelist is empty, if yes return FALSE */
+    return (FALSE);
+  
 
-    if(target == NULL) {
-      /* check if freelist is empty, if yes return FALSE */
-      return (FALSE);
-    } else {
-      /* allocate the blocked vs to AVSL */
-      target->vs_asid = asid;
-      target->vs_semd = driverID;
-      target->vs_prev = nearbyDriver->vs_prev;
-      nearbyDriver->vs_prev = target;
-    }
-  }
+  /* allocate the blocked vs to AVSL */
+  target->vs_asid = asid;
+  target->vs_semd = driverID;
+  target->vs_prev = nearbyDriver->vs_prev;
+  nearbyDriver->vs_prev = target;
 
   target->vs_semd = driverID;
   addCarToTraffic(&trafficJam_h, target);
@@ -115,21 +112,23 @@ Bool anotherCrash (int *driverID, int asid) {
  *        vs - a pointer to virtSemd-node to be removed from AVSL
  * RETURN: a tail pointer to a removed virtual sema4. Otherwise, NULL
  */
-virtSemd_PTR clearCrash (int *driverID, virtSemd_PTR vs) {
-  /* search for a vs with a matching vs_semd */
-  virtSemd_PTR debris;
-  virtSemd_PTR nearbyDriver = searchTraffic(driverID, vs); /* head pointer */
+virtSemd_PTR clearCrash (int *driverID) {
+	/* search for a vs with a matching vs_semd */
+	virtSemd_PTR debris;
+	virtSemd_PTR nearbyDriver = searchTraffic(driverID); /* head pointer */
 
-  if(nearbyDriver->vs_prev->vs_semd == driverID) {
-    virtSemd_PTR target = nearbyDriver->vs_prev;
+	debugAvsl(123, nearbyDriver);
 
-    debris = removeCarFromTraffic(&target); /* should not be NULL */
-    freeTraffic(debris); /* add the removed node to free list */
+	if(nearbyDriver->vs_next->vs_semd == driverID) {
+		virtSemd_PTR target = nearbyDriver->vs_next;
 
-    return (debris);
-  } else {
-    return (NULL);
-  }
+		debris = removeCarFromTraffic(&target); /* should not be NULL */
+		freeTraffic(debris); /* add the removed node to free list */
+
+		return (debris);
+	} else {
+		return (NULL);
+	}
 }
 
 /********************** Helper Methods *********************/
@@ -141,8 +140,8 @@ virtSemd_PTR clearCrash (int *driverID, virtSemd_PTR vs) {
  *             to the virtSemdFree List
  */
 HIDDEN void freeTraffic (virtSemd_PTR car) {
-  car->vs_next = openRoutes_h;
-  openRoutes_h = car;
+	car->vs_next = openRoutes_h;
+	openRoutes_h = car;
 }
 
 /*
@@ -153,17 +152,18 @@ HIDDEN void freeTraffic (virtSemd_PTR car) {
  *                 a pointer to the removed virtual semaphore
  */
 HIDDEN virtSemd_PTR allocTraffic (void) {
-  if(openRoutes_h == NULL) {
-    return (NULL);
-  } else {
-    virtSemd_PTR car = openRoutes_h;
-    openRoutes_h = car->vs_next;
+	if(openRoutes_h == NULL) {
+		return (NULL);
+	} else {
+		virtSemd_PTR car = openRoutes_h;
+		openRoutes_h = car->vs_next;
 
-    /* clear traffic */
-    car->vs_next = NULL;
-    car->vs_semd = NULL;
-    return (car);
-  }
+		/* clear traffic */
+		car->vs_next = NULL;
+		car->vs_prev = NULL;
+		car->vs_semd = NULL;
+		return (car);
+	}
 }
 
 /*
@@ -176,7 +176,7 @@ HIDDEN virtSemd_PTR allocTraffic (void) {
 HIDDEN virtSemd_PTR searchTraffic (int *nextToRelease) {
   virtSemd_PTR crash = trafficJam_h;
 
-  while(crash->vs_next->vs_semd < nextToRelease) {
+  while(crash->vs_next->vs_semd <= nextToRelease) {
     crash = crash->vs_next;
   }
   return (crash);
@@ -225,7 +225,7 @@ virtSemd_PTR removeCarFromTraffic (virtSemd_PTR *head) {
     virtSemd_PTR tail = (*head)->vs_prev;
 
     if((*head) == tail) {
-      (*head) == NULL;
+      (*head) = NULL;
     } else {
       /* get rid of tail */
       (*head)->vs_prev = tail->vs_prev;

@@ -20,7 +20,7 @@
 
 HIDDEN uint sys9_readFromTerminal(int termNo, char *addr);
 HIDDEN uint sys10_writeToTerminal(int termNo, char *virtAddr, int len);
-HIDDEN void sys11_vVirtSem(int asid, int *semAddr);
+HIDDEN void sys11_vVirtSem(int *semAddr);
 HIDDEN void sys12_pVirtSem(int asid, int *semAddr);
 HIDDEN void sys13_delay(int asid, int secondsToDelay);
 HIDDEN uint sys14_diskPut(memaddr blockAddr, int diskNo, int sectNo);
@@ -92,7 +92,7 @@ void uTlbHandler() {
 
 	/* Check shared table to see if it's already been brought in */
 	if(segNum == KUSEG3 && ((destPageEntry->entryLO & VALID) == TRUE)) {
-		sys11_vVirtSem(asid, &pager);
+		sys11_vVirtSem(&pager);
 		contextSwitch(oldTlb);
 	}
 
@@ -142,7 +142,7 @@ void uTlbHandler() {
 	destPageEntry->entryLO |= newFrameAddr | VALID; /* newFrameAddr is like PFN << 12 (or * 4096) */
 
 	/* End mutal exclusion of TLB Handling */
-	sys11_vVirtSem(asid, &pager);
+	sys11_vVirtSem(&pager);
 	contextSwitch(oldTlb);
 }
 
@@ -181,7 +181,7 @@ void uSysCallHandler() {
 
 		case 11:
 			semAddr = (int*) oldSys->s_a1;
-			sys11_vVirtSem(asid, semAddr);
+			sys11_vVirtSem(semAddr);
 
 		case 12:
 			semAddr = (int*) oldSys->s_a1;
@@ -242,7 +242,7 @@ HIDDEN uint sys9_readFromTerminal(int termNo, char *addr) {
 	char rChar;
 	Bool isReading = TRUE;
 
-	device_t *termReg = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * TERMINT + termNo]);
+	device_t *termReg = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * (TERMINT-3) + termNo]);
 
 	/* Check boundary conditions, no OS access */
 	if((int) addr < KUSEG2START)
@@ -270,7 +270,7 @@ HIDDEN uint sys9_readFromTerminal(int termNo, char *addr) {
 		}
 	}
 
-	sys11_vVirtSem(getASID(), semAddr);	/* Release exclusion */
+	sys11_vVirtSem(semAddr);	/* Release exclusion */
 
 	if(status == CRECVD && charReadCount > 0) /* Return successfully */
 		return charReadCount;
@@ -298,7 +298,7 @@ HIDDEN uint sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 	device_t *termReg;
 
 	semAddr = findMutex(TERMINT, termNo, FALSE);
-	termReg = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * TERMINT + termNo]);
+	termReg = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * (TERMINT-3) + termNo]);
 
 	/* Check boundary conditions, no OS access */
 	if((int) virtAddr < KUSEG2START || len < 0 || len > 128)
@@ -322,7 +322,7 @@ HIDDEN uint sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
 		}
 	}
 
-	sys11_vVirtSem(getASID(), semAddr);	/* Release exclusion */
+	sys11_vVirtSem(semAddr);	/* Release exclusion */
 
 	if(noFailure) /* Return count of successfully written characters */
 		return writeCount;
@@ -338,9 +338,13 @@ HIDDEN uint sys10_writeToTerminal(int termNo, char *virtAddr, int len) {
  * PARAM: *semAddr - a pointer to a semaphore address
  *					to be signaled
  */
-HIDDEN void sys11_vVirtSem(int asid, int *semAddr) {
-	anotherCrash(semAddr, asid);
-	SYSCALL(VERHOGEN, semAddr, 0, 0);
+HIDDEN void sys11_vVirtSem(int *semAddr) {
+	if(*semAddr < 0) {
+		clearCrash(semAddr);
+		SYSCALL(VERHOGEN, (int) semAddr, 0, 0);
+	} else {
+		(*semAddr)++;
+	}
 }
 
 /*
@@ -352,8 +356,13 @@ HIDDEN void sys11_vVirtSem(int asid, int *semAddr) {
  *					to be put on wait
  */
 HIDDEN void sys12_pVirtSem(int asid, int *semAddr) {
-	clearCrash(semAddr, asid);
-	SYSCALL(PASSEREN, semAddr, 0, 0);
+	if(*semAddr <= 0) {
+		anotherCrash(semAddr, asid);
+		SYSCALL(PASSEREN, (int) semAddr, 0, 0);
+
+	} else {
+		(*semAddr)--;
+	}
 }
 
 /*
@@ -407,7 +416,7 @@ HIDDEN uint sys14_diskPut(memaddr blockAddr, int diskNo, int sectNo) {
 	}
 
 	status = engageDiskDevice(diskNo, sectNo, bufferAddr, WRITE);
-	sys11_vVirtSem(getASID(), semAddr);
+	sys11_vVirtSem(semAddr);
 
 	return status;
 }
@@ -437,7 +446,7 @@ HIDDEN uint sys15_diskGet(memaddr blockAddr, int diskNo, int sectNo) {
 	for(wordIndex = 0; wordIndex < PAGESIZE; wordIndex++) {
 		*(int*)(blockAddr + wordIndex) = *(int*)(bufferAddr + wordIndex);
 	}
-	sys11_vVirtSem(getASID(), semAddr);
+	sys11_vVirtSem(semAddr);
 
 	return status;
 }
@@ -485,7 +494,7 @@ HIDDEN uint sys16_writeToPrinter(int prntNo, char *virtAddr, int len) {
 		}
 	}
 
-	sys11_vVirtSem(getASID(), semAddr);	/* Release exclusion */
+	sys11_vVirtSem(semAddr);	/* Release exclusion */
 
 	if(noFailure) /* Return successfully */
 		return prntCount;
@@ -536,7 +545,7 @@ HIDDEN void sys18_terminate(int asid) {
  * RETURN: address of backing store
  */
 int calcBkgStoreAddr(int asid, int pageOffset) {
-	return ((asid * MAXPAGES) + pageOffset);
+	return (((asid-1) * MAXPAGES) + pageOffset);
 }
 
 void disableInterrupts() {
@@ -656,7 +665,7 @@ void readPageFromBackingStore(int sectIndex, memaddr destFrameAddr) {
 
 	sys12_pVirtSem(getASID(), semAddr);
 	engageDiskDevice(0, sectIndex, destFrameAddr, READ);
-	sys11_vVirtSem(getASID(), semAddr);
+	sys11_vVirtSem(semAddr);
 }
 
 /*
@@ -670,7 +679,7 @@ void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex) {
 
 	sys12_pVirtSem(getASID(), semAddr);
 	engageDiskDevice(0, sectIndex, srcFrameAddr, WRITE);
-	sys11_vVirtSem(getASID(), semAddr);
+	sys11_vVirtSem(semAddr);
 }
 
 /*
@@ -683,7 +692,7 @@ void writePageToBackingStore(memaddr srcFrameAddr, int sectIndex) {
  */
 uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) {
 	int head, sect, cyl, maxHeads, maxSects, maxCyls, status;
-	device_t *diskDev = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * DISKINT + diskNo]);
+	device_t *diskDev = &(((devregarea_t*) RAMBASEADDR)->devreg[DEVINTNUM * (DISKINT-3) + diskNo]);
 
 	int sectMask = 0x000000FF;
 	int headMask = 0x0000FF00;
@@ -697,6 +706,7 @@ uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) 
 	cyl = sectIndex / (maxHeads * maxSects);
 
 	/* TODO: disable interrupts?? */
+	disableInterrupts();
 	if(cyl >= maxCyls) { sys18_terminate(getASID()); }
 
 	/* Move boom to the correct disk cylinder */
@@ -717,6 +727,7 @@ uint engageDiskDevice(int diskNo, int sectIndex, memaddr addr, int readOrWrite) 
 	if(status != ACK)
 		sys18_terminate(getASID());
 
+	enableInterrupts();
 	return status;
 }
 
